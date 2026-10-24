@@ -113,6 +113,13 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({
     const file = e.target.files?.[0];
     if (!file) return;
 
+    loggerMemorandum.verbose('Korisnik odabrao datoteku za memorandum', {
+      polje: field,
+      naziv: file.name,
+      velicinaBajtova: file.size,
+      mimeTip: file.type,
+    });
+
     if (file.size > 500 * 1024) {
       loggerMemorandum.warn('Učitavanje slike memoranduma odbijeno: premašuje 500 KB', {
         polje: field,
@@ -123,7 +130,8 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({
       return;
     }
 
-    loggerMemorandum.info('Učitavanje datoteke slike memoranduma', {
+    const t0 = performance.now();
+    loggerMemorandum.info('Započinjem čitanje slike memoranduma', {
       polje: field,
       naziv: file.name,
       velicinaKb: Math.round(file.size / 1024),
@@ -134,10 +142,12 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({
       const base64 = reader.result as string;
       setFormData((prev) => ({ ...prev, [field]: base64 }));
       setSavedSuccess(false);
-      loggerMemorandum.info('Slika memoranduma uspješno pročitana u Base64', { polje: field });
+      const trajanjeMs = Math.round(performance.now() - t0);
+      loggerMemorandum.info('Slika memoranduma uspješno pročitana u Base64', { polje: field, trajanjeMs });
     };
     reader.onerror = (err) => {
-      loggerMemorandum.error('Greška pri čitanju datoteke slike memoranduma:', { error: err });
+      const trajanjeMs = Math.round(performance.now() - t0);
+      loggerMemorandum.error('Greška pri čitanju datoteke slike memoranduma:', { error: err, trajanjeMs });
     };
     reader.readAsDataURL(file);
   };

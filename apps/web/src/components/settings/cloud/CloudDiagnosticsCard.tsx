@@ -44,7 +44,13 @@ export const CloudDiagnosticsCard: React.FC<CloudDiagnosticsCardProps> = ({
     setDiagResult(null);
 
     // Pokreni cjeloviti zdravstveni pregled (Origin, Mreža, Sesija, Token, Scopes)
+    loggerDiag.debug('Izvršavam provjeru mrežne dostupnosti, sesije i valjanosti Client ID-a...');
     const healthReport = await googleAuthService.checkFullAuthHealth();
+    loggerDiag.verbose('Strukturirani Health Report generiran', {
+      origin: healthReport.origin.origin,
+      pingMs: healthReport.network.latencyMs,
+      tokenStatus: healthReport.session.tokenStatus,
+    });
 
     let driveRes: { ok: boolean; statusText: string; enableUrl?: string } | undefined;
     const token = await googleAuth.getAccessToken();
@@ -56,11 +62,16 @@ export const CloudDiagnosticsCard: React.FC<CloudDiagnosticsCardProps> = ({
         statusText: driveCheck.statusText,
         enableUrl: driveCheck.enableUrl,
       };
+      if (!driveCheck.ok) {
+        loggerDiag.warn('Google Drive API nije dostupan ili je onemogućen u projektu:', { status: driveCheck.statusText });
+      }
+    } else {
+      loggerDiag.debug('Korisnik nije prijavljen s aktivnim tokenom, preskačem provjeru Drive API-ja');
     }
 
     let geminiRes: { ok: boolean; msg: string } | undefined;
     if (gemini.apiKey) {
-      loggerDiag.debug('Provjeravam valjanost Gemini API ključa...');
+      loggerDiag.debug('Provjeravam valjanost Gemini API ključa za odabrani model...', { model: gemini.model });
       const ok = await gemini.testKey(gemini.apiKey);
       geminiRes = {
         ok,
@@ -68,6 +79,11 @@ export const CloudDiagnosticsCard: React.FC<CloudDiagnosticsCardProps> = ({
           ? 'Gemini API ključ je valjan i model uspješno odgovara.'
           : 'Gemini API poziv nije uspio (provjerite ključ ili kvotu na AI Studio).',
       };
+      if (!ok) {
+        loggerDiag.warn('Provjera Gemini API ključa nije uspjela');
+      }
+    } else {
+      loggerDiag.debug('Gemini API ključ nije postavljen u postavkama (preskačem test)');
     }
 
     loggerDiag.info('Sveobuhvatna dijagnostika API-ja završena', {

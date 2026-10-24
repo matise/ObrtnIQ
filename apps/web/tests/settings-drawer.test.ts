@@ -156,6 +156,63 @@ describe('SettingsDrawer Modularizacija i Arhitektura', () => {
     expect(errorEntry.error).toBeDefined();
     expect(errorEntry.error.message).toBe('Disk pun');
   });
+
+  it('SD-13: Stupnjevito filtriranje (Level Thresholding) propušta samo dozvoljene razine', () => {
+    const logger = appLogger.scope('SETTINGS:GOOGLE');
+    const originalLevel = appLogger.level;
+
+    // 1. Postavi razinu na WARN
+    appLogger.setLevel('WARN');
+    expect(appLogger.isLevelEnabled('VERBOSE')).toBe(false);
+    expect(appLogger.isLevelEnabled('DEBUG')).toBe(false);
+    expect(appLogger.isLevelEnabled('INFO')).toBe(false);
+    expect(appLogger.isLevelEnabled('WARN')).toBe(true);
+    expect(appLogger.isLevelEnabled('ERROR')).toBe(true);
+
+    const captured: string[] = [];
+    const unsubscribe = appLogger.subscribe((entry) => {
+      captured.push(entry.level);
+    });
+
+    logger.verbose('Ovo je VERBOSE detalj (ne smije se zabilježiti)');
+    logger.debug('Ovo je DEBUG provjera (ne smije se zabilježiti)');
+    logger.info('Ovo je INFO poruka (ne smije se zabilježiti)');
+    logger.warn('Upozorenje: Nije unesen Client ID (mora se zabilježiti)');
+    logger.error('Greška: Popup zatvoren (mora se zabilježiti)');
+
+    unsubscribe();
+    appLogger.setLevel(originalLevel); // vrati izvorno
+
+    expect(captured).toEqual(['WARN', 'ERROR']);
+  });
+
+  it('SD-14: Operacija "Prijavi se putem Google računa" bilježi točan kontekst i stupanj', () => {
+    const googleLogger = appLogger.scope('SETTINGS:GOOGLE');
+    const originalLevel = appLogger.level;
+    appLogger.setLevel('DEBUG'); // Omogući i INFO i DEBUG
+
+    const logEvents: { level: string; msg: string; context: string }[] = [];
+
+    const unsubscribe = appLogger.subscribe((entry) => {
+      if (entry.context === 'SETTINGS:GOOGLE') {
+        logEvents.push({ level: entry.level, msg: entry.message, context: entry.context });
+      }
+    });
+
+    // Simulacija korisničkog klika na gumb "Prijavi se putem Google računa"
+    googleLogger.info('Korisnik kliknuo na gumb [Prijavi se putem Google računa]');
+    googleLogger.debug('Provjera preduvjeta za Google OAuth 2.0 prijavu', { hasCustomClientId: false });
+    googleLogger.warn('Google prijava obustavljena: nije konfiguriran prilagođeni Google Client ID');
+
+    unsubscribe();
+    appLogger.setLevel(originalLevel);
+
+    expect(logEvents).toHaveLength(3);
+    expect(logEvents[0].level).toBe('INFO');
+    expect(logEvents[0].msg).toContain('Prijavi se putem Google računa');
+    expect(logEvents[1].level).toBe('DEBUG');
+    expect(logEvents[2].level).toBe('WARN');
+  });
 });
 
 

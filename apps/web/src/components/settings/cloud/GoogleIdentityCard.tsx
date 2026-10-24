@@ -7,6 +7,7 @@ import {
   CheckCircle2,
 } from 'lucide-react';
 import type { UseGoogleAuthReturn } from '../../../hooks/useGoogleAuth';
+import { googleAuthService } from '../../../services/google-auth-service';
 import { appLogger } from '../../../services/logger';
 
 export interface GoogleIdentityCardProps {
@@ -20,43 +21,93 @@ export const GoogleIdentityCard: React.FC<GoogleIdentityCardProps> = ({
   const [customClientIdInput, setCustomClientIdInput] = useState(googleAuth.clientId);
 
   const handleGoogleLogin = async () => {
-    loggerAuth.info('Korisnik zatražio Google OAuth prijavu');
+    loggerAuth.info('Korisnik kliknuo na gumb [Prijavi se putem Google računa]');
+    loggerAuth.debug('Provjera preduvjeta za Google OAuth 2.0 prijavu', {
+      hasCustomClientId: googleAuth.hasCustomClientId,
+      clientIdConfigured: Boolean(googleAuth.clientId),
+    });
+
     if (!googleAuth.hasCustomClientId) {
-      loggerAuth.warn('Google prijava odbijena: nije postavljen prilagođeni Google Client ID');
+      loggerAuth.warn('Google prijava obustavljena: nije konfiguriran prilagođeni Google Client ID');
       alert(
         'Za prijavu stvarnim Google računom potrebno je unijeti vaš besplatni Google Cloud Client ID u "Naprednim postavkama" ispod.\n\nZa trenutno testiranje svih mogućnosti (kripto-sidro, AES-256 enkripcija, Drive sync) bez konfiguracije kliknite "Isprobaj Demo Prijavu"!'
       );
       return;
     }
+
+    const t0 = performance.now();
+    loggerAuth.info('Otvaram Google OAuth 2.0 popup prozor za autorizaciju korisnika...');
     try {
       await googleAuth.login();
-      loggerAuth.info('Google OAuth prijava dovršena');
+      const trajanjeMs = Math.round(performance.now() - t0);
+      loggerAuth.info('Google OAuth prijava uspješno dovršena!', {
+        trajanjeMs,
+        email: googleAuth.identity?.email,
+        sub: googleAuth.identity?.googleSub,
+      });
     } catch (err: any) {
-      loggerAuth.error('Google OAuth prijava nije uspjela:', { error: err?.message });
+      const trajanjeMs = Math.round(performance.now() - t0);
+      loggerAuth.error('Google OAuth prijava nije uspjela u popup prozoru:', {
+        trajanjeMs,
+        error: err?.message,
+      });
     }
   };
 
   const handleGoogleLogout = () => {
-    loggerAuth.info('Korisnik kliknuo Odjava s Google računa');
+    loggerAuth.info('Korisnik kliknuo Odjava s Google računa', {
+      odjavljeniKorisnik: googleAuth.identity?.email,
+    });
     googleAuth.logout();
+    loggerAuth.debug('Google sesija poništena i uklonjena iz radnog stanja');
   };
 
   const handleGoogleDemoLogin = async () => {
     loggerAuth.info('Korisnik kliknuo Demo prijavu Google računa');
+    loggerAuth.debug('Aktiviram simulirani offline profil s determinističkim Google Sub sidrom');
     await googleAuth.loginDemo();
+    loggerAuth.info('Demo prijava uspješno aktivirana - kripto-sidro spremno');
   };
 
   const handleGoogleRefreshToken = async () => {
+    const t0 = performance.now();
     loggerAuth.info('Korisnik zatražio ručno osvježavanje OAuth pristupnog tokena');
+    loggerAuth.debug('Status tokena prije obnavljanja', {
+      remainingMinutes: googleAuth.tokenRemainingMinutes,
+    });
     await googleAuth.refreshAccessToken();
+    const trajanjeMs = Math.round(performance.now() - t0);
+    loggerAuth.info('Ručno osvježavanje OAuth pristupnog tokena dovršeno', { trajanjeMs });
   };
 
   const handleSaveClientId = () => {
-    loggerAuth.info('Spremanje prilagođenog Google Client ID-a', {
-      postavljen: !!customClientIdInput,
-      duljina: customClientIdInput?.length || 0,
+    const trimmed = (customClientIdInput || '').trim();
+    loggerAuth.debug('Započinjem spremanje prilagođenog Google Client ID-a', {
+      duljinaZnakova: trimmed.length,
+      postavljen: Boolean(trimmed),
     });
-    googleAuth.setClientId(customClientIdInput);
+
+    if (!trimmed) {
+      loggerAuth.warn('Korisnik obrisao Client ID (vraćanje na prazno)');
+      googleAuth.setClientId('');
+      alert('Google Client ID je uklonjen.');
+      return;
+    }
+
+    const validation = googleAuthService.validateClientIdFormat(trimmed);
+    if (!validation.valid) {
+      loggerAuth.warn('Uneseni Google Client ID ima neispravan format', {
+        upozorenje: validation.message,
+      });
+    } else {
+      loggerAuth.info('Format unesenog Google Client ID-a je ispravan');
+    }
+
+    loggerAuth.verbose('Ažuriram Google Client ID u trajnom spremniku', {
+      prefix: trimmed.slice(0, 15) + '...',
+    });
+    googleAuth.setClientId(trimmed);
+    loggerAuth.info('Google Client ID uspješno spremljen u konfiguraciju');
     alert('Google Client ID spremljen.');
   };
 
