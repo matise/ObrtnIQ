@@ -65,6 +65,7 @@ Ovaj dokument služi kao jedinstveni izvor istine za praćenje napretka, evident
 | 2026-10-24 15:18 | UI & Print Čišćenje | `apps/web/src/App.tsx`, `index.css`, `InvoiceLivePreview.tsx`, `pdf-generator.ts` | Uklonjen showroom switch (desktop/mobitel 375px) u korist pune širine; rigorozna @media print izolacija (visibility: hidden za sve osim računa); bijeli papir onclone sanitizacija | 🟢 Gate-Check PROŠAO |
 | 2026-10-24 15:40 | Faza 4.5 | `packages/core/src/logger/*`, `tests/logger.test.ts` | Implementiran Core Logging Engine (RingBuffer, ScopedLogger, level filtering, data sanitization, 7 testova) | 🟢 Gate-Check PROŠAO (59/59) |
 | 2026-10-24 15:44 | Faza 4.5 | `apps/web/src/services/logger.ts`, `SystemLogDrawer.tsx`, `useSystemLogs.ts`, `App.tsx` | Izrađen Web logger cjevovod (console pipe, localStorage prag), Drawer konzola, footer widget i log uvezivanje | 🟢 Gate-Check PROŠAO |
+| 2026-10-24 15:48 | PDF DOM Fix | `apps/web/src/utils/pdf-generator.ts`, `package.json` | Zamijenjen html2canvas s html2canvas-pro radi nativne podrške za oklab/oklch boje iz Tailwind CSS v4 | 🟢 Gate-Check PROŠAO |
 
 ---
 
