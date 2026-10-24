@@ -49,6 +49,7 @@ Ovaj dokument služi kao jedinstveni izvor istine za praćenje napretka, evident
 | 2026-10-24 13:54 | Faza 3 | `apps/web/src/components/controls/TaxZoneToggle.tsx` | Segmentirani preklopnik poreznih zona sa zakonskim klauzulama | Završeno |
 | 2026-10-24 13:55 | Faza 3 | `apps/web/src/components/controls/KpdPicker.tsx` | KpdPicker Command Palette pretraživač službene KPD 2025 baze djelatnosti | Završeno |
 | 2026-10-24 13:56 | Faza 3 | `apps/web/src/App.tsx` | Gate-Check: Integriran Showroom kontrola, preklopnik Desktop (1440px) / Mobitel (375px), validacija blokade | 🟢 Gate-Check PROŠAO |
+| 2026-10-24 14:00 | UX/Layout | `apps/web/src/App.tsx` | Uklonjen max-w-7xl limit: desktop način rada sada koristi 100% širine prozora (Split-Screen 58/42 s živim A4 preglednikom) | Završeno |
 
 ---
 

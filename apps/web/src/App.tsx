@@ -101,8 +101,8 @@ export default function App() {
         </div>
       </header>
 
-      {/* Main Content Area */}
-      <main className="flex-1 max-w-7xl w-full mx-auto p-4 md:p-8 space-y-8">
+      {/* Main Content Area - Full Width Edge-to-Edge */}
+      <main className="flex-1 w-full px-4 sm:px-6 lg:px-8 py-6 space-y-6">
         {/* Hero Alert Banner */}
         <div className="border border-[#433068] bg-[#140F24] p-6 relative overflow-hidden">
           <div className="absolute top-0 left-0 w-1 h-full bg-[#10B981]" />
@@ -246,37 +246,27 @@ export default function App() {
           </div>
 
           {/* Form & Preview Container */}
-          <div className="flex justify-center">
-            <div className={`transition-all duration-300 w-full ${
-              viewMode === 'mobile' 
-                ? 'max-w-[375px] border-2 border-[#A855F7] p-4 bg-[#0B0813] shadow-2xl' 
-                : 'max-w-full'
-            }`}>
-              {viewMode === 'mobile' && (
-                <div className="text-center font-mono text-[11px] text-[#A855F7] mb-4 pb-2 border-b border-[#261B3D]">
-                  Simulirani zaslon pametnog telefona (375px širine)
-                </div>
-              )}
+          <div className="w-full">
+            {viewMode === 'mobile' ? (
+              /* Mobile 375px Centered View */
+              <div className="flex justify-center">
+                <div className="w-full max-w-[375px] border-2 border-[#A855F7] p-4 bg-[#0B0813] shadow-2xl space-y-5">
+                  <div className="text-center font-mono text-[11px] text-[#A855F7] pb-2 border-b border-[#261B3D]">
+                    Simulirani zaslon pametnog telefona (375px)
+                  </div>
 
-              <div className="space-y-6">
-                {/* 1. Porezna Zona Toggle */}
-                <TaxZoneToggle 
-                  value={taxZone} 
-                  onChange={setTaxZone} 
-                />
+                  <TaxZoneToggle value={taxZone} onChange={setTaxZone} />
 
-                {/* 2. Partner podaci (OIB & Naziv) */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="text-xs font-mono text-[#C4B5FD] font-semibold block mb-1.5">
-                      Naziv Partnera / Kupca *
+                      Naziv Partnera *
                     </label>
                     <input
                       type="text"
                       value={partnerNaziv}
                       onChange={(e) => setPartnerNaziv(e.target.value)}
-                      placeholder="npr. Alpha d.o.o."
-                      className="w-full bg-[#0B0813] text-white px-3.5 py-2.5 font-mono text-sm border border-[#433068] focus:border-[#A855F7] outline-none"
+                      placeholder="Alpha d.o.o."
+                      className="w-full bg-[#0B0813] text-white px-3 py-2 font-mono text-sm border border-[#433068] focus:border-[#A855F7] outline-none"
                     />
                   </div>
 
@@ -288,97 +278,186 @@ export default function App() {
                     }}
                     required
                   />
-                </div>
 
-                {/* 3. Poslovni IBAN */}
-                <div>
-                  <IbanInput
-                    value={iban}
-                    onChange={(val, valid, bank) => {
-                      setIban(val);
-                      setIsIbanValid(valid);
-                      setDetectedBank(bank);
-                    }}
-                    required
-                  />
-                  {detectedBank && (
-                    <div className="mt-1 text-[11px] font-mono text-[#10B981]">
-                      Povezana banka: <span className="font-semibold">{detectedBank}</span>
-                    </div>
-                  )}
-                </div>
-
-                {/* 4. Stavka računa (KPD Picker, Količina, Cijena) */}
-                <div className="border border-[#261B3D] bg-[#1E1635]/50 p-4 space-y-4">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-mono uppercase text-[#C4B5FD] font-semibold block">
-                      Stavka Dokumenta &amp; KPD 2025 Klasifikacija
-                    </span>
-                    {kpdNaziv && (
-                      <span className="text-[10px] font-mono text-[#A855F7] truncate max-w-xs">
-                        {kpdNaziv}
-                      </span>
+                  <div>
+                    <IbanInput
+                      value={iban}
+                      onChange={(val, valid, bank) => {
+                        setIban(val);
+                        setIsIbanValid(valid);
+                        setDetectedBank(bank);
+                      }}
+                      required
+                    />
+                    {detectedBank && (
+                      <div className="mt-1 text-[11px] font-mono text-[#10B981]">
+                        Banka: {detectedBank}
+                      </div>
                     )}
                   </div>
 
-                  <KpdPicker
-                    value={kpdSifra}
-                    onChange={(sifra, naziv) => {
-                      setKpdSifra(sifra);
-                      setKpdNaziv(naziv);
-                    }}
-                    required
-                  />
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <label className="text-xs font-mono text-[#C4B5FD] font-semibold block mb-1.5">
-                        Količina (sat / kom)
-                      </label>
+                  <div className="border border-[#261B3D] bg-[#1E1635]/50 p-3 space-y-3">
+                    <KpdPicker
+                      value={kpdSifra}
+                      onChange={(sifra, naziv) => {
+                        setKpdSifra(sifra);
+                        setKpdNaziv(naziv);
+                      }}
+                      required
+                    />
+                    <div className="grid grid-cols-2 gap-2">
                       <input
                         type="number"
                         min={1}
                         value={kolicina}
                         onChange={(e) => setKolicina(Math.max(1, parseInt(e.target.value, 10) || 1))}
+                        className="bg-[#0B0813] text-white px-2 py-1.5 font-mono text-sm border border-[#433068]"
+                      />
+                      <CurrencyInput value={cijena} onChange={setCijena} />
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    disabled={!isFormSubmittable}
+                    className={`w-full py-2.5 font-mono text-xs font-bold transition-all flex items-center justify-center gap-2
+                      ${
+                        isFormSubmittable
+                          ? 'bg-[#10B981] text-black cursor-pointer'
+                          : 'bg-[#261B3D] text-[#7C6DA0] cursor-not-allowed border border-[#433068]'
+                      }
+                    `}
+                  >
+                    <Printer className="w-4 h-4" />
+                    Izdaj Račun ({(kolicina * cijena).toFixed(2)} €)
+                  </button>
+                </div>
+              </div>
+            ) : (
+              /* Full-Width Desktop Split-Screen Layout (100% of Window Width) */
+              <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 w-full items-start">
+                {/* Left Panel: High-Density Input Desk (7 Cols) */}
+                <div className="xl:col-span-7 bg-[#140F24] border border-[#261B3D] p-6 space-y-6">
+                  <div className="flex items-center justify-between border-b border-[#261B3D] pb-3">
+                    <span className="text-xs font-mono uppercase text-[#A855F7] font-bold tracking-wider">
+                      Radna Ploha Unosa (Input Desk)
+                    </span>
+                    <span className="text-[11px] font-mono text-[#7C6DA0]">
+                      Precision Minimalist &bull; Split 58/42
+                    </span>
+                  </div>
+
+                  {/* 1. Porezna Zona Toggle */}
+                  <TaxZoneToggle value={taxZone} onChange={setTaxZone} />
+
+                  {/* 2. Partner podaci (OIB & Naziv) */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-xs font-mono text-[#C4B5FD] font-semibold block mb-1.5">
+                        Naziv Partnera / Kupca *
+                      </label>
+                      <input
+                        type="text"
+                        value={partnerNaziv}
+                        onChange={(e) => setPartnerNaziv(e.target.value)}
+                        placeholder="npr. Alpha d.o.o."
                         className="w-full bg-[#0B0813] text-white px-3.5 py-2.5 font-mono text-sm border border-[#433068] focus:border-[#A855F7] outline-none"
                       />
                     </div>
 
-                    <CurrencyInput
-                      label="Jedinična Cijena (€)"
-                      value={cijena}
-                      onChange={setCijena}
+                    <OibInput
+                      value={oib}
+                      onChange={(val, valid) => {
+                        setOib(val);
+                        setIsOibValid(valid);
+                      }}
                       required
                     />
                   </div>
-                </div>
 
-                {/* Action Bar & Gate-Check Submittable Status */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between border-t border-[#261B3D] pt-4 gap-4">
-                  <div className="flex items-center space-x-2 text-xs font-mono">
-                    {isFormSubmittable ? (
-                      <span className="flex items-center text-[#10B981] gap-1.5 font-semibold">
-                        <Unlock className="w-4 h-4" />
-                        Forma je valjana za izdavanje računa.
-                      </span>
-                    ) : (
-                      <span className="flex items-center text-[#EF4444] gap-1.5 font-semibold">
-                        <Lock className="w-4 h-4" />
-                        Izdavanje blokirano: {!isOibValid ? 'Neispravan OIB' : !isIbanValid ? 'Neispravan IBAN' : 'Provjerite unos'}.
-                      </span>
+                  {/* 3. Poslovni IBAN */}
+                  <div>
+                    <IbanInput
+                      value={iban}
+                      onChange={(val, valid, bank) => {
+                        setIban(val);
+                        setIsIbanValid(valid);
+                        setDetectedBank(bank);
+                      }}
+                      required
+                    />
+                    {detectedBank && (
+                      <div className="mt-1 text-[11px] font-mono text-[#10B981]">
+                        Povezana domaća banka: <span className="font-semibold">{detectedBank}</span>
+                      </div>
                     )}
                   </div>
 
-                  <div className="flex items-center space-x-3">
-                    <div className="text-right font-mono text-xs text-[#7C6DA0] hidden sm:block">
-                      <span>Ukupno za naplatu:</span>
-                      <div className="text-[#10B981] font-bold text-sm">{(kolicina * cijena).toFixed(2)} €</div>
+                  {/* 4. Stavka računa (KPD Picker, Količina, Cijena) */}
+                  <div className="border border-[#261B3D] bg-[#1E1635]/50 p-4 space-y-4">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-mono uppercase text-[#C4B5FD] font-semibold block">
+                        Stavka Dokumenta &amp; KPD 2025 Klasifikacija
+                      </span>
+                      {kpdNaziv && (
+                        <span className="text-[10px] font-mono text-[#A855F7] truncate max-w-sm">
+                          {kpdNaziv}
+                        </span>
+                      )}
+                    </div>
+
+                    <KpdPicker
+                      value={kpdSifra}
+                      onChange={(sifra, naziv) => {
+                        setKpdSifra(sifra);
+                        setKpdNaziv(naziv);
+                      }}
+                      required
+                    />
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <label className="text-xs font-mono text-[#C4B5FD] font-semibold block mb-1.5">
+                          Količina (sat / kom)
+                        </label>
+                        <input
+                          type="number"
+                          min={1}
+                          value={kolicina}
+                          onChange={(e) => setKolicina(Math.max(1, parseInt(e.target.value, 10) || 1))}
+                          className="w-full bg-[#0B0813] text-white px-3.5 py-2.5 font-mono text-sm border border-[#433068] focus:border-[#A855F7] outline-none"
+                        />
+                      </div>
+
+                      <CurrencyInput
+                        label="Jedinična Cijena (€)"
+                        value={cijena}
+                        onChange={setCijena}
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  {/* Action Bar */}
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between border-t border-[#261B3D] pt-4 gap-4">
+                    <div className="flex items-center space-x-2 text-xs font-mono">
+                      {isFormSubmittable ? (
+                        <span className="flex items-center text-[#10B981] gap-1.5 font-semibold">
+                          <Unlock className="w-4 h-4" />
+                          Forma je valjana za izdavanje računa.
+                        </span>
+                      ) : (
+                        <span className="flex items-center text-[#EF4444] gap-1.5 font-semibold">
+                          <Lock className="w-4 h-4" />
+                          Izdavanje blokirano: {!isOibValid ? 'Neispravan OIB' : !isIbanValid ? 'Neispravan IBAN' : 'Provjerite unos'}.
+                        </span>
+                      )}
                     </div>
 
                     <button
                       type="button"
                       disabled={!isFormSubmittable}
-                      className={`px-5 py-2.5 font-mono text-xs font-bold transition-all rounded-none flex items-center gap-2
+                      className={`px-6 py-2.5 font-mono text-xs font-bold transition-all rounded-none flex items-center gap-2
                         ${
                           isFormSubmittable
                             ? 'bg-[#10B981] text-black hover:bg-[#059669] cursor-pointer shadow-lg shadow-[#10B981]/20'
@@ -391,8 +470,100 @@ export default function App() {
                     </button>
                   </div>
                 </div>
+
+                {/* Right Panel: Live A4 Real-Time Preview & Financial Breakdown (5 Cols) */}
+                <div className="xl:col-span-5 bg-[#0B0813] border border-[#433068] p-6 space-y-6 sticky top-20 shadow-xl">
+                  <div className="flex items-center justify-between border-b border-[#261B3D] pb-3">
+                    <span className="text-xs font-mono uppercase text-[#C4B5FD] font-bold tracking-wider flex items-center gap-2">
+                      <FileText className="w-4 h-4 text-[#A855F7]" />
+                      Živi A4 Preglednik (Real-Time Preview)
+                    </span>
+                    <span className="text-[10px] font-mono bg-[#261B3D] text-[#10B981] px-2 py-0.5 border border-[#10B981]/30">
+                      LIVE PREVIEW
+                    </span>
+                  </div>
+
+                  {/* Simulated A4 Header */}
+                  <div className="border border-[#261B3D] bg-[#140F24] p-4 space-y-3 font-mono text-xs">
+                    <div className="flex justify-between items-start border-b border-[#261B3D] pb-3">
+                      <div>
+                        <div className="font-bold text-white text-sm">Robot Hand Made</div>
+                        <div className="text-[#7C6DA0]">vl. Matija Obrtnik</div>
+                        <div className="text-[#7C6DA0]">OIB: 69435151530</div>
+                        <div className="text-[#7C6DA0]">Zagreb, Hrvatska</div>
+                      </div>
+                      <div className="text-right">
+                        <div className="font-bold text-[#A855F7] text-sm">Račun br. 1/POSL1/1</div>
+                        <div className="text-[#7C6DA0]">Datum: 24.10.2026.</div>
+                        <div className="text-[#7C6DA0]">Dospijeće: 03.11.2026.</div>
+                        <span className="inline-block mt-1 bg-[#2A1F49] text-[#C4B5FD] text-[10px] px-2 py-0.5 border border-[#433068]">
+                          {taxZone}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Customer Info */}
+                    <div className="pt-1">
+                      <span className="text-[#7C6DA0] block text-[10px] uppercase">KUPAC / PLATITELJ:</span>
+                      <div className="font-bold text-white">{partnerNaziv || 'Naziv kupca nije unesen'}</div>
+                      <div className="text-[#C4B5FD]">
+                        OIB: {oib || '—'} {isOibValid && <span className="text-[#10B981]">✓</span>}
+                      </div>
+                      <div className="text-[#7C6DA0]">
+                        IBAN za uplatu: <span className="text-white font-mono">{iban ? iban.slice(0, 15) + '...' : '—'}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Line Item Table Preview */}
+                  <div className="border border-[#261B3D] bg-[#140F24] overflow-hidden">
+                    <table className="w-full text-left font-mono text-xs">
+                      <thead className="bg-[#1E1635] text-[#C4B5FD] border-b border-[#261B3D] text-[11px]">
+                        <tr>
+                          <th className="p-2.5">Opis / KPD 2025</th>
+                          <th className="p-2.5 text-center">Kol.</th>
+                          <th className="p-2.5 text-right">Cijena</th>
+                          <th className="p-2.5 text-right">Ukupno</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-[#261B3D] text-white">
+                        <tr>
+                          <td className="p-2.5">
+                            <div className="font-semibold text-[11px] truncate max-w-[200px]">{kpdNaziv || 'Usluga'}</div>
+                            <div className="text-[10px] text-[#A855F7]">KPD: {kpdSifra}</div>
+                          </td>
+                          <td className="p-2.5 text-center tabular-nums">{kolicina}</td>
+                          <td className="p-2.5 text-right tabular-nums">{cijena.toFixed(2)} €</td>
+                          <td className="p-2.5 text-right font-bold tabular-nums">{(kolicina * cijena).toFixed(2)} €</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Financial Summary */}
+                  <div className="border border-[#261B3D] bg-[#140F24] p-4 space-y-2 font-mono text-xs">
+                    <div className="flex justify-between text-[#7C6DA0]">
+                      <span>Ukupno osnovica:</span>
+                      <span className="text-white tabular-nums">{(kolicina * cijena).toFixed(2)} €</span>
+                    </div>
+                    <div className="flex justify-between text-[#7C6DA0]">
+                      <span>PDV (0% - čl. 90 st. 2):</span>
+                      <span className="text-white tabular-nums">0,00 €</span>
+                    </div>
+                    <div className="flex justify-between font-bold text-base text-[#10B981] pt-2 border-t border-[#261B3D]">
+                      <span>UKUPNO ZA PLATITI:</span>
+                      <span className="tabular-nums">{(kolicina * cijena).toFixed(2)} €</span>
+                    </div>
+                  </div>
+
+                  {/* Legal Clause Notice */}
+                  <div className="p-3 bg-[#140F24] border border-[#261B3D] text-[11px] font-mono text-[#7C6DA0] leading-relaxed">
+                    <span className="text-[#C4B5FD] block font-semibold mb-0.5">Zakonska klauzula:</span>
+                    Paušalni obrt nije u sustavu PDV-a prema čl. 90. st. 2. Zakona o PDV-u. Izdano putem sustava ObrtnIQ.
+                  </div>
+                </div>
               </div>
-            </div>
+            )}
           </div>
         </div>
 
