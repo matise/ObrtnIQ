@@ -187,37 +187,42 @@ export async function generateInvoicePdf(data: InvoicePdfData): Promise<PdfGener
   doc.setFontSize(8.5);
 
   data.stavke.forEach((item, index) => {
-    const rowY = currentY + 5;
-    
+    // Dinamički izračunaj širinu i prijelom teksta opisa stavke
+    const maxNazivWidth = colX.kolicina - colX.naziv - 4; // cca 80 mm
+    const nazivLines = doc.splitTextToSize(item.naziv, maxNazivWidth);
+    const kpdOffset = item.kpdSifra ? 3.5 : 0;
+    const rowHeight = Math.max(9, (nazivLines.length * 4) + kpdOffset + 3);
+
     // Naizmjenična pozadina za bolju čitljivost
     if (index % 2 === 1) {
       doc.setFillColor(248, 250, 252);
-      doc.rect(marginX, currentY, contentWidth, 9, 'F');
+      doc.rect(marginX, currentY, contentWidth, rowHeight, 'F');
     }
 
     doc.setTextColor(30, 41, 59);
-    doc.text(`${item.rbr}.`, colX.rbr, rowY);
+    doc.text(`${item.rbr}.`, colX.rbr, currentY + 4.5);
     
-    // Naziv i KPD
+    // Naziv stavke s punim prelaskom u novi red (Flow Layout)
     doc.setFont('helvetica', 'bold');
-    doc.text(item.naziv.slice(0, 48), colX.naziv, rowY);
+    doc.text(nazivLines, colX.naziv, currentY + 4.5);
     doc.setFont('helvetica', 'normal');
+
     if (item.kpdSifra) {
       doc.setTextColor(100, 116, 139);
       doc.setFontSize(7.5);
-      doc.text(`KPD: ${item.kpdSifra}`, colX.naziv, rowY + 3.5);
+      doc.text(`KPD: ${item.kpdSifra}`, colX.naziv, currentY + 4.5 + (nazivLines.length * 4));
       doc.setFontSize(8.5);
       doc.setTextColor(30, 41, 59);
     }
 
-    doc.text(`${item.kolicina} ${item.jedinicaMjere || 'kom'}`, colX.kolicina, rowY, { align: 'right' });
-    doc.text(item.jedinicnaCijena.toFixed(2), colX.cijena, rowY, { align: 'right' });
-    doc.text(`${item.popustPostotak || 0}%`, colX.popust, rowY, { align: 'right' });
+    doc.text(`${item.kolicina} ${item.jedinicaMjere || 'kom'}`, colX.kolicina, currentY + 4.5, { align: 'right' });
+    doc.text(item.jedinicnaCijena.toFixed(2), colX.cijena, currentY + 4.5, { align: 'right' });
+    doc.text(`${item.popustPostotak || 0}%`, colX.popust, currentY + 4.5, { align: 'right' });
     doc.setFont('helvetica', 'bold');
-    doc.text(item.ukupno.toFixed(2), colX.ukupno, rowY, { align: 'right' });
+    doc.text(item.ukupno.toFixed(2), colX.ukupno, currentY + 4.5, { align: 'right' });
     doc.setFont('helvetica', 'normal');
 
-    currentY += 9;
+    currentY += rowHeight;
     doc.setDrawColor(241, 245, 249);
     doc.line(marginX, currentY, pageWidth - marginX, currentY);
   });
@@ -381,19 +386,38 @@ export async function generateInvoicePdfFromDom(
 
   const canvas = await html2canvas(element, {
     scale: 2, // 2x skala za oštar ispis na papiru
-    useCORS: true,
+    useCORS: false,
+    allowTaint: true,
     backgroundColor: '#ffffff',
     logging: false,
-    windowWidth: 794, // 210mm pri 96 DPI
     onclone: (clonedDoc) => {
-      // Osiguraj da se klonirani element za ispis renderira na čistom bijelom papiru s tamnim tekstom
+      // 1. Osiguraj bijeli papir i tamni tekst za klonirani račun
       const invoiceEl = clonedDoc.querySelector('.printable-invoice') as HTMLElement | null;
       if (invoiceEl) {
         invoiceEl.style.backgroundColor = '#ffffff';
         invoiceEl.style.color = '#0f172a';
       }
+
+      // 2. Prekopiraj sadržaj postojećih canvasa (HUB-3 barkod i QR kod) na klonove
+      const origCanvases = element.querySelectorAll('canvas');
+      const cloneCanvases = clonedDoc.querySelectorAll('canvas');
+      origCanvases.forEach((orig, idx) => {
+        const dest = cloneCanvases[idx];
+        if (dest && orig.width > 0 && orig.height > 0) {
+          dest.width = orig.width;
+          dest.height = orig.height;
+          const ctx = dest.getContext('2d');
+          if (ctx) {
+            ctx.drawImage(orig, 0, 0);
+          }
+        }
+      });
     },
   });
+
+  if (!canvas || canvas.width === 0 || canvas.height === 0) {
+    throw new Error('Canvas renderiranje računa nije uspjelo (nultih dimenzija).');
+  }
 
   const imgData = canvas.toDataURL('image/png');
   const doc = new jsPDF({

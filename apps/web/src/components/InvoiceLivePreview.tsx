@@ -11,7 +11,7 @@ import {
   Sparkles
 } from 'lucide-react';
 import { renderHub3Barcode, renderQrCode } from '../utils/barcode';
-import { generateInvoicePdfFromDom } from '../utils/pdf-generator';
+import { generateInvoicePdf, generateInvoicePdfFromDom, type PdfGenerationResult } from '../utils/pdf-generator';
 import { 
   generateHub3Payload, 
   generateEpcQrPayload, 
@@ -128,24 +128,65 @@ export function InvoiceLivePreview(props: InvoiceLivePreviewProps) {
     window.print();
   };
 
-  // 2. Klijentski PDF download iz DOM Flow Layouta (puna podrška za Č, Ć, Ž, Š, Đ bez rezanja)
+  // 2. Klijentski PDF download (s DOM očuvanjem tipografije i automatskim vektorskim fallbackom)
   const handleDownloadPdf = async () => {
-    if (!invoiceSheetRef.current) return;
     setIsGeneratingPdf(true);
 
     try {
       const cleanBroj = props.brojDokumenta.replace(/[^a-zA-Z0-9]/g, '_');
       const filename = `Racun_${cleanBroj}.pdf`;
 
-      const result = await generateInvoicePdfFromDom(invoiceSheetRef.current, filename);
+      let result: PdfGenerationResult;
+      try {
+        if (!invoiceSheetRef.current) throw new Error('DOM element računa nije pronađen');
+        result = await generateInvoicePdfFromDom(invoiceSheetRef.current, filename);
+      } catch (domErr) {
+        console.warn('DOM PDF generiranje nije uspjelo, prebacujem na brzi vektorski generator:', domErr);
+        // Automatski prelazak na pouzdani vektorski generator s HUB-3 i QR kodovima
+        result = await generateInvoicePdf({
+          obrtNaziv: props.obrtNaziv,
+          obrtVlasnik: props.obrtVlasnik,
+          obrtOib: props.obrtOib,
+          obrtAdresa: props.obrtAdresa,
+          obrtIban: props.obrtIban,
+          obrtBanka: props.obrtBanka,
+          kupacNaziv: props.partnerNaziv,
+          kupacOib: props.partnerOib,
+          kupacAdresa: 'Hrvatska',
+          vrstaDokumentaNaziv: 'RAČUN',
+          brojDokumenta: props.brojDokumenta,
+          datumIzdavanja: props.datumIzdavanja,
+          datumIsporuke: props.datumIsporuke,
+          datumDospijeca: props.datumDospijeca,
+          nacinPlacanjaNaziv: props.nacinPlacanja,
+          pozivNaBroj: pozivNaBroj,
+          stavke: [
+            {
+              rbr: 1,
+              naziv: props.kpdNaziv || 'Računalno programiranje i savjetovanje',
+              kpdSifra: props.kpdSifra,
+              kolicina: props.kolicina,
+              jedinicaMjere: 'kom',
+              jedinicnaCijena: props.cijena,
+              ukupno: props.kolicina * props.cijena,
+            },
+          ],
+          ukupnoOsnovica: ukupno,
+          ukupnoPdv: 0,
+          ukupnoIznos: ukupno,
+          includeHub3Barcode: true,
+          includeQrCode: true,
+        });
+      }
+
       setLastGenTime(result.durationMs);
       setPdfValidation(result.validation);
 
       // Preuzimanje generiranog PDF-a
       result.doc.save(result.filename);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Greška pri generiranju PDF-a:', err);
-      alert('Greška pri generiranju PDF-a.');
+      alert(`Greška pri generiranju PDF-a: ${err?.message || 'Nepoznata greška'}`);
     } finally {
       setIsGeneratingPdf(false);
     }
