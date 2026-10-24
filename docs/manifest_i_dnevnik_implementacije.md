@@ -12,8 +12,9 @@ Ovaj dokument služi kao jedinstveni izvor istine za praćenje napretka, evident
 | **Faza 1** | **Domena, Validacije i Poslovna Matematika (Core Engine)** | 🟢 **ZAVRŠENO** | 100% prolaznost Vitest testova za OIB (ISO 7064), IBAN (MOD 97), popuste i HUB-3 | 2026-10-24 |
 | **Faza 2** | **Sloj Pohrane (Storage Abstraction & Adapter)** | 🟢 **ZAVRŠENO** | In-memory CRUD testovi, sekvenca računa bez rupa, export/import | 2026-10-24 |
 | **Faza 3** | **Dizajn Sustav & Sharp UI Primitivi** | 🟢 **ZAVRŠENO** | Responzivnost (375px/1440px), OibInput, IbanInput bank lookup | 2026-10-24 |
-| **Faza 4** | **Generator Kodova i PDF Engine** | 🟢 **ZAVRŠENO** | HUB-3 PDF417 skenabilan m-bankingom, EPC QR, PDF export < 300ms | 2026-10-24 |
-| **Faza 5** | **Ekran za Izdavanje Računa & Workflow** | 🟡 **SLJEDEĆA NA REDU** | Izdavanje računa tipkovnicom < 30s, statusni automat, immutability | - |
+| **Faza 4** | **Generator Kodova i PDF Engine** | 🟢 **ZAVRŠENO** | HUB-3 PDF417 skenabilan m-bankingom, EPC QR, PDF export < 300ms, ISO 32000-1 validacija | 2026-10-24 |
+| **Faza 4.5** | **Sustav Logiranja i Dijagnostički Dnevnik (Logging Engine)** | 🟡 **U TIJEKU** | Višerazinski Scoped Logger (VERBOSE do ERROR), Ring Buffer (500 zapisa), UI Drawer konzola, JSON izvoz | 2026-10-24 |
+| **Faza 5** | **Ekran za Izdavanje Računa & Workflow** | ⚪ Čeka | Izdavanje računa tipkovnicom < 30s, statusni automat, immutability | - |
 | **Faza 6** | **KPR i Obrazac PO-SD (Knjigovodstvo)** | ⚪ Čeka | XML validacija protiv službene XSD sheme Porezne uprave | - |
 | **Faza 7** | **Fiskalizacija 1.0 (CIS) & 2.0 (e-Račun)** | ⚪ Čeka | FINA DEMO okruženje: JIR dohvat i UBL 2.1 isporuka posredniku | - |
 
@@ -74,3 +75,60 @@ Ovaj dokument služi kao jedinstveni izvor istine za praćenje napretka, evident
 * **ADR-005 (Klijentski Barcode & PDF Generiranje bez poslužitelja):** Zbog privatnosti korisnika i zero-server cost arhitekture, generiranje HUB-3 PDF417 barkoda (prema HUB standardu s error correction level 4), EPC SEPA QR koda (EPC069-12) i A4 PDF dokumenta odvija se 100% unutar korisničkog web preglednika koristeći `bwip-js` i `jspdf`. Time se osigurava rad offline, trenutno preuzimanje (< 100 ms, daleko ispod Gate-Check praga od 300 ms) i nulti rizik od curenja poslovnih podataka na vanjske servere.
 * **ADR-006 (Hrvatska Pravopisna Tipografija i Responsive Print Flow Layout):** Kako bi se eliminiralo rezanje teksta (slicing) i gubitak dijakritika (Č, Ć, Ž, Š, Đ) koji nastaje kod fiksnih PDF koordinata, sustav uvodi dvostruki Flow mehanizam: (1) Nativni `@media print` CSS engine s A4/POS 80mm podrškom koji se dinamički prilagođava širini papira uz prirodni CSS Grid/Flexbox prekid redaka i zaštitu od lomljenja (`break-inside: avoid`), te (2) DOM-driven klijentski PDF capture koji preslikava točne browser-rasterizirane fontove bez izostavljanja ijednog slova ili retka, uz strogu primjenu hrvatskog pravopisa (zarez za decimale, završne točke na datumima i `\u00A0` nedjeljivi razmaci za sprječavanje siročića).
 * **ADR-007 (ISO 32000-1 PDF Validacija i Čistoća Ispisa):** Svaki klijentski generirani PDF automatski prolazi strukturalnu provjeru bajtova (`validatePdfStructure`) koja provjerava zaglavlje `%PDF-1.x`, završni marker `%%EOF`, katalog objekata `/Catalog` i hijerarhiju stranica `/Pages` prije nego se datoteka ponudi korisniku na spremanje. Ujedno, `@media print` stilovi i `html2canvas` `onclone` kuka osiguravaju stopostotnu čistoću fizičkog i digitalnog ispisa: svi alati, zaglavlja, showroom switchevi i navigacija su izolirani i nevidljivi, a račun se uvijek renderira na čistom bijelom papiru (`#FFFFFF`) s tamnim slovima (`#0F172A`) neovisno o temi odabranoj na ekranu.
+* **ADR-008 (Lokalni Višerazinski Sustav Logiranja i Cirkularni Ring Buffer):** Zbog apsolutnog poštovanja privatnosti i offline rada, aplikacija ne šalje telemetriju niti greške na vanjske cloud poslužitelje. Umjesto toga, implementira se lagani, strukturirani Scoped Logger s 5 razina (`ERROR`, `WARN`, `INFO`, `DEBUG`, `VERBOSE`). Logovi se zadržavaju u memorijskom cirkularnom spremniku (ring buffer do 500 unosa) kako bi se spriječilo nekontrolirano trošenje memorije, uz mogućnost lokalnog spremanja u IndexedDB. Korisničko sučelje dobiva statusni widget u podnožju i terminalski drawer s filtriranjem, pretraživanjem i mogućnošću preuzimanja sanitiziranog dijagnostičkog JSON paketa bez osjetljivih podataka.
+
+---
+
+## 4. Arhitektonska Specifikacija: Višerazinski Sustav Logiranja i Dijagnostike (Logging & Event Engine)
+
+### 4.1. Hijerarhija Razina (Log Levels)
+1. **`ERROR` (Razina 0)**: Prekidajuće greške (npr. neuspjelo spremanje računa u IndexedDB, korumpirani backup, neuspjelo generiranje PDF-a).
+2. **`WARN` (Razina 1)**: Upozorenja i automatski fallback mehanizmi (npr. DOM capture prešao na vektorski generator, nevažeći OIB blokira izdavanje, približavanje paušalnom limitu).
+3. **`INFO` (Razina 2)**: Ključni životni ciklusi poslovanja (npr. račun izdan pod brojem `1/POSL1/1`, promjena porezne zone, učitana baza banaka, spremljena tema).
+4. **`DEBUG` (Razina 3)**: Tehnički detalji (npr. izmjereno vrijeme generiranja PDF-a u ms, sirovi HUB-3 niz od 170 znakova, izračun osnovice i centi).
+5. **`VERBOSE` (Razina 4)**: Detaljni trag rada (npr. svaki korak ISO 7064 kalkulacije, kalkulacija HSL vrijednosti pri rotaciji kotačića boja, micro-interakcije unosa).
+
+### 4.2. Tipizirani Model Podataka (`LogEntry`)
+```typescript
+export type LogLevel = 'ERROR' | 'WARN' | 'INFO' | 'DEBUG' | 'VERBOSE';
+
+export interface LogEntry {
+  id: string;              // Jedinstveni identifikator zapisa (npr. ULID / timestamp)
+  timestamp: string;       // ISO 8601 string ("2026-10-24T15:30:12.450Z")
+  displayTime: string;     // Kratko lokalno vrijeme ("15:30:12.450")
+  level: LogLevel;         // ERROR | WARN | INFO | DEBUG | VERBOSE
+  context: string;         // Oznaka modula (npr. "STORAGE:DEXIE", "PDF:ENGINE", "CORE:CALC")
+  message: string;         // Jasna, sažeta poruka
+  data?: unknown;          // Strukturirani podaci (sanitizirani)
+  error?: {
+    name: string;
+    message: string;
+    stack?: string;
+  };
+}
+```
+
+### 4.3. Tok Podataka i Arhitektura
+* **Core Scoped Logger (`@obrtniq/core/src/logger`)**: Domenski čista instanca koja omogućuje kreiranje kontekstualnih loggera (`logger.scope('PDF:ENGINE')`) bez ovisnosti o browseru ili Reactu.
+* **Cirkularni Ring Buffer (FIFO, max 500 zapisa)**: Osigurava stabilnu memoriju (< 200 KB) bez memory leaka tokom dugotrajnog rada aplikacije.
+* **Console Pipe**: Obojani ispis u standardnu konzolu preglednika (`console.debug`, `console.info`, `console.warn`, `console.error`) s CSS HSL oznakama usklađenim s aktivnom temom.
+* **Lokalna Perzistencija**: Opcionalno snimanje u Dexie `sustav_dnevnik` tablicu za dugoročnu reviziju rada.
+
+### 4.4. Korisničko Sučelje (UI Console Drawer & Status Widget)
+* **Status Widget u Podnožju (Footer)**:
+  * Prikazuje status sustava: `🟢 Sustav stabilan • 0 grešaka` ili `🔴 1 greška • 2 upozorenja`.
+  * Klik otvara/zatvara konzolu.
+* **Terminal Console Drawer (Donji panel)**:
+  * Brzi filter po razinama: `Sve`, `Error`, `Warn`, `Info`, `Debug`, `Verbose`.
+  * Pretraga po kontekstu i tekstu poruke.
+  * Selektor minimalne razine bilježenja (spremanje preferencije u `localStorage`).
+  * Gumb **"Preuzmi dijagnostički paket"** (`obrtniq-diagnostic-log.json`).
+  * Gumb **"Isprazni zapisnik"**.
+  * Monospace prikaz (JetBrains Mono) s tematskim bojama i sklopivim detaljima.
+
+### 4.5. Akcijski Plan Implementacije
+1. **Korak 1 (Core)**: Kreirati `packages/core/src/logger/` s tipovima (`LogLevel`, `LogEntry`) i scoped logger klasom.
+2. **Korak 2 (Web Adapter)**: Kreirati `apps/web/src/services/logger.ts` s ring bufferom, povezivanjem na `localStorage` prag i konzolu preglednika.
+3. **Korak 3 (UI Drawer)**: Izraditi `SystemLogDrawer.tsx` i integrirati statusni widget u podnožje `App.tsx`.
+4. **Korak 4 (Uvezivanje)**: Povezati logiranje u ključne module: validacije OIB/IBAN, Dexie sekvence, PDF i Barcode engine.
+5. **Korak 5 (Verifikacija)**: Provjeriti ponašanje u pregledniku, testirati filtriranje i izvoz dijagnostike.
