@@ -14,8 +14,9 @@ Ovaj dokument služi kao jedinstveni izvor istine za praćenje napretka, evident
 | **Faza 3** | **Dizajn Sustav & Sharp UI Primitivi** | 🟢 **ZAVRŠENO** | Responzivnost (375px/1440px), OibInput, IbanInput bank lookup | 2026-10-24 |
 | **Faza 4** | **Generator Kodova i PDF Engine** | 🟢 **ZAVRŠENO** | HUB-3 PDF417 skenabilan m-bankingom, EPC QR, PDF export < 300ms, ISO 32000-1 validacija | 2026-10-24 |
 | **Faza 4.5** | **Sustav Logiranja i Dijagnostički Dnevnik (Logging Engine)** | 🟢 **ZAVRŠENO** | Višerazinski Scoped Logger (VERBOSE do ERROR), Ring Buffer (500 zapisa), UI Drawer konzola, JSON izvoz | 2026-10-24 |
+| **Faza 5** | **Ekran za Izdavanje Računa & Workflow** | 🟢 **ZAVRŠENO** | Multi-stavke, F2/Alt+N prečaci, statusni automat (NACRT->IZDANO->STORNIRANO), immutability, Dexie DocumentDrawer | 2026-10-24 |
 | **Faza 6** | **KPR i Obrazac PO-SD (Knjigovodstvo)** | 🟢 **ZAVRŠENO** | XML validacija protiv službene XSD sheme Porezne uprave v2.0, naplate promet, 40k prag | 2026-10-24 |
-| **Faza 7** | **Fiskalizacija 1.0 (CIS) & 2.0 (e-Račun)** | 🟡 **SLJEDEĆA NA REDU** | FINA DEMO okruženje: JIR dohvat i UBL 2.1 isporuka posredniku | - |
+| **Faza 7** | **Fiskalizacija 1.0 (CIS) & 2.0 (e-Račun)** | 🟢 **ZAVRŠENO** | 100% prolaznost (89/89 testova), FINA DEMO/PROD trezor (AES-256 s PIN-om), ZKI/JIR automati, 48h offline fallback, UBL 2.1 CIUS-HR s KPD 2025 i stateless proxy | 2026-10-24 |
 
 *Legenda statusa: ⚪ Čeka | 🟡 U tijeku / Sljedeća | 🟢 Završeno (Gate-Check verificiran) | 🔴 Blokirano*
 
@@ -73,6 +74,13 @@ Ovaj dokument služi kao jedinstveni izvor istine za praćenje napretka, evident
 | 2026-10-24 16:34 | Faza 6 | `packages/core/tests/posd.test.ts` | 6 novih jediničnih testova za KPR, porezne razrede, prelazak limita 40k € i XML strukturu (72/72 ukupno) | 🟢 Gate-Check PROŠAO (72/72) |
 | 2026-10-24 16:36 | Faza 6 | `apps/web/src/components/KprDrawer.tsx` | Izrađena ladica s 3 taba: (1) Knjiga Prometa tablica s ručnim unosom i printom, (2) PO-SD kvartalne kartice s XML preuzimanjem i validacijom, (3) Nadzor praga 40k € | Završeno |
 | 2026-10-24 16:38 | Faza 6 | `apps/web/src/App.tsx` | Integriran dinamički header widget za prag 40.000 € (zeleno/žuto/crveno), prečac na KPR drawer i akcija evidentiranja uplate u KPR za izdane račune | 🟢 Gate-Check PROŠAO |
+| 2026-10-24 16:46 | Faza 7 | `packages/core/src/domain/fiskalizacija.ts` | Implementirana Fiskalizacija 1.0: ZKI raw string format, RFC 1321 MD5 heksadecimalni sažetak, CIS SOAP XML generator i parser, 48h offline fallback tajmer | Završeno |
+| 2026-10-24 16:47 | Faza 7 | `packages/core/src/domain/ubl-eracun.ts` | Implementirana Fiskalizacija 2.0: UBL 2.1 CIUS-HR XML generator i validator s obaveznim KPD 2025 šiframa na svim stavkama i čl. 90 st. 2 oslobođenjem | Završeno |
+| 2026-10-24 16:48 | Faza 7 | `packages/core/src/domain/certificate-vault.ts` | Implementiran Web Crypto trezor: PBKDF2 (100.000 iteracija) + AES-256-GCM enkripcija privatnog ključa s PIN-om, FINA DEMO certifikat i validacija | Završeno |
+| 2026-10-24 16:49 | Faza 7 | `packages/core/src/proxy/worker.ts` | Izrađen bezstanjski Cloudflare Worker proxy (CORS premošćivanje za CIS Porezne uprave i API posrednika bez spremanja podataka) | Završeno |
+| 2026-10-24 16:52 | Faza 7 | `packages/core/tests/*.test.ts` | 17 novih jediničnih testova (fiskalizacija, ubl-eracun, certificate-vault) • Ukupno 16 datoteka i 89/89 prolaznih testova | 🟢 Gate-Check PROŠAO (89/89) |
+| 2026-10-24 16:55 | Faza 7 | `apps/web/src/services/fiscal-service.ts`, `FiscalDrawer.tsx` | Izrađen klijentski fiskalni servis i ladica s 3 taba (FINA trezor, CIS gotovina s offline redom, e-Račun UBL 2.1) | Završeno |
+| 2026-10-24 16:58 | Faza 7 | `apps/web/src/App.tsx`, `InvoiceLivePreview.tsx` | Integrirana automatska fiskalizacija pri izdavanju gotovinskog računa (F2), prikaz ZKI/JIR-a, fiskalni QR Porezne uprave, A4 ispis i e-Račun preuzimanje | 🟢 Gate-Check PROŠAO |
 
 ---
 
@@ -92,6 +100,12 @@ Ovaj dokument služi kao jedinstveni izvor istine za praćenje napretka, evident
   2. **Automatsko razvrstavanje po kvartalima (Q1-Q4)**: Kvartal se određuje strogo prema datumu naplate, uz odvajanje gotovinskog prometa od bezgotovinskog (žiro-račun).
   3. **Porezne razrede i nadzor praga 40.000 €**: Sustav kontinuirano mapira godišnje primitke u zakonskih 5 poreznih razreda (godišnji porezi: 207 €, 270 €, 360 €, 540 €, 720 €) te vizualno upozorava na 75% (30.000 €) i 90% (36.000 €) iskorištenosti, s crvenim alarmom pri prelasku 40.000 € (obveza ulaska u PDV i redovno knjigovodstvo).
   4. **Službeni XML generator za Obrazac PO-SD**: Kreira XML datoteku usklađenu s važećom XSD shemom Porezne uprave RH `v2.0` (`http://e-porezna.porezna-uprava.hr/sheme/zahtjevi/ObrazacPOSD/v2_0`). Datoteka automatski prolazi ugrađenu validaciju zaglavlja, OIB-a i matematičke jednakosti kvartala (`Gotovina + Bezgotovinski = Ukupno`) te je spremna za predaju na portal ePorezna bez posrednika.
+* **ADR-011 (Web Crypto Trezor Certifikata, ZKI/JIR Automati, 48h Offline Fallback i UBL 2.1 CIUS-HR e-Račun Standard):** Za potrebe usklađenosti s hrvatskim zakonodavstvom o fiskalizaciji (Zakon o fiskalizaciji u prometu gotovinom - Fiskalizacija 1.0 te Zakon o fiskalizaciji u B2B prometu - Fiskalizacija 2.0 s KPD 2025 standardom):
+  1. **Sigurnost privatnih ključeva (Zero Plaintext Storage)**: Korisnički FINA certifikat i privatni RSA ključ enkriptiraju se u korisničkom pregledniku 256-bitnim AES-GCM algoritmom s ključem izvedenim iz korisničkog PIN-a (PBKDF2 s 100.000 iteracija SHA-256). Privatni ključ nikada ne napušta preglednik u otvorenom obliku. Za razvoj i testiranje ugrađen je službeni FINA DEMO profil.
+  2. **ZKI izračun (RFC 1321 MD5)**: Generira standardizirani sirovi niz znakova (`OIB + DatumVrijeme + BrojOznRac + OznPosPr + OznNapUr + UkupIzn`) koji se potpisuje privatnim ključem certifikata, a nad potpisom se izračunava 32-znakovni MD5 sažetak malim heksadecimalnim slovima.
+  3. **Offline Fallback mehanizam (rok 48h)**: Ako CIS Porezne uprave nije dostupan ili je veza u prekidu, račun se trenutno izdaje s generiranim ZKI-jem i dobiva status `OFFLINE_ZKI_IZDAN`. Sustav u pozadini prati zakonski rok od 48 sati te omogućuje jednoklikno naknadno slanje čim se internetska veza uspostavi (`<f73:NakDost>true</f73:NakDost>`).
+  4. **Fiskalizacija 2.0 (UBL 2.1 CIUS-HR s KPD 2025)**: B2B računi automatski generiraju e-Račun u formatu UBL 2.1 sukladno normi EN 16931 i nacionalnoj specifikaciji CIUS-HR. Svaka stavka obavezno nosi propisanu KPD 2025 šifru (`<cbc:ItemClassificationCode listID="KPD2025">`), a iznos je mapiran na poreznu kategoriju E (oslobođeno prema čl. 90 st. 2).
+  5. **Bezstanjski Cloudflare Worker Proxy**: Rješava CORS prepreke web preglednika prema CIS poslužitelju Porezne uprave i API-jima posrednika, bez baze podataka i bez spremanja poslovnih podataka korisnika (Zero-Knowledge Architecture).
 
 ---
 

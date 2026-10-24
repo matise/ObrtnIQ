@@ -8,7 +8,8 @@ import {
   QrCode, 
   Layers,
   Printer,
-  Sparkles
+  Sparkles,
+  ShieldCheck
 } from 'lucide-react';
 import { renderHub3Barcode, renderQrCode } from '../utils/barcode';
 import { generateInvoicePdf, generateInvoicePdfFromDom, type PdfGenerationResult } from '../utils/pdf-generator';
@@ -59,6 +60,12 @@ export interface InvoiceLivePreviewProps {
 
   // Više stavaka dokumenta
   items?: InvoiceItemPreview[];
+
+  // Fiskalizacija 1.0 polja
+  zki?: string;
+  jir?: string;
+  fiskalniQrUrl?: string;
+  fiskalizacijaStatus?: string;
 
   // Fallback za pojedinačnu stavku (kompatibilnost)
   kpdSifra?: string;
@@ -153,7 +160,7 @@ export function InvoiceLivePreview(props: InvoiceLivePreviewProps) {
     }
   })();
 
-  // Renderiranje barkodova na Canvas
+  // Renderiranje barkodova na Canvas (Fiskalni QR ili EPC SEPA QR)
   useEffect(() => {
     if (hub3CanvasRef.current && hub3Payload) {
       renderHub3Barcode(hub3CanvasRef.current, hub3Payload, {
@@ -164,12 +171,13 @@ export function InvoiceLivePreview(props: InvoiceLivePreviewProps) {
       }).catch((err) => console.warn('HUB-3 render:', err));
     }
 
-    if (qrCanvasRef.current && epcQrPayload) {
-      renderQrCode(qrCanvasRef.current, epcQrPayload, 140).catch((err) =>
+    const qrData = props.fiskalniQrUrl || epcQrPayload;
+    if (qrCanvasRef.current && qrData) {
+      renderQrCode(qrCanvasRef.current, qrData, 140).catch((err) =>
         console.warn('QR render:', err)
       );
     }
-  }, [hub3Payload, epcQrPayload]);
+  }, [hub3Payload, epcQrPayload, props.fiskalniQrUrl]);
 
   // 1. Nativni ispis putem browser print enginea (Ctrl+P / @media print)
   const handlePrint = () => {
@@ -613,6 +621,45 @@ export function InvoiceLivePreview(props: InvoiceLivePreviewProps) {
             Paušalni obrt nije u sustavu PDV-a prema čl. 90. st. 2. Zakona o PDV-u. Izdano putem digitalnog sustava ObrtnIQ bez fizičkog potpisa i pečata sukladno propisima RH.
           </div>
 
+          {/* 5.1 Fiskalni blok (ZKI / JIR) - Prikazuje se na gotovinskim/kartičnim računima */}
+          {props.zki && (
+            <div
+              className={`p-3 my-3 border text-xs font-mono space-y-1 page-break-avoid ${
+                isPaper
+                  ? 'bg-slate-50 border-slate-300 text-slate-800'
+                  : 'bg-[var(--bg-canvas)]/80 border-[#10B981]/40 text-[var(--text-secondary)]'
+              }`}
+            >
+              <div className="flex items-center justify-between border-b pb-1 mb-1 border-current/20">
+                <span className="font-bold uppercase tracking-wider text-[10px] text-[#10B981] flex items-center gap-1">
+                  <ShieldCheck className="w-3.5 h-3.5" />
+                  FISKALIZIRANI RAČUN (ZAKON O FISKALIZACIJI RH)
+                </span>
+                <span className={`text-[10px] font-bold px-1.5 py-0.2 border ${
+                  props.jir
+                    ? 'bg-[#064E3B] text-[#10B981] border-[#10B981]/40'
+                    : 'bg-[#78350F] text-[#F59E0B] border-[#F59E0B]/40'
+                }`}>
+                  {props.jir ? 'JIR DODIJELJEN' : 'OFFLINE ZKI (ROK 48h)'}
+                </span>
+              </div>
+              <div className="break-all text-[11px]">
+                <span className="font-semibold text-[var(--text-muted)]">ZKI: </span>
+                <span className={`select-all font-mono ${isPaper ? 'text-slate-800' : 'text-slate-300'}`}>{props.zki}</span>
+              </div>
+              {props.jir ? (
+                <div className="break-all text-[11px]">
+                  <span className="font-semibold text-[var(--text-muted)]">JIR: </span>
+                  <span className="select-all font-mono text-[#10B981] font-bold">{props.jir}</span>
+                </div>
+              ) : (
+                <div className="text-[10px] text-[#F59E0B]">
+                  Račun je izdan u izvanmrežnom radu. Izdavatelj ima zakonski rok od 48 sati za dostavu računa u CIS Porezne uprave.
+                </div>
+              )}
+            </div>
+          )}
+
           {/* 6. Barkodovi na dnu (HUB-3 PDF417 i EPC QR) */}
           <div
             className={`barcode-container pt-4 mt-5 border-t page-break-avoid ${
@@ -652,7 +699,7 @@ export function InvoiceLivePreview(props: InvoiceLivePreviewProps) {
                     isPaper ? 'text-slate-700' : 'text-[var(--text-secondary)]'
                   }`}
                 >
-                  <QrCode className="w-3.5 h-3.5" /> EPC SEPA QR:
+                  <QrCode className="w-3.5 h-3.5" /> {props.fiskalniQrUrl ? 'Porezna Uprava Fiskalni QR:' : 'EPC SEPA QR:'}
                 </span>
                 <div
                   className={`p-2 bg-white inline-block border ${
@@ -666,7 +713,7 @@ export function InvoiceLivePreview(props: InvoiceLivePreviewProps) {
                     isPaper ? 'text-slate-500' : 'text-[var(--text-muted)]'
                   }`}
                 >
-                  EPC069-12 v002 standard
+                  {props.fiskalniQrUrl ? 'Provjera računa na Porezna-Uprava.hr' : 'EPC069-12 v002 standard'}
                 </p>
               </div>
             </div>

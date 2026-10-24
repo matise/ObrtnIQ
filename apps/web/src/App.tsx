@@ -31,6 +31,8 @@ import { InvoiceLivePreview } from './components/InvoiceLivePreview';
 import { SystemLogDrawer } from './components/SystemLogDrawer';
 import { DocumentDrawer } from './components/DocumentDrawer';
 import { KprDrawer } from './components/KprDrawer';
+import { FiscalDrawer } from './components/FiscalDrawer';
+import { fiscalService } from './services/fiscal-service';
 import { useSystemLogs } from './hooks/useSystemLogs';
 import { appLogger } from './services/logger';
 import { dexieStorage } from './storage/dexie-db';
@@ -100,6 +102,11 @@ export default function App() {
   const [isLogDrawerOpen, setIsLogDrawerOpen] = useState(false);
   const [isDocDrawerOpen, setIsDocDrawerOpen] = useState(false);
   const [isKprDrawerOpen, setIsKprDrawerOpen] = useState(false);
+  const [isFiscalDrawerOpen, setIsFiscalDrawerOpen] = useState(false);
+  const [zki, setZki] = useState<string | undefined>(undefined);
+  const [jir, setJir] = useState<string | undefined>(undefined);
+  const [fiskalniQrUrl, setFiskalniQrUrl] = useState<string | undefined>(undefined);
+  const [fiskalizacijaStatus, setFiskalizacijaStatus] = useState<string | undefined>(undefined);
   const [totalKprNaplaceno, setTotalKprNaplaceno] = useState(0);
   const [mobileTab, setMobileTab] = useState<'desk' | 'preview'>('desk');
   const [totalSavedDocs, setTotalSavedDocs] = useState(0);
@@ -246,6 +253,29 @@ export default function App() {
         obrtNaziv,
       });
 
+      // Ako je gotovinski ili kartični račun, pokreni automatsku Fiskalizaciju 1.0 (ZKI + JIR)
+      if (docType === 'RACUN' && (nacinPlacanja === 'GOTOVINA' || nacinPlacanja === 'KARTICA')) {
+        const fiscalRes = await fiscalService.fiskalizirajDokument(izdani, obrtOib, false);
+        const updatedWithFiscal: Dokument = {
+          ...izdani,
+          zki: fiscalRes.zki,
+          jir: fiscalRes.jir,
+          qrKodUrl: fiscalRes.qrKodUrl,
+          fiskalizacijaStatus: fiscalRes.status,
+          fiskalizacijaGreska: fiscalRes.greska,
+        };
+        await dexieStorage.dokumenti.save(updatedWithFiscal);
+        setZki(fiscalRes.zki);
+        setJir(fiscalRes.jir);
+        setFiskalniQrUrl(fiscalRes.qrKodUrl);
+        setFiskalizacijaStatus(fiscalRes.status);
+      } else {
+        setZki(undefined);
+        setJir(undefined);
+        setFiskalniQrUrl(undefined);
+        setFiskalizacijaStatus('NIJE_POTREBNO');
+      }
+
       // Ažuriraj stanje sučelja
       setBrojDokumenta(izdani.brojDokumenta);
       setDocStatus('IZDANO');
@@ -272,6 +302,8 @@ export default function App() {
     iban,
     ukupniIznos,
     obrtNaziv,
+    obrtOib,
+    nacinPlacanja,
     refreshDocCount,
   ]);
 
@@ -282,6 +314,10 @@ export default function App() {
     setDocType(vrsta);
     setDocStatus('NACRT');
     setBrojDokumenta('NACRT');
+    setZki(undefined);
+    setJir(undefined);
+    setFiskalniQrUrl(undefined);
+    setFiskalizacijaStatus(undefined);
     setItems([
       {
         id: `item-${Date.now()}`,
@@ -310,6 +346,10 @@ export default function App() {
     setDatumDospijeca(doc.datumDospijeca);
     if (doc.datumIsporuke) setDatumIsporuke(doc.datumIsporuke);
     if (doc.nacinPlacanja) setNacinPlacanja(doc.nacinPlacanja);
+    setZki(doc.zki);
+    setJir(doc.jir);
+    setFiskalniQrUrl(doc.qrKodUrl);
+    setFiskalizacijaStatus(doc.fiskalizacijaStatus);
 
     if (doc.stavke && doc.stavke.length > 0) {
       setItems(
@@ -486,6 +526,16 @@ export default function App() {
             <BookOpen className="w-3.5 h-3.5 text-[#10B981]" />
             <span>KPR &amp; PO-SD</span>
           </button>
+
+          {/* Gumb za Fiskalizaciju & e-Račun */}
+          <button
+            type="button"
+            onClick={() => setIsFiscalDrawerOpen(true)}
+            className="flex items-center space-x-1.5 px-2.5 py-1 bg-[var(--bg-canvas)] hover:bg-[var(--bg-elevated)] text-xs font-mono text-white border border-[var(--border-subtle)] hover:border-[#3B82F6] transition-all cursor-pointer"
+          >
+            <ShieldCheck className="w-3.5 h-3.5 text-[#3B82F6]" />
+            <span>Fiskalizacija &amp; e-Račun</span>
+          </button>
         </div>
 
         {/* Header Right Tools: Theme Selector + Prag Widget */}
@@ -567,8 +617,8 @@ export default function App() {
         </div>
 
         {/* Phase Grid Overview */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4 no-print">
-          <div className="border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-4 space-y-2 transition-colors">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3 no-print">
+          <div className="border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-3.5 space-y-1.5 transition-colors">
             <div className="flex items-center justify-between">
               <span className="text-[10px] font-mono text-[var(--text-muted)]">FAZA 0-2</span>
               <span className="text-[9px] font-mono px-1.5 py-0.2 bg-[#064E3B] text-[#10B981] border border-[#10B981]/30">
@@ -577,14 +627,14 @@ export default function App() {
             </div>
             <div className="flex items-center space-x-2">
               <Cpu className="w-4 h-4 text-[#10B981]" />
-              <h3 className="font-semibold text-xs text-white">Domena & Baza</h3>
+              <h3 className="font-semibold text-xs text-white">Domena &amp; Baza</h3>
             </div>
             <p className="text-[11px] text-[var(--text-muted)] leading-relaxed">
               OIB MOD 11, IBAN MOD 97, kalkulator, Dexie perzistencija.
             </p>
           </div>
 
-          <div className="border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-4 space-y-2 transition-colors">
+          <div className="border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-3.5 space-y-1.5 transition-colors">
             <div className="flex items-center justify-between">
               <span className="text-[10px] font-mono text-[var(--text-muted)]">FAZA 3</span>
               <span className="text-[9px] font-mono px-1.5 py-0.2 bg-[#064E3B] text-[#10B981] border border-[#10B981]/30">
@@ -593,14 +643,14 @@ export default function App() {
             </div>
             <div className="flex items-center space-x-2">
               <Layers className="w-4 h-4 text-[#10B981]" />
-              <h3 className="font-semibold text-xs text-white">Sharp UI & Teme</h3>
+              <h3 className="font-semibold text-xs text-white">Sharp UI &amp; Teme</h3>
             </div>
             <p className="text-[11px] text-[var(--text-muted)] leading-relaxed">
               OibInput, IbanInput, CurrencyInput, KpdPicker i Hue rotacija.
             </p>
           </div>
 
-          <div className="border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-4 space-y-2 transition-colors">
+          <div className="border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-3.5 space-y-1.5 transition-colors">
             <div className="flex items-center justify-between">
               <span className="text-[10px] font-mono text-[var(--text-muted)]">FAZA 4</span>
               <span className="text-[9px] font-mono px-1.5 py-0.2 bg-[#064E3B] text-[#10B981] border border-[#10B981]/30">
@@ -609,14 +659,14 @@ export default function App() {
             </div>
             <div className="flex items-center space-x-2">
               <Printer className="w-4 h-4 text-[#10B981]" />
-              <h3 className="font-semibold text-xs text-white">HUB-3 & PDF</h3>
+              <h3 className="font-semibold text-xs text-white">HUB-3 &amp; PDF</h3>
             </div>
             <p className="text-[11px] text-[var(--text-muted)] leading-relaxed">
               HUB-3 PDF417, EPC QR, ISO 32000-1 i A4 PDF generator.
             </p>
           </div>
 
-          <div className="border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-4 space-y-2 transition-colors">
+          <div className="border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-3.5 space-y-1.5 transition-colors">
             <div className="flex items-center justify-between">
               <span className="text-[10px] font-mono text-[var(--text-muted)]">FAZA 4.5</span>
               <span className="text-[9px] font-mono px-1.5 py-0.2 bg-[#064E3B] text-[#10B981] border border-[#10B981]/30">
@@ -632,7 +682,7 @@ export default function App() {
             </p>
           </div>
 
-          <div className="border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-4 space-y-2 transition-colors">
+          <div className="border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-3.5 space-y-1.5 transition-colors">
             <div className="flex items-center justify-between">
               <span className="text-[10px] font-mono text-[var(--text-secondary)]">FAZA 5</span>
               <span className="text-[9px] font-mono px-1.5 py-0.2 bg-[#064E3B] text-[#10B981] border border-[#10B981]/30">
@@ -641,14 +691,14 @@ export default function App() {
             </div>
             <div className="flex items-center space-x-2">
               <ShieldCheck className="w-4 h-4 text-[#10B981]" />
-              <h3 className="font-semibold text-xs text-white">Workflow & State</h3>
+              <h3 className="font-semibold text-xs text-white">Workflow &amp; State</h3>
             </div>
             <p className="text-[11px] text-[var(--text-secondary)] leading-relaxed">
               Multi-stavke (Alt+N), F2 izdavanje, immutability i storno.
             </p>
           </div>
 
-          <div className="border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-4 space-y-2 transition-colors">
+          <div className="border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-3.5 space-y-1.5 transition-colors">
             <div className="flex items-center justify-between">
               <span className="text-[10px] font-mono text-[var(--text-secondary)]">FAZA 6</span>
               <span className="text-[9px] font-mono px-1.5 py-0.2 bg-[#064E3B] text-[#10B981] border border-[#10B981]/30">
@@ -661,6 +711,22 @@ export default function App() {
             </div>
             <p className="text-[11px] text-[var(--text-secondary)] leading-relaxed">
               Knjiga prometa, prag 40k €, kvartali i PO-SD ePorezna XML.
+            </p>
+          </div>
+
+          <div className="border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-3.5 space-y-1.5 transition-colors">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-mono text-[var(--text-secondary)]">FAZA 7</span>
+              <span className="text-[9px] font-mono px-1.5 py-0.2 bg-[#064E3B] text-[#10B981] border border-[#10B981]/30">
+                GOTOVO
+              </span>
+            </div>
+            <div className="flex items-center space-x-2">
+              <ShieldCheck className="w-4 h-4 text-[#3B82F6]" />
+              <h3 className="font-semibold text-xs text-white">Fiskal. 1.0 &amp; 2.0</h3>
+            </div>
+            <p className="text-[11px] text-[var(--text-secondary)] leading-relaxed">
+              ZKI, JIR, CIS SOAP, FINA trezor i UBL 2.1 CIUS-HR e-Račun.
             </p>
           </div>
         </div>
@@ -1005,6 +1071,10 @@ export default function App() {
               nacinPlacanja={nacinPlacanja}
               taxZone={taxZone}
               items={previewItems}
+              zki={zki}
+              jir={jir}
+              fiskalniQrUrl={fiskalniQrUrl}
+              fiskalizacijaStatus={fiskalizacijaStatus}
             />
           </div>
         </div>
@@ -1107,6 +1177,95 @@ export default function App() {
         obrtVlasnik={obrtVlasnik}
         obrtAdresa={obrtAdresa}
         onKprUpdated={refreshKprTotal}
+      />
+
+      {/* Fiskalizacija 1.0 (CIS) & Fiskalizacija 2.0 (e-Račun) Drawer */}
+      <FiscalDrawer
+        isOpen={isFiscalDrawerOpen}
+        onClose={() => setIsFiscalDrawerOpen(false)}
+        activeDocument={{
+          id: docId,
+          partnerId: 'partner-active',
+          partnerNazivSnapshot: partnerNaziv,
+          partnerOibSnapshot: oib,
+          partnerAdresaSnapshot: 'Radnička cesta 80, Zagreb',
+          vrstaDokumenta: docType,
+          godina: 2026,
+          brojSekvenca: 1,
+          brojDokumenta,
+          poslovniProstorOznaka: 'POSL1',
+          naplatniUredjajOznaka: '1',
+          datumIzdavanja,
+          vrijemeIzdavanja: '14:30:00',
+          datumDospijeca,
+          datumIsporuke,
+          nacinPlacanja: nacinPlacanja === 'Gotovina' ? 'GOTOVINA' : nacinPlacanja === 'Kartica' ? 'KARTICA' : 'TRANSAKCIJSKI_RACUN',
+          iban,
+          pozivNaBroj: 'HR00 ' + (brojDokumenta === 'NACRT' ? '1-2026' : brojDokumenta),
+          jeReverseCharge: false,
+          zakonskaNapomena: 'Paušalni obrt, oslobođeno PDV-a po čl. 90. st. 2. Zakona o PDV-u.',
+          status: docStatus,
+          valuta: 'EUR',
+          ukupnoOsnovica: ukupniIznos,
+          ukupnoPdv: 0,
+          ukupnoIznos: ukupniIznos,
+          fiskalizacijaStatus: (fiskalizacijaStatus as any) || 'NIJE_POTREBNO',
+          zki,
+          jir,
+          qrKodUrl: fiskalniQrUrl,
+          eracunStatus: 'SPREMNO_ZA_SLANJE',
+          stavke: items.map((it, idx) => ({
+            id: it.id,
+            dokumentId: docId,
+            redniBroj: idx + 1,
+            kpdSifra: it.kpdSifra,
+            naziv: it.kpdNaziv,
+            jedinicaMjere: it.jedinicaMjere,
+            kolicina: it.kolicina,
+            jedinicnaCijena: it.cijena,
+            popustPostotak: 0,
+            iznosPopusta: 0,
+            osnovica: it.kolicina * it.cijena,
+            stopaPdv: 0,
+            iznosPdv: 0,
+            ukupno: it.kolicina * it.cijena,
+          })),
+        }}
+        obrtProfil={{
+          id: 'obrt-1',
+          naziv: obrtNaziv,
+          vlasnikImePrezime: obrtVlasnik,
+          oib: obrtOib,
+          ulicaIBroj: obrtAdresa,
+          postanskiBroj: '10000',
+          mjesto: 'Zagreb',
+          drzavaIso: 'HR',
+          email: 'info@robothandmade.hr',
+          iban: iban,
+          jePausalist: true,
+          uSustavuPdv: false,
+          poslovniProstorOznaka: 'POSL1',
+          naplatniUredjajOznaka: '1',
+          eracunPosrednik: 'FINA',
+        }}
+        activePartner={{
+          id: 'partner-active',
+          tipPartnera: 'PRAVNA_OSOBA',
+          naziv: partnerNaziv,
+          oib,
+          adresa: 'Radnička cesta 80',
+          postanskiBroj: '10000',
+          grad: 'Zagreb',
+          drzavaIso: 'HR',
+          poreznaZona: taxZone,
+          aktivan: true,
+        }}
+        onDocumentUpdated={(updatedDoc) => {
+          setZki(updatedDoc.zki);
+          setJir(updatedDoc.jir);
+          setFiskalniQrUrl(updatedDoc.qrKodUrl);
+          setFiskalizacijaStatus(updatedDoc.fiskalizacijaStatus);
+        }}
       />
     </div>
   );

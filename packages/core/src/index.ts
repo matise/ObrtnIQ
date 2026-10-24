@@ -16,3 +16,7 @@ export * from './logger';
 export * from './domain/workflow';
 export * from './domain/kpr';
 export * from './domain/posd-xml';
+export * from './domain/fiskalizacija';
+export * from './domain/ubl-eracun';
+export * from './domain/certificate-vault';
+export { default as FiscalProxyWorker } from './proxy/worker';
