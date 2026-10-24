@@ -354,27 +354,49 @@ $$\text{ZKI} = \text{MD5}(\text{RSA\_SHA1\_Sign}(\text{ZKI\_Input}, \text{PrivKe
 
 ## 5. UI/UX Implementacijska Specifikacija (Precision Minimalist)
 
-### 5.1 CSS Varijable Sustava Teme
+### 5.1 CSS Varijable Sustava Teme i Dinamička Rotacija Tona (Hue Engine)
+
+Sustav koristi parametrizirani **HSL (Hue, Saturation, Lightness)** mehanizam u kojem se sve podloge, granice i akcenti računaju u realnom vremenu iz kuta tona (`--theme-hue`, 0° do 360°), čime je korisniku omogućena trenutna rotacija palete ili odabir između 5 kuriranih preseta:
+
+* **Midnight Amethyst (Zadana):** `268°` — Tamno-ljubičasta mat baza s neonskim akcentima.
+* **Obsidian Emerald:** `155°` — Duboka smaragdno-zelena podloga visokog kontrasta.
+* **Cyber Cobalt:** `218°` — Financijska safirno-plava tema s analitičkim ugođajem.
+* **Titanium Bronze:** `34°` — Topla ugljen-jantarna tema industrijskog karaktera.
+* **Carbon Monolith:** `0°` (Sat. 0%) — Neutralna crno-bijela monokromatska radna površina (`data-theme="carbon"`).
+
 ```css
 :root {
-  --bg-canvas: #0B0813;
-  --bg-surface: #140F24;
-  --bg-elevated: #1E1635;
-  --bg-subtle: #2A1F49;
+  /* Zadani kut tona boje: 268° (Midnight Amethyst) */
+  --theme-hue: 268;
+  --theme-sat-factor: 1;
+
+  /* Dinamičke HSL podloge računane iz kuta tona */
+  --bg-canvas:   hsl(var(--theme-hue) calc(40% * var(--theme-sat-factor)) 5%);
+  --bg-surface:  hsl(var(--theme-hue) calc(35% * var(--theme-sat-factor)) 9%);
+  --bg-elevated: hsl(var(--theme-hue) calc(32% * var(--theme-sat-factor)) 14%);
+  --bg-subtle:   hsl(var(--theme-hue) calc(28% * var(--theme-sat-factor)) 20%);
   
-  --border-subtle: #261B3D;
-  --border-strong: #433068;
-  --border-focus: #A855F7;
+  /* Granice i fokus */
+  --border-subtle: hsl(var(--theme-hue) calc(25% * var(--theme-sat-factor)) 18%);
+  --border-strong: hsl(var(--theme-hue) calc(30% * var(--theme-sat-factor)) 30%);
+  --border-focus:  hsl(var(--theme-hue) calc(85% * var(--theme-sat-factor)) 65%);
   
+  /* Tekstovi */
   --text-primary: #FFFFFF;
-  --text-secondary: #C4B5FD;
-  --text-muted: #7C6DA0;
+  --text-secondary: hsl(var(--theme-hue) calc(60% * var(--theme-sat-factor)) 85%);
+  --text-muted:     hsl(var(--theme-hue) calc(25% * var(--theme-sat-factor)) 60%);
   
-  --accent-green: #10B981;
-  --accent-green-bg: #064E3B;
-  --accent-orange: #F97316;
-  --accent-amber: #F59E0B;
-  --accent-danger: #EF4444;
+  /* Glavni tematski akcent */
+  --accent-primary:       hsl(var(--theme-hue) calc(85% * var(--theme-sat-factor)) 60%);
+  --accent-primary-hover: hsl(var(--theme-hue) calc(85% * var(--theme-sat-factor)) 50%);
+  --accent-primary-glow:  hsla(var(--theme-hue), calc(85% * var(--theme-sat-factor)), 60%, 0.25);
+
+  /* Pravni i statusni signali (neovisni o temi radi propisa) */
+  --signal-green: #10B981;
+  --signal-green-bg: #064E3B;
+  --signal-red: #EF4444;
+  --signal-red-bg: #450A0A;
+  --signal-amber: #F59E0B;
 }
 ```
 

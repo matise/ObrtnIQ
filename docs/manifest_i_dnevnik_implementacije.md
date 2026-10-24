@@ -50,6 +50,7 @@ Ovaj dokument služi kao jedinstveni izvor istine za praćenje napretka, evident
 | 2026-10-24 13:55 | Faza 3 | `apps/web/src/components/controls/KpdPicker.tsx` | KpdPicker Command Palette pretraživač službene KPD 2025 baze djelatnosti | Završeno |
 | 2026-10-24 13:56 | Faza 3 | `apps/web/src/App.tsx` | Gate-Check: Integriran Showroom kontrola, preklopnik Desktop (1440px) / Mobitel (375px), validacija blokade | 🟢 Gate-Check PROŠAO |
 | 2026-10-24 14:00 | UX/Layout | `apps/web/src/App.tsx` | Uklonjen max-w-7xl limit: desktop način rada sada koristi 100% širine prozora (Split-Screen 58/42 s živim A4 preglednikom) | Završeno |
+| 2026-10-24 14:05 | Theme | `apps/web/src/hooks/useTheme.ts`, `apps/web/src/components/ThemeSelector.tsx`, `index.css` | Implementiran dinamički Theme Engine (5 preseta: Amethyst, Emerald, Cobalt, Bronze, Carbon + 0°-360° Hue rotacija s localStorage trajnosti) | Završeno |
 
 ---
 
@@ -58,3 +59,4 @@ Ovaj dokument služi kao jedinstveni izvor istine za praćenje napretka, evident
 * **ADR-001 (Monorepo struktura):** Odabran `npm workspaces` pristup (`packages/core` + `apps/web`) kako bi domenska logika, financijska matematika i validacije ostali 100% neovisni o UI-ju i poslužitelju, čime se omogućuje neovisno testiranje i potencijalna ponovna iskoristivost u Web Workeru ili Cloudflare proxyju.
 * **ADR-002 (Local-First pohrana):** Koristi se lokalna baza unutar korisničkog preglednika (Dexie.js / SQLite Wasm preko OPFS-a) bez ikakvog centralnog poslužitelja ili mjesečnih troškova infrastrukture.
 * **ADR-003 (Precizna financijska matematika):** Svi iznosi se interno računaju u centima (integer) ili decimalnom reprezentacijom s eksplicitnim zaokruživanjem kako bi se eliminirale `IEEE 754 float` anomalije.
+* **ADR-004 (Parametrizirani HSL Theme Engine s Hue rotacijom):** Uveden dinamički CSS HSL sustav baziran na kutu tona (`--theme-hue`, 0°-360°). Omogućuje trenutačnu promjenu palete u realnom vremenu uz zadržavanje visokog kontrasta, odabir 5 kuriranih preseta i finu rotaciju, pri čemu su pravni i porezni signali (zeleno, crveno, žuto) fiksirani radi zakonske jasnoće.

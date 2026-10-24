@@ -20,6 +20,7 @@ import {
   TaxZoneToggle, 
   KpdPicker 
 } from './components/controls';
+import { ThemeSelector } from './components/ThemeSelector';
 import type { 
   PoreznaZona, 
   VrstaDokumenta, 
@@ -55,48 +56,51 @@ export default function App() {
   }, [isOibValid, isIbanValid, cijena, kpdSifra]);
 
   return (
-    <div className="min-h-screen bg-[#0B0813] text-white flex flex-col font-sans">
+    <div className="min-h-screen bg-[var(--bg-canvas)] text-white flex flex-col font-sans transition-colors duration-200">
       {/* Top Precision Header */}
-      <header className="border-b border-[#261B3D] bg-[#140F24]/90 backdrop-blur px-6 py-3 flex items-center justify-between sticky top-0 z-50">
+      <header className="border-b border-[var(--border-subtle)] bg-[var(--bg-surface)]/95 backdrop-blur px-4 sm:px-6 py-2.5 flex items-center justify-between sticky top-0 z-50">
         <div className="flex items-center space-x-4">
           <div className="flex items-center space-x-2">
-            <div className="w-8 h-8 bg-gradient-to-br from-[#7C3AED] to-[#A855F7] flex items-center justify-center font-bold font-mono text-sm tracking-wider shadow-inner">
+            <div className="w-8 h-8 bg-gradient-to-br from-[var(--accent-primary-hover)] to-[var(--accent-primary)] flex items-center justify-center font-bold font-mono text-sm tracking-wider text-black shadow-inner">
               IQ
             </div>
             <div>
-              <span className="font-bold text-lg tracking-tight bg-gradient-to-r from-white to-[#C4B5FD] bg-clip-text text-transparent">
+              <span className="font-bold text-lg tracking-tight text-white">
                 ObrtnIQ
               </span>
-              <span className="ml-2 text-[10px] font-mono uppercase bg-[#261B3D] text-[#C4B5FD] px-1.5 py-0.5 border border-[#433068]">
-                v3.0 Sharp UI
+              <span className="ml-2 text-[10px] font-mono uppercase bg-[var(--bg-elevated)] text-[var(--text-secondary)] px-1.5 py-0.5 border border-[var(--border-strong)]">
+                v3.0 Dynamic Theme
               </span>
             </div>
           </div>
 
-          <div className="h-4 w-[1px] bg-[#261B3D]" />
+          <div className="h-4 w-[1px] bg-[var(--border-subtle)]" />
 
-          <div className="hidden md:flex items-center space-x-2 text-xs font-mono text-[#C4B5FD]">
+          <div className="hidden md:flex items-center space-x-2 text-xs font-mono text-[var(--text-secondary)]">
             <span className="w-2 h-2 rounded-full bg-[#10B981] animate-pulse" />
             <span>OPFS Offline Ready</span>
           </div>
         </div>
 
-        {/* Paušalni Prag Widget */}
-        <div className="flex items-center space-x-6">
+        {/* Header Right Tools: Theme Selector + Prag Widget */}
+        <div className="flex items-center space-x-4 sm:space-x-6">
+          {/* Dynamic Theme Selector */}
+          <ThemeSelector />
+
           <div className="hidden lg:flex flex-col items-end text-right">
             <div className="flex items-center space-x-2 text-xs">
-              <span className="text-[#7C6DA0] uppercase tracking-wider font-mono">Paušalni Prag 2026:</span>
+              <span className="text-[var(--text-muted)] uppercase tracking-wider font-mono">Paušalni Prag 2026:</span>
               <span className="font-mono font-bold text-[#10B981] tabular-nums">28.450,00 €</span>
-              <span className="text-[#7C6DA0] font-mono">/ 40.000 € (71.1%)</span>
+              <span className="text-[var(--text-muted)] font-mono">/ 40.000 € (71.1%)</span>
             </div>
-            <div className="w-48 h-1.5 bg-[#1E1635] mt-1 overflow-hidden border border-[#261B3D]">
+            <div className="w-44 h-1.5 bg-[var(--bg-elevated)] mt-1 overflow-hidden border border-[var(--border-subtle)]">
               <div className="h-full bg-gradient-to-r from-[#10B981] to-[#F59E0B]" style={{ width: '71.1%' }} />
             </div>
           </div>
 
-          <div className="text-right">
-            <span className="text-[11px] font-mono block text-[#7C6DA0]">Status Sustava</span>
-            <span className="text-xs font-mono text-[#10B981] font-semibold">Faza 3 Verificirana (Sharp UI)</span>
+          <div className="text-right hidden sm:block">
+            <span className="text-[11px] font-mono block text-[var(--text-muted)]">Status Sustava</span>
+            <span className="text-xs font-mono text-[#10B981] font-semibold">Faza 3 + Theme Engine</span>
           </div>
         </div>
       </header>
@@ -104,7 +108,7 @@ export default function App() {
       {/* Main Content Area - Full Width Edge-to-Edge */}
       <main className="flex-1 w-full px-4 sm:px-6 lg:px-8 py-6 space-y-6">
         {/* Hero Alert Banner */}
-        <div className="border border-[#433068] bg-[#140F24] p-6 relative overflow-hidden">
+        <div className="border border-[var(--border-strong)] bg-[var(--bg-surface)] p-6 relative overflow-hidden transition-colors">
           <div className="absolute top-0 left-0 w-1 h-full bg-[#10B981]" />
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div className="space-y-1">
@@ -113,23 +117,24 @@ export default function App() {
                   <CheckCircle2 className="w-3.5 h-3.5" /> Faza 3 Gate-Check Prošao
                 </span>
                 <span className="text-xs px-2 py-0.5 bg-[#064E3B] text-[#10B981] border border-[#10B981]/30 font-mono">
-                  Sharp UI kontrole verificirane
+                  Theme Engine &amp; Sharp UI
                 </span>
               </div>
               <h1 className="text-2xl font-bold tracking-tight text-white">
-                Specijalizirane HR/EU UI Kontrole &amp; Midnight Amethyst Tema
+                Specijalizirane HR/EU UI Kontrole &amp; Dinamički Sustav Tema
               </h1>
-              <p className="text-sm text-[#C4B5FD] max-w-3xl">
-                Izgrađen set oštrih kontrola visoke gustoće: <code className="text-[#A855F7] font-mono">OibInput</code> (ISO 7064), 
-                <code className="text-[#A855F7] font-mono"> IbanInput</code> (MOD 97 + HNB bank lookup), 
-                <code className="text-[#A855F7] font-mono"> CurrencyInput</code> (€ dual comma/dot), 
-                <code className="text-[#A855F7] font-mono"> KpdPicker</code> (KPD 2025 baza) i 
-                <code className="text-[#A855F7] font-mono"> TaxZoneToggle</code>.
+              <p className="text-sm text-[var(--text-secondary)] max-w-3xl">
+                Izgrađen set oštrih kontrola visoke gustoće s podrškom za dinamičku rotaciju kuta tona (Hue 0°-360°): 
+                <code className="text-[var(--accent-primary)] font-mono"> OibInput</code>, 
+                <code className="text-[var(--accent-primary)] font-mono"> IbanInput</code>, 
+                <code className="text-[var(--accent-primary)] font-mono"> CurrencyInput</code>, 
+                <code className="text-[var(--accent-primary)] font-mono"> KpdPicker</code> i 
+                <code className="text-[var(--accent-primary)] font-mono"> TaxZoneToggle</code>.
               </p>
             </div>
             
             <div className="flex items-center space-x-3">
-              <div className="text-right font-mono text-xs text-[#7C6DA0]">
+              <div className="text-right font-mono text-xs text-[var(--text-muted)]">
                 <span>Aktivni tipovi:</span>
                 <div className="text-white font-semibold">{defaultDocType} / {defaultPayment}</div>
               </div>
@@ -139,25 +144,25 @@ export default function App() {
 
         {/* Phase Grid Overview */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="border border-[#261B3D] bg-[#140F24] p-5 space-y-3">
+          <div className="border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-5 space-y-3 transition-colors">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-mono text-[#7C6DA0]">FAZA 0</span>
+              <span className="text-xs font-mono text-[var(--text-muted)]">FAZA 0</span>
               <span className="text-[10px] font-mono px-2 py-0.5 bg-[#064E3B] text-[#10B981] border border-[#10B981]/30">
                 GOTOVO
               </span>
             </div>
             <div className="flex items-center space-x-3">
-              <Cpu className="w-5 h-5 text-[#A855F7]" />
+              <Cpu className="w-5 h-5 text-[var(--accent-primary)]" />
               <h3 className="font-semibold text-sm">Monorepo & Alati</h3>
             </div>
-            <p className="text-xs text-[#7C6DA0] leading-relaxed">
+            <p className="text-xs text-[var(--text-muted)] leading-relaxed">
               Vite, React 19, TypeScript strict mode, Vitest i Tailwind CSS konfigurirani.
             </p>
           </div>
 
-          <div className="border border-[#261B3D] bg-[#140F24] p-5 space-y-3">
+          <div className="border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-5 space-y-3 transition-colors">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-mono text-[#7C6DA0]">FAZA 1</span>
+              <span className="text-xs font-mono text-[var(--text-muted)]">FAZA 1</span>
               <span className="text-[10px] font-mono px-2 py-0.5 bg-[#064E3B] text-[#10B981] border border-[#10B981]/30">
                 GOTOVO
               </span>
@@ -166,14 +171,14 @@ export default function App() {
               <ShieldCheck className="w-5 h-5 text-[#10B981]" />
               <h3 className="font-semibold text-sm text-white">Domena & Validacije</h3>
             </div>
-            <p className="text-xs text-[#7C6DA0] leading-relaxed">
+            <p className="text-xs text-[var(--text-muted)] leading-relaxed">
               ISO 7064 OIB, MOD 97 IBAN, HUB-3 barkod generator i financijski kalkulator.
             </p>
           </div>
 
-          <div className="border border-[#261B3D] bg-[#140F24] p-5 space-y-3">
+          <div className="border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-5 space-y-3 transition-colors">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-mono text-[#7C6DA0]">FAZA 2</span>
+              <span className="text-xs font-mono text-[var(--text-muted)]">FAZA 2</span>
               <span className="text-[10px] font-mono px-2 py-0.5 bg-[#064E3B] text-[#10B981] border border-[#10B981]/30">
                 GOTOVO
               </span>
@@ -182,15 +187,15 @@ export default function App() {
               <Database className="w-5 h-5 text-[#10B981]" />
               <h3 className="font-semibold text-sm text-white">Storage Adapter</h3>
             </div>
-            <p className="text-xs text-[#7C6DA0] leading-relaxed">
+            <p className="text-xs text-[var(--text-muted)] leading-relaxed">
               Dexie.js IndexedDB, sekvenca bez rupa, storno servis i AES-256 backup.
             </p>
           </div>
 
-          <div className="border border-[#10B981]/40 bg-[#140F24] p-5 space-y-3 relative">
+          <div className="border border-[#10B981]/40 bg-[var(--bg-surface)] p-5 space-y-3 relative transition-colors">
             <div className="absolute top-0 right-0 w-2 h-2 bg-[#10B981]" />
             <div className="flex items-center justify-between">
-              <span className="text-xs font-mono text-[#C4B5FD]">FAZA 3</span>
+              <span className="text-xs font-mono text-[var(--text-secondary)]">FAZA 3</span>
               <span className="text-[10px] font-mono px-2 py-0.5 bg-[#064E3B] text-[#10B981] border border-[#10B981]/30">
                 GOTOVO
               </span>
@@ -199,7 +204,7 @@ export default function App() {
               <Layers className="w-5 h-5 text-[#10B981]" />
               <h3 className="font-semibold text-sm text-white">Sharp UI Primitivi</h3>
             </div>
-            <p className="text-xs text-[#C4B5FD] leading-relaxed">
+            <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
               OibInput, IbanInput, CurrencyInput, KpdPicker i segmentirani TaxZoneToggle.
             </p>
           </div>

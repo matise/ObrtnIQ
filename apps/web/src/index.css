@@ -1,48 +1,81 @@
 @import "tailwindcss";
 
+:root {
+  /* Zadani kut tona boje: 268° (Midnight Amethyst) */
+  --theme-hue: 268;
+  --theme-sat-factor: 1;
+
+  /* Dinamičke HSL podloge računane iz kuta tona */
+  --bg-canvas:   hsl(var(--theme-hue) calc(40% * var(--theme-sat-factor)) 5%);
+  --bg-surface:  hsl(var(--theme-hue) calc(35% * var(--theme-sat-factor)) 9%);
+  --bg-elevated: hsl(var(--theme-hue) calc(32% * var(--theme-sat-factor)) 14%);
+  --bg-subtle:   hsl(var(--theme-hue) calc(28% * var(--theme-sat-factor)) 20%);
+  
+  /* Granice i fokus */
+  --border-subtle: hsl(var(--theme-hue) calc(25% * var(--theme-sat-factor)) 18%);
+  --border-strong: hsl(var(--theme-hue) calc(30% * var(--theme-sat-factor)) 30%);
+  --border-focus:  hsl(var(--theme-hue) calc(85% * var(--theme-sat-factor)) 65%);
+  
+  /* Tekstovi */
+  --text-primary: #FFFFFF;
+  --text-secondary: hsl(var(--theme-hue) calc(60% * var(--theme-sat-factor)) 85%);
+  --text-muted:     hsl(var(--theme-hue) calc(25% * var(--theme-sat-factor)) 60%);
+  
+  /* Glavni tematski akcent */
+  --accent-primary:       hsl(var(--theme-hue) calc(85% * var(--theme-sat-factor)) 60%);
+  --accent-primary-hover: hsl(var(--theme-hue) calc(85% * var(--theme-sat-factor)) 50%);
+  --accent-primary-glow:  hsla(var(--theme-hue), calc(85% * var(--theme-sat-factor)), 60%, 0.25);
+  --accent-primary-bg:    hsla(var(--theme-hue), calc(85% * var(--theme-sat-factor)), 60%, 0.12);
+
+  /* Pravni i statusni signali (neovisni o temi radi propisa) */
+  --signal-green: #10B981;
+  --signal-green-bg: #064E3B;
+  --signal-red: #EF4444;
+  --signal-red-bg: #450A0A;
+  --signal-amber: #F59E0B;
+}
+
+[data-theme="carbon"] {
+  --theme-sat-factor: 0;
+  --bg-canvas: #09090B;
+  --bg-surface: #121215;
+  --bg-elevated: #1C1C21;
+  --bg-subtle: #27272E;
+  --border-subtle: #22222A;
+  --border-strong: #3F3F4E;
+  --border-focus: #E4E4E7;
+  --text-secondary: #E4E4E7;
+  --text-muted: #71717A;
+  --accent-primary: #FAFAFA;
+  --accent-primary-hover: #D4D4D8;
+  --accent-primary-glow: rgba(255, 255, 255, 0.2);
+  --accent-primary-bg: rgba(255, 255, 255, 0.1);
+}
+
 @theme {
-  --color-canvas: #0B0813;
-  --color-surface: #140F24;
-  --color-elevated: #1E1635;
-  --color-subtle: #2A1F49;
+  --color-canvas: var(--bg-canvas);
+  --color-surface: var(--bg-surface);
+  --color-elevated: var(--bg-elevated);
+  --color-subtle: var(--bg-subtle);
 
-  --color-border-subtle: #261B3D;
-  --color-border-strong: #433068;
-  --color-border-focus: #A855F7;
+  --color-border-subtle: var(--border-subtle);
+  --color-border-strong: var(--border-strong);
+  --color-border-focus: var(--border-focus);
 
-  --color-text-primary: #FFFFFF;
-  --color-text-secondary: #C4B5FD;
-  --color-text-muted: #7C6DA0;
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-muted: var(--text-muted);
 
-  --color-accent-green: #10B981;
-  --color-accent-green-bg: #064E3B;
-  --color-accent-orange: #F97316;
-  --color-accent-amber: #F59E0B;
-  --color-accent-danger: #EF4444;
+  --color-accent-primary: var(--accent-primary);
+  --color-accent-primary-hover: var(--accent-primary-hover);
+  --color-accent-primary-glow: var(--accent-primary-glow);
+
+  --color-signal-green: var(--signal-green);
+  --color-signal-red: var(--signal-red);
+  --color-signal-amber: var(--signal-amber);
 
   --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
   --font-mono: 'JetBrains Mono', monospace;
-}
-
-:root {
-  --bg-canvas: #0B0813;
-  --bg-surface: #140F24;
-  --bg-elevated: #1E1635;
-  --bg-subtle: #2A1F49;
-  
-  --border-subtle: #261B3D;
-  --border-strong: #433068;
-  --border-focus: #A855F7;
-  
-  --text-primary: #FFFFFF;
-  --text-secondary: #C4B5FD;
-  --text-muted: #7C6DA0;
-  
-  --accent-green: #10B981;
-  --accent-green-bg: #064E3B;
-  --accent-orange: #F97316;
-  --accent-amber: #F59E0B;
-  --accent-danger: #EF4444;
 }
 
 /* Sharp Utility & Tabular Numbers */
@@ -50,21 +83,21 @@
   font-feature-settings: "tnum" 1;
 }
 
-/* Custom Scrollbar for Midnight Amethyst Theme */
+/* Custom Scrollbar */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #0B0813;
+  background: var(--bg-canvas);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #261B3D;
+  background: var(--border-subtle);
   border-radius: 0px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #433068;
+  background: var(--border-strong);
 }
