@@ -33,21 +33,25 @@ export const BackupRestoreTab: React.FC<BackupRestoreTabProps> = ({
       alert('Molimo unesite lozinku od najmanje 4 znaka za enkripciju sigurnosne kopije.');
       return;
     }
+    const t0 = performance.now();
     loggerBackup.info('Zatražen izvoz šifrirane sigurnosne kopije (AES-256-GCM)');
     try {
       await backupHook.exportEncryptedBackup(backupPassword);
       setBackupPassword('');
-      loggerBackup.info('Šifrirana sigurnosna kopija uspješno stvorena i preuzeta');
+      const trajanjeMs = Math.round(performance.now() - t0);
+      loggerBackup.info('Šifrirana sigurnosna kopija uspješno stvorena i preuzeta', { trajanjeMs });
     } catch (err: any) {
       loggerBackup.error('Greška pri izvozu šifrirane sigurnosne kopije:', { error: err?.message });
     }
   };
 
   const handleExportJson = async () => {
+    const t0 = performance.now();
     loggerBackup.info('Zatražen izvoz nešifriranog JSON snimka baze');
     try {
       await backupHook.exportJsonSnapshot();
-      loggerBackup.info('Nešifrirani JSON snapshot uspješno stvoren i preuzet');
+      const trajanjeMs = Math.round(performance.now() - t0);
+      loggerBackup.info('Nešifrirani JSON snapshot uspješno stvoren i preuzet', { trajanjeMs });
     } catch (err: any) {
       loggerBackup.error('Greška pri izvozu nešifriranog JSON snimka:', { error: err?.message });
     }
@@ -89,6 +93,7 @@ export const BackupRestoreTab: React.FC<BackupRestoreTabProps> = ({
       return;
     }
 
+    const t0 = performance.now();
     loggerBackup.warn('Započinje obnova baze podataka iz sigurnosne kopije', {
       datoteka: restoreFile.name,
       jeSifrirana: !!isEncryptedFile,
@@ -101,7 +106,8 @@ export const BackupRestoreTab: React.FC<BackupRestoreTabProps> = ({
       if (onProfileUpdated) {
         await onProfileUpdated();
       }
-      loggerBackup.info('Baza podataka uspješno obnovljena iz kopije', { summary });
+      const trajanjeMs = Math.round(performance.now() - t0);
+      loggerBackup.info('Baza podataka uspješno obnovljena iz kopije', { summary, trajanjeMs });
     } catch (err: any) {
       loggerBackup.error('Greška pri obnovi baze podataka iz kopije:', { error: err?.message });
     }

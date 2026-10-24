@@ -34,15 +34,17 @@ export const GeminiSettingsCard: React.FC<GeminiSettingsCardProps> = ({
   };
 
   const handleTestGeminiKey = async () => {
-    loggerGemini.info('Pokretanje testiranja valjanosti Gemini API ključa');
+    const t0 = performance.now();
+    loggerGemini.info('Pokretanje testiranja valjanosti Gemini API ključa', { model: gemini.model });
     setGeminiTestStatus('TESTING');
     const ok = await gemini.testKey(geminiApiKeyInput);
+    const trajanjeMs = Math.round(performance.now() - t0);
     if (ok) {
-      loggerGemini.info('Test Gemini API ključa uspješan');
+      loggerGemini.info('Test Gemini API ključa uspješan', { model: gemini.model, trajanjeMs });
       setGeminiTestStatus('SUCCESS');
       setTimeout(() => setGeminiTestStatus(null), 4000);
     } else {
-      loggerGemini.warn('Test Gemini API ključa nije uspio');
+      loggerGemini.warn('Test Gemini API ključa nije uspio', { model: gemini.model, trajanjeMs, error: gemini.error });
       setGeminiTestStatus('ERROR');
     }
   };

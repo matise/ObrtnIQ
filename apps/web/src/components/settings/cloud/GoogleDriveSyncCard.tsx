@@ -22,12 +22,14 @@ export const GoogleDriveSyncCard: React.FC<GoogleDriveSyncCardProps> = ({
   const [drivePinInput, setDrivePinInput] = useState('');
 
   const handleSyncToDrive = async () => {
+    const t0 = performance.now();
     loggerDrive.info('Pokretanje sinkronizacije baze na Google Drive', {
       imaZastitniPin: !!drivePinInput,
     });
     try {
       await driveSync.syncToDrive(drivePinInput || undefined);
-      loggerDrive.info('Baza podataka uspješno sinkronizirana na Google Drive');
+      const trajanjeMs = Math.round(performance.now() - t0);
+      loggerDrive.info('Baza podataka uspješno sinkronizirana na Google Drive', { trajanjeMs });
       alert('Baza podataka uspješno je sinkronizirana na Google Drive!');
     } catch (err: any) {
       loggerDrive.error('Sinkronizacija na Google Drive nije uspjela:', { error: err?.message });
@@ -42,10 +44,12 @@ export const GoogleDriveSyncCard: React.FC<GoogleDriveSyncCardProps> = ({
       loggerDrive.info('Korisnik odustao od vraćanja baze s Google Drivea');
       return;
     }
+    const t0 = performance.now();
     loggerDrive.warn('Pokretanje obnove baze s Google Drivea', { fileId, imaZastitniPin: !!drivePinInput });
     try {
       await driveSync.restoreFromDrive(fileId, drivePinInput || undefined);
-      loggerDrive.info('Baza podataka uspješno vraćena s Google Drivea');
+      const trajanjeMs = Math.round(performance.now() - t0);
+      loggerDrive.info('Baza podataka uspješno vraćena s Google Drivea', { fileId, trajanjeMs });
       alert('Baza podataka uspješno je vraćena s Google Drivea!');
       window.location.reload();
     } catch (err: any) {

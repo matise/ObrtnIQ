@@ -67,12 +67,14 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({
   };
 
   const handleTextChange = (field: keyof ObrtProfil, val: any) => {
+    loggerProfile.debug('Korisnik ažurirao polje profila obrta', { polje: field });
     setFormData((prev) => ({ ...prev, [field]: val }));
     setSavedSuccess(false);
   };
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
+    const t0 = performance.now();
     loggerProfile.info('Spremanje profila obrta', {
       naziv: formData.naziv,
       oib: formData.oib,
@@ -83,7 +85,8 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({
     try {
       await saveProfil(formData);
       setSavedSuccess(true);
-      loggerProfile.info('Profil obrta uspješno spremljen');
+      const trajanjeMs = Math.round(performance.now() - t0);
+      loggerProfile.info('Profil obrta uspješno spremljen', { trajanjeMs });
       setTimeout(() => setSavedSuccess(false), 3000);
     } catch (err: any) {
       loggerProfile.error('Greška pri spremanju profila obrta:', { error: err?.message });

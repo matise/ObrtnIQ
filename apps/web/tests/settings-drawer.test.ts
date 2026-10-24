@@ -117,5 +117,45 @@ describe('SettingsDrawer Modularizacija i Arhitektura', () => {
     expect(supported2026Models).toContain('gemini-4-argon');
     expect(supported2026Models).not.toContain('gemini-2.0-flash'); // Umirovljeni model
   });
+
+  it('SD-11: Scoped loggeri u postavkama ispravno bilježe metapodatke i telemetriju trajanja', () => {
+    const profileLogger = appLogger.scope('SETTINGS:PROFILE');
+    let capturedEntry: any = null;
+
+    const unsubscribe = appLogger.subscribe((entry) => {
+      if (entry.context === 'SETTINGS:PROFILE') {
+        capturedEntry = entry;
+      }
+    });
+
+    profileLogger.info('Profil obrta uspješno spremljen', { trajanjeMs: 14 });
+    unsubscribe();
+
+    expect(capturedEntry).not.toBeNull();
+    expect(capturedEntry.context).toBe('SETTINGS:PROFILE');
+    expect(capturedEntry.level).toBe('INFO');
+    expect(capturedEntry.data).toEqual({ trajanjeMs: 14 });
+  });
+
+  it('SD-12: ERROR zapisi unutar SETTINGS scope-a bilježe greške za dijagnostiku', () => {
+    const backupLogger = appLogger.scope('SETTINGS:BACKUP');
+    let errorEntry: any = null;
+
+    const unsubscribe = appLogger.subscribe((entry) => {
+      if (entry.context === 'SETTINGS:BACKUP' && entry.level === 'ERROR') {
+        errorEntry = entry;
+      }
+    });
+
+    backupLogger.error('Greška pri izvozu sigurnosne kopije:', new Error('Disk pun'));
+    unsubscribe();
+
+    expect(errorEntry).not.toBeNull();
+    expect(errorEntry.level).toBe('ERROR');
+    expect(errorEntry.context).toBe('SETTINGS:BACKUP');
+    expect(errorEntry.error).toBeDefined();
+    expect(errorEntry.error.message).toBe('Disk pun');
+  });
 });
+
 
