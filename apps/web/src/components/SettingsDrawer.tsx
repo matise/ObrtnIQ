@@ -1757,11 +1757,14 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({
                       <select
                         value={gemini.model}
                         onChange={(e) => handleModelChange(e.target.value)}
-                        className="w-full bg-[var(--bg-surface)] text-white px-3 py-2 font-mono text-xs border border-[var(--border-strong)] outline-none"
+                        className="w-full bg-[var(--bg-surface)] text-white px-3 py-2 font-mono text-xs border border-[var(--border-strong)] outline-none cursor-pointer"
                       >
-                        <option value="gemini-3.8-flash">gemini-3.8-flash (Najnoviji model, ultra brz, besplatna kvota)</option>
-                        <option value="gemini-2.5-flash">gemini-2.5-flash (Alternativni Flash model)</option>
-                        <option value="gemini-1.5-flash">gemini-1.5-flash (Stabilan, standardni kontekst)</option>
+                        <option value="gemini-3.8-flash">gemini-3.8-flash (Preporučeno: Najnoviji Flash model, ultra brz, besplatna kvota)</option>
+                        <option value="gemini-4-argon">gemini-4-argon (Flagship Reasoning: Duboko rezoniranje i napredni agentni rad)</option>
+                        <option value="gemini-3.7-flash">gemini-3.7-flash (Visoka točnost za kodiranje i strukturirane dokumente)</option>
+                        <option value="gemini-3.5-flash-lite">gemini-3.5-flash-lite (Ultra lagan, minimalna potrošnja i brz odziv)</option>
+                        <option value="gemini-2.5-pro">gemini-2.5-pro (Veliki kontekst 1M+ tokena za opsežne arhive)</option>
+                        <option value="gemini-flash-latest">gemini-flash-latest (Uvijek najnovija stabilna Flash verzija)</option>
                       </select>
                     </div>
                   </div>
