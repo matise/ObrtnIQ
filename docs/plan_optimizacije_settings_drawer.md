@@ -166,3 +166,104 @@ graph TD
 | **Izolacija re-rendera** | Tipkanje u jednom polju renderira svih 1.800 linija | Renderira se samo aktivna podkomponenta |
 | **Održavanje i proširivost** | Visok rizik od regresije | Svaka kartica ima jasne granice odgovornosti |
 | **Testabilnost** | Zahtijeva mockiranje svih 5 servisa odjednom | Svaki tab se testira u potpunoj izolaciji |
+
+---
+
+## 6. Arhitektura Logiranja i Telemetrija Podsustava Postavki
+
+Podsustav postavki i integracije s oblakom integriran je u centralni aplikativni logger ([`appLogger`](file:///d:/Documents/Robot%20Hand%20Made/ObrtnIQ/apps/web/src/services/logger.ts)) temeljen na prstenastom međuspremniku ([`RingBuffer`](file:///d:/Documents/Robot%20Hand%20Made/ObrtnIQ/packages/core/src/logger/logger.ts)) kapaciteta 500 unosa.
+
+### 6.1 Hijerarhija Scoped Loggera
+Svaka podkomponenta i domenska cjelina ima vlastiti izolirani kontekst (`scope`):
+
+| Scoped Logger | Komponenta / Hook | Svrha i Područje Praćenja |
+| :--- | :--- | :--- |
+| `SETTINGS` | [`SettingsDrawer.tsx`](file:///d:/Documents/Robot%20Hand%20Made/ObrtnIQ/apps/web/src/components/SettingsDrawer.tsx) | Otvaranje/zatvaranje drawera, navigacija tabova |
+| `SETTINGS:PROFILE` | [`OsnovniPodaciTab.tsx`](file:///d:/Documents/Robot%20Hand%20Made/ObrtnIQ/apps/web/src/components/settings/tabs/OsnovniPodaciTab.tsx), [`PoslovanjeTab.tsx`](file:///d:/Documents/Robot%20Hand%20Made/ObrtnIQ/apps/web/src/components/settings/tabs/PoslovanjeTab.tsx) | Validacija OIB-a/IBAN-a, promjene profila, reset |
+| `SETTINGS:MEMORANDUM` | [`MemorandumTab.tsx`](file:///d:/Documents/Robot%20Hand%20Made/ObrtnIQ/apps/web/src/components/settings/tabs/MemorandumTab.tsx) | Provjera limita veličine (< 500 KB), Base64 pretvorba, uklanjanje |
+| `SETTINGS:BACKUP` | [`BackupRestoreTab.tsx`](file:///d:/Documents/Robot%20Hand%20Made/ObrtnIQ/apps/web/src/components/settings/tabs/BackupRestoreTab.tsx) | AES-256 izvoz, inspekcija arhive, vraćanje baze, tvornički reset |
+| `SETTINGS:GOOGLE` | [`GoogleIdentityCard.tsx`](file:///d:/Documents/Robot%20Hand%20Made/ObrtnIQ/apps/web/src/components/settings/cloud/GoogleIdentityCard.tsx) | Google OAuth prijava, demo profil, ručni refresh tokena, Client ID |
+| `SETTINGS:DRIVE` | [`GoogleDriveSyncCard.tsx`](file:///d:/Documents/Robot%20Hand%20Made/ObrtnIQ/apps/web/src/components/settings/cloud/GoogleDriveSyncCard.tsx) | Sinkronizacija u `appDataFolder`, povlačenje verzija, PIN zaštita |
+| `SETTINGS:GEMINI` | [`GeminiSettingsCard.tsx`](file:///d:/Documents/Robot%20Hand%20Made/ObrtnIQ/apps/web/src/components/settings/cloud/GeminiSettingsCard.tsx) | BYOK API ključ, testiranje odziva modela, odabir 2026 verzije |
+| `SETTINGS:DIAGNOSTICS` | [`CloudDiagnosticsCard.tsx`](file:///d:/Documents/Robot%20Hand%20Made/ObrtnIQ/apps/web/src/components/settings/cloud/CloudDiagnosticsCard.tsx) | Sveobuhvatni Health Check, mjerenje latencije, provjera dozvola |
+| `AUTH:GOOGLE:SILENT` | [`google-auth-service.ts`](file:///d:/Documents/Robot%20Hand%20Made/ObrtnIQ/apps/web/src/services/google-auth-service.ts) | Pozadinsko tiho obnavljanje tokena bez ometanja korisnika |
+| `DRIVE:SYNC` / `RESTORE` | [`useGoogleDriveSync.ts`](file:///d:/Documents/Robot%20Hand%20Made/ObrtnIQ/apps/web/src/hooks/useGoogleDriveSync.ts) | Kriptiranje snapshot-a i obnova baze s Google Drivea |
+
+### 6.2 Granulacija Razine Log Zapisa (Log Levels)
+- **`ERROR`**:
+  - Neuspjela Google OAuth prijava (odbijen pristup, greška origin-a).
+  - Neuspjelo slanje arhive na Google Drive (npr. kvota, nedostatak dozvola).
+  - Neuspjela dekripcija arhive (pogrešna lozinka ili neispravan PIN).
+  - Trajno tvorničko brisanje baze (Factory Reset).
+  - *Automatska akcija:* Aktivira se [`triggerAutoOpen`](file:///d:/Documents/Robot%20Hand%20Made/ObrtnIQ/apps/web/src/services/global-error-trap.ts#L50) i korisniku se automatski otvara [`SystemLogDrawer`](file:///d:/Documents/Robot%20Hand%20Made/ObrtnIQ/apps/web/src/components/SystemLogDrawer.tsx) s prikazom call stacka.
+- **`WARN`**:
+  - Odbijanje slike memoranduma veće od 500 KB.
+  - Istekao Google pristupni token (pokreće se tiho obnavljanje).
+  - Nedostajući Google Drive scope (`drive.appdata`).
+  - Korisnik odustao od tvorničkog reseta profila ili baze podataka.
+- **`INFO`**:
+  - Otvaranje prozora postavki.
+  - Uspješno spremanje profila obrta u Dexie bazu.
+  - Uspješna Google OAuth ili Demo prijava.
+  - Uspješno dovršena sinkronizacija baze na Google Drive.
+  - Izvoz AES-256 arhive ili JSON snimka.
+- **`DEBUG`**:
+  - Promjena aktivnog taba u sučelju.
+  - Korisnik odabrao datoteku za inspekciju i obnovu.
+  - Pozadinska provjera valjanosti Google sesije.
+  - Mjerenje latencije Google API poslužitelja u milisekundama.
+- **`VERBOSE`**:
+  - Cjeloviti popisi dodijeljenih Google OAuth opsega (scopes).
+  - Detaljni JSON metapodaci snimka baze podataka (broj računa, partnera, stavaka).
+
+### 6.3 Pravila Maskiranja Osjetljivih Podataka (Data Redaction)
+U skladu sa sigurnosnim standardom nultog povjerenja (Zero-Knowledge):
+- **Google pristupni token (`access_token`):** Nikada se ne zapisuje u cijelosti u logove; u logovima se bilježi samo `***REDACTED***` ili duljina/status.
+- **Lozinke za sigurnosnu kopiju:** Lozinka za AES-256 enkripciju nikada ne smije ući u log spremnik.
+- **Korisnički PIN za Drive:** Maskira se kao `imaZastitniPin: boolean`.
+- **Gemini API ključ:** Prikazuje se isključivo prefiks (npr. `AIzaSy...`) i status postavljenosti.
+
+---
+
+## 7. Debug Metodologija i Protokol za Dijagnostiku
+
+Za brzo i pouzdano rješavanje problema implementiran je standardizirani dijagnostički protokol:
+
+### 7.1 Protokol Trijaže u 4 Koraka
+```
+[1. DETEKCIJA] ──> [2. DIJAGNOSTIKA] ──> [3. INSPEKCIJA] ──> [4. VERIFIKACIJA]
+Auto-open log       Health Check          Call Stack &         Simulacija i
+kod ERROR stanja    8 točaka provjere     JSON izvoz logova    jedinični test
+```
+
+1. **Korak 1: Detekcija kvara**
+   - Ako dođe do pogreške, [`initGlobalErrorTrap()`](file:///d:/Documents/Robot%20Hand%20Made/ObrtnIQ/apps/web/src/services/global-error-trap.ts#L63) presreće iznimku i automatski otvara [`SystemLogDrawer`](file:///d:/Documents/Robot%20Hand%20Made/ObrtnIQ/apps/web/src/components/SystemLogDrawer.tsx).
+2. **Korak 2: Pokretanje automatskog Health Checka**
+   - Korisnik ili programer otvara tab **"Google & AI"** i unutar kartice [`CloudDiagnosticsCard`](file:///d:/Documents/Robot%20Hand%20Made/ObrtnIQ/apps/web/src/components/settings/cloud/CloudDiagnosticsCard.tsx) klikne **"Pokreni Dijagnostiku"**.
+   - Sustav u jednoj sekundi provjerava:
+     1. Format Google Client ID-a.
+     2. Valjanost Authorized JavaScript Origins (npr. `http://localhost:5173`).
+     3. Mrežnu dostupnost Google poslužitelja uz mjerenje pinga.
+     4. Integritet lokalne sesije i Google Sub kripto-sidro.
+     5. Dodijeljene OAuth dozvole (Scopes).
+     6. Dostupnost Google Drive API-ja i skrivene `appDataFolder` mape.
+     7. Ispravnost Gemini AI ključa i odziv modela.
+     8. Generira konkretne akcijske preporuke na hrvatskom jeziku.
+3. **Korak 3: Inspekcija i preuzimanje dijagnostičkog paketa**
+   - U konzoli ili kroz gumb **"Izvezi Dnevnik (JSON)"** generira se strukturirana JSON datoteka [`exportDiagnosticLog()`](file:///d:/Documents/Robot%20Hand%20Made/ObrtnIQ/apps/web/src/services/logger.ts#L90) koja sadrži točno vrijeme, razinu, kontekst, poruku i call stack svake greške.
+4. **Korak 4: Verifikacija rješenja**
+   - Izvršavanje ciljanih testova:
+     - `npx vitest run apps/web/tests/google-auth.test.ts`
+     - `npx vitest run apps/web/tests/google-drive.test.ts`
+     - `npx vitest run apps/web/tests/settings-drawer.test.ts`
+
+### 7.2 Dijagnostička Matrica Najčešćih Uzroka i Rješenja
+
+| Simptom / Greška | Detektirani Kod | Uzrok | Akcijski Korak za Rješavanje |
+| :--- | :--- | :--- | :--- |
+| **Google popup se odmah zatvori** | `ORIGIN_MISMATCH` | Ishodište aplikacije (npr. `http://localhost:5173`) nije uneseno u Google Cloud konzolu. | Dodati točan URL u *Authorized JavaScript Origins* u Google Cloud Console. |
+| **Greška "Korisnik je odbio pristup"** | `ACCESS_DENIED` | Korisnik je odznačio kućicu za pristup Google Driveu. | Ponoviti prijavu i obavezno ostaviti označenu kvačicu za Drive dozvolu. |
+| **Greška 403 na Drive API pozivu** | `DRIVE_API_DISABLED` | Google Drive API nije omogućen u Google Cloud projektu. | Otvoriti ponuđeni link u dijagnostici i kliknuti gumb **Enable API**. |
+| **Neuspjela obnova baze s Drivea** | `DECRYPTION_FAILED` | Upisan je pogrešan dodatni zaštitni PIN ili je korisnik prijavljen s drugim Google računom. | Prijaviti se s istim Google računom koji je izradio kopiju i unijeti točan PIN. |
+| **Gemini Asistent ne prepoznaje KPD** | `INVALID_BYOK_KEY` | Neispravan API ključ s Google AI Studio ili prekoračena besplatna kvota. | Provjeriti ključ na [aistudio.google.com](https://aistudio.google.com/app/apikey) i testirati ga u tabu "Google & AI". |
+| **Slika memoranduma se ne sprema** | `IMAGE_SIZE_EXCEEDED` | Datoteka logotipa ili pečata premašuje 500 KB. | Komprimirati sliku ili odabrati manji PNG/SVG format. |
