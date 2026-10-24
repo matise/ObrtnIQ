@@ -1,0 +1,24 @@
+{
+  "name": "@obrtniq/core",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "ObrtnIQ Core Domain, Validations, HUB-3, and Business Math Engine",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "import": "./src/index.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -b",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.3",
+    "vitest": "^3.0.7"
+  }
+}
