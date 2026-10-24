@@ -14,3 +14,5 @@ export * from './storage/crypto-backup';
 export * from './storage/memory-adapter';
 export * from './logger';
 export * from './domain/workflow';
+export * from './domain/kpr';
+export * from './domain/posd-xml';

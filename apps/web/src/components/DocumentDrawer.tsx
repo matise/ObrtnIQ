@@ -167,6 +167,7 @@ export function DocumentDrawer({
           ) : (
             filteredDocs.map((doc) => {
               const isActive = doc.id === activeDocumentId;
+              const isPaid = doc.status === 'PLACENO';
               const isIssued = doc.status === 'IZDANO';
               const isStorno = doc.status === 'STORNIRANO' || doc.vrstaDokumenta === 'STORNO_RACUN';
 
@@ -199,14 +200,16 @@ export function DocumentDrawer({
                     <div className="flex items-center gap-1.5">
                       <span
                         className={`text-[10px] font-bold px-2 py-0.5 border flex items-center gap-1 ${
-                          isIssued
-                            ? 'bg-[#064E3B] text-[#10B981] border-[#10B981]/40'
+                          isPaid
+                            ? 'bg-[#064E3B] text-[#10B981] border-[#10B981]/50 shadow-sm'
+                            : isIssued
+                            ? 'bg-[#064E3B]/70 text-[#10B981] border-[#10B981]/30'
                             : isStorno
                             ? 'bg-[#7F1D1D] text-[#EF4444] border-[#EF4444]/40'
                             : 'bg-[var(--bg-elevated)] text-[#F59E0B] border-[#F59E0B]/40'
                         }`}
                       >
-                        {isIssued ? (
+                        {isPaid || isIssued ? (
                           <CheckCircle2 className="w-3 h-3" />
                         ) : isStorno ? (
                           <Ban className="w-3 h-3" />

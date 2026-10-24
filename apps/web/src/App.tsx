@@ -15,7 +15,9 @@ import {
   ArrowRightLeft,
   Ban,
   Smartphone,
-  Monitor
+  Monitor,
+  BookOpen,
+  CreditCard
 } from 'lucide-react';
 import { 
   OibInput, 
@@ -28,6 +30,7 @@ import { ThemeSelector } from './components/ThemeSelector';
 import { InvoiceLivePreview } from './components/InvoiceLivePreview';
 import { SystemLogDrawer } from './components/SystemLogDrawer';
 import { DocumentDrawer } from './components/DocumentDrawer';
+import { KprDrawer } from './components/KprDrawer';
 import { useSystemLogs } from './hooks/useSystemLogs';
 import { appLogger } from './services/logger';
 import { dexieStorage } from './storage/dexie-db';
@@ -35,6 +38,7 @@ import {
   izdajDokument, 
   pretvoriPonuduURacun, 
   stornirajDokument,
+  evidentirajNaplatu,
   formatHrvatskiIznos,
   type PoreznaZona, 
   type VrstaDokumenta, 
@@ -95,6 +99,8 @@ export default function App() {
   // 6. UI alati i ladice
   const [isLogDrawerOpen, setIsLogDrawerOpen] = useState(false);
   const [isDocDrawerOpen, setIsDocDrawerOpen] = useState(false);
+  const [isKprDrawerOpen, setIsKprDrawerOpen] = useState(false);
+  const [totalKprNaplaceno, setTotalKprNaplaceno] = useState(0);
   const [mobileTab, setMobileTab] = useState<'desk' | 'preview'>('desk');
   const [totalSavedDocs, setTotalSavedDocs] = useState(0);
 
@@ -113,13 +119,25 @@ export default function App() {
     }
   }, []);
 
+  // Osvježavanje ukupno naplaćenog iznosa iz Knjige Prometa
+  const refreshKprTotal = useCallback(async () => {
+    try {
+      const all = await dexieStorage.kpr.getAll(2026);
+      const sum = all.reduce((acc, s) => acc + s.ukupnoNaplaceno, 0);
+      setTotalKprNaplaceno(sum);
+    } catch {
+      // ignore
+    }
+  }, []);
+
   useEffect(() => {
     refreshDocCount();
+    refreshKprTotal();
     appLogger.scope('SYSTEM:BOOT').info('ObrtnIQ sustav uspješno pokrenut (Offline OPFS Ready, Logging Engine aktivan)', {
       vrijeme: new Date().toLocaleTimeString('hr-HR'),
       okruzenje: 'Lokalni preglednik',
     });
-  }, [refreshDocCount]);
+  }, [refreshDocCount, refreshKprTotal]);
 
   // Kalkulacija ukupnog iznosa svih stavki
   const ukupniIznos = useMemo(() => {
@@ -356,7 +374,39 @@ export default function App() {
     }
   };
 
-  // 13. Tipkovnički prečaci (F2 = Izdaj, Alt+N = Nova stavka)
+  // 13. Evidentiranje uplate u KPR
+  const handleRecordPayment = async () => {
+    if (docStatus !== 'IZDANO') return;
+    const datum = prompt('Unesite datum uplate po bankovnom izvodu (YYYY-MM-DD):', new Date().toISOString().slice(0, 10));
+    if (!datum) return;
+    const izvod = prompt('Unesite broj izvoda (opcionalno):', 'Izvod 1/2026') || undefined;
+
+    try {
+      await evidentirajNaplatu(dexieStorage.kpr, dexieStorage.dokumenti, {
+        dokumentId: docId,
+        datumNaplate: datum,
+        iznos: ukupniIznos,
+        nacinPlacanja: 'TRANSAKCIJSKI_RACUN',
+        opisPlatitelja: `${partnerNaziv} - Račun ${brojDokumenta}`,
+        brojIzvoda: izvod,
+      });
+
+      setDocStatus('PLACENO');
+      await refreshKprTotal();
+      await refreshDocCount();
+
+      appLogger.scope('KPR:PAYMENT').info(`Račun ${brojDokumenta} evidentiran kao plaćen u KPR-u (${formatHrvatskiIznos(ukupniIznos)})`, {
+        brojDokumenta,
+        iznos: ukupniIznos,
+        datum,
+        izvod,
+      });
+    } catch (err: any) {
+      alert(`Greška pri upisu u KPR: ${err?.message || 'Nepoznata greška'}`);
+    }
+  };
+
+  // 14. Tipkovnički prečaci (F2 = Izdaj, Alt+N = Nova stavka)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       // F2: Fiskaliziraj / Izdaj
@@ -426,6 +476,16 @@ export default function App() {
               {totalSavedDocs}
             </span>
           </button>
+
+          {/* Gumb za KPR & PO-SD */}
+          <button
+            type="button"
+            onClick={() => setIsKprDrawerOpen(true)}
+            className="flex items-center space-x-1.5 px-2.5 py-1 bg-[var(--bg-canvas)] hover:bg-[var(--bg-elevated)] text-xs font-mono text-white border border-[var(--border-subtle)] hover:border-[#10B981] transition-all cursor-pointer"
+          >
+            <BookOpen className="w-3.5 h-3.5 text-[#10B981]" />
+            <span>KPR &amp; PO-SD</span>
+          </button>
         </div>
 
         {/* Header Right Tools: Theme Selector + Prag Widget */}
@@ -433,20 +493,38 @@ export default function App() {
           {/* Dynamic Theme Selector */}
           <ThemeSelector />
 
-          <div className="hidden lg:flex flex-col items-end text-right">
+          {/* Dinamički Paušalni Prag Widget */}
+          <div 
+            onClick={() => setIsKprDrawerOpen(true)}
+            title="Kliknite za pregled Knjige Prometa i Obrasca PO-SD"
+            className="hidden lg:flex flex-col items-end text-right cursor-pointer hover:opacity-90 transition-opacity"
+          >
             <div className="flex items-center space-x-2 text-xs">
               <span className="text-[var(--text-muted)] uppercase tracking-wider font-mono">Paušalni Prag 2026:</span>
-              <span className="font-mono font-bold text-[#10B981] tabular-nums">28.450,00 €</span>
-              <span className="text-[var(--text-muted)] font-mono">/ 40.000 € (71.1%)</span>
+              <span className="font-mono font-bold text-[#10B981] tabular-nums">{formatHrvatskiIznos(totalKprNaplaceno)}</span>
+              <span className="text-[var(--text-muted)] font-mono">
+                / 40.000 € ({((totalKprNaplaceno / 40000) * 100).toFixed(1)}%)
+              </span>
             </div>
             <div className="w-44 h-1.5 bg-[var(--bg-elevated)] mt-1 overflow-hidden border border-[var(--border-subtle)]">
-              <div className="h-full bg-gradient-to-r from-[#10B981] to-[#F59E0B]" style={{ width: '71.1%' }} />
+              <div 
+                className={`h-full ${
+                  totalKprNaplaceno > 40000 
+                    ? 'bg-[#EF4444]' 
+                    : totalKprNaplaceno >= 36000 
+                    ? 'bg-[#EF4444]' 
+                    : totalKprNaplaceno >= 30000 
+                    ? 'bg-[#F59E0B]' 
+                    : 'bg-[#10B981]'
+                }`} 
+                style={{ width: `${Math.max(2, Math.min(100, (totalKprNaplaceno / 40000) * 100))}%` }} 
+              />
             </div>
           </div>
 
           <div className="text-right hidden sm:block">
             <span className="text-[11px] font-mono block text-[var(--text-muted)]">Status Sustava</span>
-            <span className="text-xs font-mono text-[#10B981] font-semibold">Faza 5 &bull; Invoice Workflow Engine</span>
+            <span className="text-xs font-mono text-[#10B981] font-semibold">Faza 6 &bull; KPR &amp; Obrazac PO-SD</span>
           </div>
         </div>
       </header>
@@ -489,85 +567,100 @@ export default function App() {
         </div>
 
         {/* Phase Grid Overview */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 no-print">
-          <div className="border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-5 space-y-3 transition-colors">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4 no-print">
+          <div className="border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-4 space-y-2 transition-colors">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-mono text-[var(--text-muted)]">FAZA 0-2</span>
-              <span className="text-[10px] font-mono px-2 py-0.5 bg-[#064E3B] text-[#10B981] border border-[#10B981]/30">
+              <span className="text-[10px] font-mono text-[var(--text-muted)]">FAZA 0-2</span>
+              <span className="text-[9px] font-mono px-1.5 py-0.2 bg-[#064E3B] text-[#10B981] border border-[#10B981]/30">
                 GOTOVO
               </span>
             </div>
-            <div className="flex items-center space-x-3">
-              <Cpu className="w-5 h-5 text-[#10B981]" />
-              <h3 className="font-semibold text-sm">Domena & Baza</h3>
+            <div className="flex items-center space-x-2">
+              <Cpu className="w-4 h-4 text-[#10B981]" />
+              <h3 className="font-semibold text-xs text-white">Domena & Baza</h3>
             </div>
-            <p className="text-xs text-[var(--text-muted)] leading-relaxed">
-              OIB MOD 11, IBAN MOD 97, kalkulator, Dexie perzistencija i sekvenca bez rupa.
+            <p className="text-[11px] text-[var(--text-muted)] leading-relaxed">
+              OIB MOD 11, IBAN MOD 97, kalkulator, Dexie perzistencija.
             </p>
           </div>
 
-          <div className="border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-5 space-y-3 transition-colors">
+          <div className="border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-4 space-y-2 transition-colors">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-mono text-[var(--text-muted)]">FAZA 3</span>
-              <span className="text-[10px] font-mono px-2 py-0.5 bg-[#064E3B] text-[#10B981] border border-[#10B981]/30">
+              <span className="text-[10px] font-mono text-[var(--text-muted)]">FAZA 3</span>
+              <span className="text-[9px] font-mono px-1.5 py-0.2 bg-[#064E3B] text-[#10B981] border border-[#10B981]/30">
                 GOTOVO
               </span>
             </div>
-            <div className="flex items-center space-x-3">
-              <Layers className="w-5 h-5 text-[#10B981]" />
-              <h3 className="font-semibold text-sm text-white">Sharp UI & Teme</h3>
+            <div className="flex items-center space-x-2">
+              <Layers className="w-4 h-4 text-[#10B981]" />
+              <h3 className="font-semibold text-xs text-white">Sharp UI & Teme</h3>
             </div>
-            <p className="text-xs text-[var(--text-muted)] leading-relaxed">
-              OibInput, IbanInput, CurrencyInput, KpdPicker, TaxZoneToggle i Hue teme.
+            <p className="text-[11px] text-[var(--text-muted)] leading-relaxed">
+              OibInput, IbanInput, CurrencyInput, KpdPicker i Hue rotacija.
             </p>
           </div>
 
-          <div className="border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-5 space-y-3 transition-colors">
+          <div className="border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-4 space-y-2 transition-colors">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-mono text-[var(--text-muted)]">FAZA 4</span>
-              <span className="text-[10px] font-mono px-2 py-0.5 bg-[#064E3B] text-[#10B981] border border-[#10B981]/30">
+              <span className="text-[10px] font-mono text-[var(--text-muted)]">FAZA 4</span>
+              <span className="text-[9px] font-mono px-1.5 py-0.2 bg-[#064E3B] text-[#10B981] border border-[#10B981]/30">
                 GOTOVO
               </span>
             </div>
-            <div className="flex items-center space-x-3">
-              <Printer className="w-5 h-5 text-[#10B981]" />
-              <h3 className="font-semibold text-sm text-white">HUB-3 & PDF</h3>
+            <div className="flex items-center space-x-2">
+              <Printer className="w-4 h-4 text-[#10B981]" />
+              <h3 className="font-semibold text-xs text-white">HUB-3 & PDF</h3>
             </div>
-            <p className="text-xs text-[var(--text-muted)] leading-relaxed">
-              HUB-3 PDF417, EPC QR, ISO 32000-1 validacija i klijentski A4 PDF generator.
+            <p className="text-[11px] text-[var(--text-muted)] leading-relaxed">
+              HUB-3 PDF417, EPC QR, ISO 32000-1 i A4 PDF generator.
             </p>
           </div>
 
-          <div className="border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-5 space-y-3 transition-colors">
+          <div className="border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-4 space-y-2 transition-colors">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-mono text-[var(--text-muted)]">FAZA 4.5</span>
-              <span className="text-[10px] font-mono px-2 py-0.5 bg-[#064E3B] text-[#10B981] border border-[#10B981]/30">
+              <span className="text-[10px] font-mono text-[var(--text-muted)]">FAZA 4.5</span>
+              <span className="text-[9px] font-mono px-1.5 py-0.2 bg-[#064E3B] text-[#10B981] border border-[#10B981]/30">
                 GOTOVO
               </span>
             </div>
-            <div className="flex items-center space-x-3">
-              <Terminal className="w-5 h-5 text-[#10B981]" />
-              <h3 className="font-semibold text-sm text-white">Logging Engine</h3>
+            <div className="flex items-center space-x-2">
+              <Terminal className="w-4 h-4 text-[#10B981]" />
+              <h3 className="font-semibold text-xs text-white">Logging Engine</h3>
             </div>
-            <p className="text-xs text-[var(--text-muted)] leading-relaxed">
-              Višerazinski Core Logger, RingBuffer (500), UI konzola i sanitizirani izvoz.
+            <p className="text-[11px] text-[var(--text-muted)] leading-relaxed">
+              RingBuffer (500), UI konzola i sanitizirani JSON izvoz.
             </p>
           </div>
 
-          <div className="border border-[#10B981]/40 bg-[var(--bg-surface)] p-5 space-y-3 relative transition-colors">
-            <div className="absolute top-0 right-0 w-2 h-2 bg-[#10B981]" />
+          <div className="border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-4 space-y-2 transition-colors">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-mono text-[var(--text-secondary)]">FAZA 5</span>
-              <span className="text-[10px] font-mono px-2 py-0.5 bg-[#064E3B] text-[#10B981] border border-[#10B981]/30 font-bold">
-                AKTIVNO
+              <span className="text-[10px] font-mono text-[var(--text-secondary)]">FAZA 5</span>
+              <span className="text-[9px] font-mono px-1.5 py-0.2 bg-[#064E3B] text-[#10B981] border border-[#10B981]/30">
+                GOTOVO
               </span>
             </div>
-            <div className="flex items-center space-x-3">
-              <ShieldCheck className="w-5 h-5 text-[#10B981]" />
-              <h3 className="font-semibold text-sm text-white">Workflow & State</h3>
+            <div className="flex items-center space-x-2">
+              <ShieldCheck className="w-4 h-4 text-[#10B981]" />
+              <h3 className="font-semibold text-xs text-white">Workflow & State</h3>
             </div>
-            <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
-              Split 58/42 radna ploha, F2/Alt+N prečaci, immutability i storno sekvenca.
+            <p className="text-[11px] text-[var(--text-secondary)] leading-relaxed">
+              Multi-stavke (Alt+N), F2 izdavanje, immutability i storno.
+            </p>
+          </div>
+
+          <div className="border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-4 space-y-2 transition-colors">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-mono text-[var(--text-secondary)]">FAZA 6</span>
+              <span className="text-[9px] font-mono px-1.5 py-0.2 bg-[#064E3B] text-[#10B981] border border-[#10B981]/30">
+                GOTOVO
+              </span>
+            </div>
+            <div className="flex items-center space-x-2">
+              <BookOpen className="w-4 h-4 text-[#10B981]" />
+              <h3 className="font-semibold text-xs text-white">KPR &amp; PO-SD</h3>
+            </div>
+            <p className="text-[11px] text-[var(--text-secondary)] leading-relaxed">
+              Knjiga prometa, prag 40k €, kvartali i PO-SD ePorezna XML.
             </p>
           </div>
         </div>
@@ -654,14 +747,30 @@ export default function App() {
                     Novi Račun
                   </button>
                   {docStatus === 'IZDANO' && docType === 'RACUN' && (
-                    <button
-                      type="button"
-                      onClick={handleStorno}
-                      className="px-3 py-1 bg-[#EF4444] text-white font-bold text-xs hover:bg-[#DC2626] transition-all cursor-pointer flex items-center gap-1"
-                    >
-                      <Ban className="w-3.5 h-3.5" />
-                      Storniraj ovaj račun
-                    </button>
+                    <>
+                      <button
+                        type="button"
+                        onClick={handleRecordPayment}
+                        className="px-3 py-1 bg-[#10B981] text-black font-bold text-xs hover:bg-[#059669] transition-all cursor-pointer flex items-center gap-1 shadow-md"
+                      >
+                        <CreditCard className="w-3.5 h-3.5" />
+                        Evidentiraj uplatu u KPR
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleStorno}
+                        className="px-3 py-1 bg-[#EF4444] text-white font-bold text-xs hover:bg-[#DC2626] transition-all cursor-pointer flex items-center gap-1"
+                      >
+                        <Ban className="w-3.5 h-3.5" />
+                        Storniraj ovaj račun
+                      </button>
+                    </>
+                  )}
+                  {docStatus === 'PLACENO' && (
+                    <span className="px-3 py-1 bg-[#064E3B] text-[#10B981] border border-[#10B981]/50 font-bold text-xs flex items-center gap-1.5 shadow-sm">
+                      <CheckCircle2 className="w-3.5 h-3.5" />
+                      Plaćeno &bull; Evidentirano u Knjizi Prometa
+                    </span>
                   )}
                   {docType === 'PONUDA' && (
                     <button
@@ -969,7 +1078,7 @@ export default function App() {
         <div className="flex items-center space-x-4">
           <span className="flex items-center space-x-1.5 text-[#10B981]">
             <CheckCircle2 className="w-3.5 h-3.5" />
-            <span>Faza 5 &bull; Invoice Workflow, State Machine &amp; Multi-Item Desk</span>
+            <span>Faza 6 &bull; Knjiga Prometa (KPR), Obrazac PO-SD &amp; XML za ePoreznu</span>
           </span>
         </div>
       </footer>
@@ -987,6 +1096,17 @@ export default function App() {
         activeDocumentId={docId}
         onSelectDocument={handleSelectDocument}
         onNewDocument={handleNewDocument}
+      />
+
+      {/* Knjiga Prometa (KPR) & Obrazac PO-SD Drawer */}
+      <KprDrawer
+        isOpen={isKprDrawerOpen}
+        onClose={() => setIsKprDrawerOpen(false)}
+        obrtOib={obrtOib}
+        obrtNaziv={obrtNaziv}
+        obrtVlasnik={obrtVlasnik}
+        obrtAdresa={obrtAdresa}
+        onKprUpdated={refreshKprTotal}
       />
     </div>
   );
