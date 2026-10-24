@@ -123,18 +123,34 @@
     print-color-adjust: exact !important;
   }
 
-  /* 1. Sakrij apsolutno sve elemente korisničkog sučelja */
+  /* 1. Osiguraj da stablo računa nikad ne bude display:none u ispisu */
+  html, body, #root, main, .grid {
+    display: block !important;
+    overflow: visible !important;
+  }
+
+  .printable-invoice-wrapper {
+    display: block !important;
+    position: static !important;
+    border: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    box-shadow: none !important;
+    background: transparent !important;
+  }
+
+  /* 2. Sakrij apsolutno sve elemente korisničkog sučelja */
   body * {
     visibility: hidden !important;
   }
 
-  /* 2. Pokaži isključivo račun i sav njegov sadržaj */
+  /* 3. Pokaži isključivo račun i sav njegov sadržaj */
   .printable-invoice,
   .printable-invoice * {
     visibility: visible !important;
   }
 
-  /* 3. Pozicioniraj račun na vrh lista uz 100% širine A4 papira */
+  /* 4. Pozicioniraj račun na vrh lista uz 100% širine A4 papira */
   .printable-invoice {
     position: absolute !important;
     left: 0 !important;

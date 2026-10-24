@@ -107,11 +107,21 @@ export async function generateInvoicePdf(data: InvoicePdfData): Promise<PdfGener
   doc.rect(marginX, currentY, contentWidth, 1.2, 'F');
   currentY += 6;
 
+  let textStartX = marginX;
+  if (data.logoImageData) {
+    try {
+      doc.addImage(data.logoImageData, 'PNG', marginX, currentY - 1, 22, 22);
+      textStartX = marginX + 26;
+    } catch (logoErr) {
+      log.warn('Nije uspjelo dodavanje logotipa u PDF:', logoErr);
+    }
+  }
+
   // Lijevi stupac - Obrt
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(13);
   doc.setTextColor(15, 23, 42); // slate-900
-  doc.text(data.obrtNaziv, marginX, currentY);
+  doc.text(data.obrtNaziv, textStartX, currentY);
 
   // Desni stupac - Račun broj
   doc.setFontSize(14);
@@ -122,19 +132,19 @@ export async function generateInvoicePdf(data: InvoicePdfData): Promise<PdfGener
   doc.setFontSize(9);
   doc.setTextColor(71, 85, 105); // slate-600
 
-  doc.text(`vl. ${data.obrtVlasnik}`, marginX, currentY);
+  doc.text(`vl. ${data.obrtVlasnik}`, textStartX, currentY);
   doc.text(`Datum izdavanja: ${data.datumIzdavanja}`, pageWidth - marginX, currentY, { align: 'right' });
   currentY += 4.5;
 
-  doc.text(`OIB: ${data.obrtOib}`, marginX, currentY);
+  doc.text(`OIB: ${data.obrtOib}`, textStartX, currentY);
   doc.text(`Datum isporuke: ${data.datumIsporuke}`, pageWidth - marginX, currentY, { align: 'right' });
   currentY += 4.5;
 
-  doc.text(data.obrtAdresa, marginX, currentY);
+  doc.text(data.obrtAdresa, textStartX, currentY);
   doc.text(`Dospijeće plaćanja: ${data.datumDospijeca}`, pageWidth - marginX, currentY, { align: 'right' });
   currentY += 4.5;
 
-  doc.text(`IBAN: ${data.obrtIban} ${data.obrtBanka ? `(${data.obrtBanka})` : ''}`, marginX, currentY);
+  doc.text(`IBAN: ${data.obrtIban} ${data.obrtBanka ? `(${data.obrtBanka})` : ''}`, textStartX, currentY);
   doc.text(`Način plaćanja: ${data.nacinPlacanjaNaziv}`, pageWidth - marginX, currentY, { align: 'right' });
   currentY += 4.5;
 
@@ -288,6 +298,38 @@ export async function generateInvoicePdf(data: InvoicePdfData): Promise<PdfGener
   doc.text(klauzulaTekst, marginX + 4, currentY + 9, { maxWidth: contentWidth - 8 });
 
   currentY += 18;
+
+  // 5.5 Potpis i Digitalni Pečat Izdavatelja (Faza 8)
+  const stampWidth = 46;
+  const stampX = pageWidth - marginX - stampWidth;
+  const stampY = 214; // Direktno iznad donje crte (bottomBoxY = 222)
+
+  if (data.pecatPotpisImageData) {
+    try {
+      doc.addImage(data.pecatPotpisImageData, 'PNG', stampX + (stampWidth - 36) / 2, stampY - 14, 36, 13);
+    } catch (stampErr) {
+      log.warn('Nije uspjelo dodavanje pečata u PDF:', stampErr);
+    }
+  } else {
+    doc.setFont('helvetica', 'italic');
+    doc.setFontSize(7.5);
+    doc.setTextColor(148, 163, 184);
+    doc.text('(Dokument izdan elektroničkim putem)', stampX + stampWidth / 2, stampY - 2, { align: 'center' });
+  }
+
+  // Crta za potpis
+  doc.setDrawColor(15, 23, 42);
+  doc.line(stampX, stampY, stampX + stampWidth, stampY);
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8.5);
+  doc.setTextColor(15, 23, 42);
+  doc.text(data.obrtVlasnik, stampX + stampWidth / 2, stampY + 3.8, { align: 'center' });
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7);
+  doc.setTextColor(100, 116, 139);
+  doc.text('Račun izdao i potpisao', stampX + stampWidth / 2, stampY + 7.2, { align: 'center' });
 
   // 6. BARKODOVI NA DNU: HUB-3 PDF417 (Lijevo) i EPC QR Kod (Desno)
   const bottomBoxY = 222; // Fiksna pozicija na dnu A4 lista

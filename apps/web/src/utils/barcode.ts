@@ -21,14 +21,17 @@ export async function renderHub3Barcode(
 
   try {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    bwipjs.toCanvas(canvas, {
-      bcid: 'pdf417',
-      text: hub3Text,
-      scale: options?.scale ?? 2,
-      height: options?.height ?? 10,
-      columns: options?.columns ?? 9,
-      eclevel: options?.eclevel ?? 4, // HUB-3 standard specificira error correction level 4
-    } as any);
+    const bwipFn = (bwipjs as any).toCanvas || (bwipjs as any).default?.toCanvas || (bwipjs as any).default;
+    if (typeof bwipFn === 'function') {
+      bwipFn(canvas, {
+        bcid: 'pdf417',
+        text: hub3Text,
+        scale: options?.scale ?? 2,
+        height: options?.height ?? 10,
+        columns: options?.columns ?? 9,
+        eclevel: options?.eclevel ?? 4, // HUB-3 standard specificira error correction level 4
+      } as any);
+    }
   } catch (err) {
     console.error('Greška pri renderiranju HUB-3 PDF417 barkoda:', err);
     throw err;

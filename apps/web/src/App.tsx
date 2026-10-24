@@ -100,7 +100,7 @@ export default function App() {
 
           {/* Živi A4 Real-Time Preview (42%) */}
           <div
-            className={`xl:col-span-5 bg-[var(--bg-surface)] border border-[var(--border-strong)] p-5 space-y-4 sticky top-20 shadow-xl transition-colors ${
+            className={`printable-invoice-wrapper xl:col-span-5 bg-[var(--bg-surface)] border border-[var(--border-strong)] p-5 space-y-4 sticky top-20 shadow-xl transition-colors ${
               mobileTab === 'desk' ? 'hidden xl:block' : 'block'
             }`}
           >
