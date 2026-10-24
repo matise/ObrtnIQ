@@ -211,37 +211,37 @@ export default function App() {
         </div>
 
         {/* Phase 3 Live Showroom & Editor Desk */}
-        <div className="border border-[#433068] bg-[#140F24] p-6 space-y-6">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-[#261B3D] pb-4 gap-4">
+        <div className="border border-[var(--border-strong)] bg-[var(--bg-surface)] p-6 space-y-6 transition-colors">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-[var(--border-subtle)] pb-4 gap-4">
             <div className="flex items-center space-x-3">
-              <Sparkles className="w-5 h-5 text-[#A855F7]" />
+              <Sparkles className="w-5 h-5 text-[var(--accent-primary)]" />
               <div>
                 <h2 className="font-bold text-base">Faza 3: Interaktivni Showroom Kontrola i Responzivnost</h2>
-                <p className="text-xs text-[#7C6DA0]">Isprobajte specijalizirane kontrole u desktopu ili simuliranom 375px mobilnom prikazu</p>
+                <p className="text-xs text-[var(--text-muted)]">Isprobajte specijalizirane kontrole u desktopu ili simuliranom 375px mobilnom prikazu</p>
               </div>
             </div>
 
             {/* Desktop vs Mobile Toggle */}
-            <div className="flex items-center space-x-2 bg-[#0B0813] p-1 border border-[#261B3D]">
+            <div className="flex items-center space-x-2 bg-[var(--bg-canvas)] p-1 border border-[var(--border-subtle)]">
               <button
                 type="button"
                 onClick={() => setViewMode('desktop')}
                 className={`flex items-center gap-1.5 px-3 py-1 text-xs font-mono transition-colors ${
                   viewMode === 'desktop' 
-                    ? 'bg-[#7C3AED] text-white font-semibold' 
-                    : 'text-[#7C6DA0] hover:text-[#C4B5FD]'
+                    ? 'bg-[var(--accent-primary)] text-black font-semibold shadow-sm' 
+                    : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)]'
                 }`}
               >
                 <Monitor className="w-3.5 h-3.5" />
-                Desktop (1440px)
+                Desktop (100% širine)
               </button>
               <button
                 type="button"
                 onClick={() => setViewMode('mobile')}
                 className={`flex items-center gap-1.5 px-3 py-1 text-xs font-mono transition-colors ${
                   viewMode === 'mobile' 
-                    ? 'bg-[#7C3AED] text-white font-semibold' 
-                    : 'text-[#7C6DA0] hover:text-[#C4B5FD]'
+                    ? 'bg-[var(--accent-primary)] text-black font-semibold shadow-sm' 
+                    : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)]'
                 }`}
               >
                 <Smartphone className="w-3.5 h-3.5" />
@@ -255,15 +255,15 @@ export default function App() {
             {viewMode === 'mobile' ? (
               /* Mobile 375px Centered View */
               <div className="flex justify-center">
-                <div className="w-full max-w-[375px] border-2 border-[#A855F7] p-4 bg-[#0B0813] shadow-2xl space-y-5">
-                  <div className="text-center font-mono text-[11px] text-[#A855F7] pb-2 border-b border-[#261B3D]">
+                <div className="w-full max-w-[375px] border-2 border-[var(--border-focus)] p-4 bg-[var(--bg-canvas)] shadow-2xl space-y-5">
+                  <div className="text-center font-mono text-[11px] text-[var(--accent-primary)] pb-2 border-b border-[var(--border-subtle)]">
                     Simulirani zaslon pametnog telefona (375px)
                   </div>
 
                   <TaxZoneToggle value={taxZone} onChange={setTaxZone} />
 
                   <div>
-                    <label className="text-xs font-mono text-[#C4B5FD] font-semibold block mb-1.5">
+                    <label className="text-xs font-mono text-[var(--text-secondary)] font-semibold block mb-1.5">
                       Naziv Partnera *
                     </label>
                     <input
@@ -271,7 +271,7 @@ export default function App() {
                       value={partnerNaziv}
                       onChange={(e) => setPartnerNaziv(e.target.value)}
                       placeholder="Alpha d.o.o."
-                      className="w-full bg-[#0B0813] text-white px-3 py-2 font-mono text-sm border border-[#433068] focus:border-[#A855F7] outline-none"
+                      className="w-full bg-[var(--bg-canvas)] text-white px-3 py-2 font-mono text-sm border border-[var(--border-strong)] focus:border-[var(--border-focus)] outline-none"
                     />
                   </div>
 
@@ -301,7 +301,7 @@ export default function App() {
                     )}
                   </div>
 
-                  <div className="border border-[#261B3D] bg-[#1E1635]/50 p-3 space-y-3">
+                  <div className="border border-[var(--border-subtle)] bg-[var(--bg-elevated)]/50 p-3 space-y-3">
                     <KpdPicker
                       value={kpdSifra}
                       onChange={(sifra, naziv) => {
@@ -316,7 +316,7 @@ export default function App() {
                         min={1}
                         value={kolicina}
                         onChange={(e) => setKolicina(Math.max(1, parseInt(e.target.value, 10) || 1))}
-                        className="bg-[#0B0813] text-white px-2 py-1.5 font-mono text-sm border border-[#433068]"
+                        className="bg-[var(--bg-canvas)] text-white px-2 py-1.5 font-mono text-sm border border-[var(--border-strong)]"
                       />
                       <CurrencyInput value={cijena} onChange={setCijena} />
                     </div>
@@ -328,8 +328,8 @@ export default function App() {
                     className={`w-full py-2.5 font-mono text-xs font-bold transition-all flex items-center justify-center gap-2
                       ${
                         isFormSubmittable
-                          ? 'bg-[#10B981] text-black cursor-pointer'
-                          : 'bg-[#261B3D] text-[#7C6DA0] cursor-not-allowed border border-[#433068]'
+                          ? 'bg-[#10B981] text-black cursor-pointer shadow-lg shadow-[#10B981]/20'
+                          : 'bg-[var(--bg-elevated)] text-[var(--text-muted)] cursor-not-allowed border border-[var(--border-strong)]'
                       }
                     `}
                   >
@@ -342,12 +342,12 @@ export default function App() {
               /* Full-Width Desktop Split-Screen Layout (100% of Window Width) */
               <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 w-full items-start">
                 {/* Left Panel: High-Density Input Desk (7 Cols) */}
-                <div className="xl:col-span-7 bg-[#140F24] border border-[#261B3D] p-6 space-y-6">
-                  <div className="flex items-center justify-between border-b border-[#261B3D] pb-3">
-                    <span className="text-xs font-mono uppercase text-[#A855F7] font-bold tracking-wider">
+                <div className="xl:col-span-7 bg-[var(--bg-surface)] border border-[var(--border-subtle)] p-6 space-y-6 transition-colors">
+                  <div className="flex items-center justify-between border-b border-[var(--border-subtle)] pb-3">
+                    <span className="text-xs font-mono uppercase text-[var(--accent-primary)] font-bold tracking-wider">
                       Radna Ploha Unosa (Input Desk)
                     </span>
-                    <span className="text-[11px] font-mono text-[#7C6DA0]">
+                    <span className="text-[11px] font-mono text-[var(--text-muted)]">
                       Precision Minimalist &bull; Split 58/42
                     </span>
                   </div>
@@ -358,7 +358,7 @@ export default function App() {
                   {/* 2. Partner podaci (OIB & Naziv) */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <label className="text-xs font-mono text-[#C4B5FD] font-semibold block mb-1.5">
+                      <label className="text-xs font-mono text-[var(--text-secondary)] font-semibold block mb-1.5">
                         Naziv Partnera / Kupca *
                       </label>
                       <input
@@ -366,7 +366,7 @@ export default function App() {
                         value={partnerNaziv}
                         onChange={(e) => setPartnerNaziv(e.target.value)}
                         placeholder="npr. Alpha d.o.o."
-                        className="w-full bg-[#0B0813] text-white px-3.5 py-2.5 font-mono text-sm border border-[#433068] focus:border-[#A855F7] outline-none"
+                        className="w-full bg-[var(--bg-canvas)] text-white px-3.5 py-2.5 font-mono text-sm border border-[var(--border-strong)] focus:border-[var(--border-focus)] outline-none"
                       />
                     </div>
 
@@ -399,13 +399,13 @@ export default function App() {
                   </div>
 
                   {/* 4. Stavka računa (KPD Picker, Količina, Cijena) */}
-                  <div className="border border-[#261B3D] bg-[#1E1635]/50 p-4 space-y-4">
+                  <div className="border border-[var(--border-subtle)] bg-[var(--bg-elevated)]/40 p-4 space-y-4">
                     <div className="flex items-center justify-between">
-                      <span className="text-xs font-mono uppercase text-[#C4B5FD] font-semibold block">
+                      <span className="text-xs font-mono uppercase text-[var(--text-secondary)] font-semibold block">
                         Stavka Dokumenta &amp; KPD 2025 Klasifikacija
                       </span>
                       {kpdNaziv && (
-                        <span className="text-[10px] font-mono text-[#A855F7] truncate max-w-sm">
+                        <span className="text-[10px] font-mono text-[var(--accent-primary)] truncate max-w-sm">
                           {kpdNaziv}
                         </span>
                       )}
@@ -422,7 +422,7 @@ export default function App() {
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div>
-                        <label className="text-xs font-mono text-[#C4B5FD] font-semibold block mb-1.5">
+                        <label className="text-xs font-mono text-[var(--text-secondary)] font-semibold block mb-1.5">
                           Količina (sat / kom)
                         </label>
                         <input
@@ -430,7 +430,7 @@ export default function App() {
                           min={1}
                           value={kolicina}
                           onChange={(e) => setKolicina(Math.max(1, parseInt(e.target.value, 10) || 1))}
-                          className="w-full bg-[#0B0813] text-white px-3.5 py-2.5 font-mono text-sm border border-[#433068] focus:border-[#A855F7] outline-none"
+                          className="w-full bg-[var(--bg-canvas)] text-white px-3.5 py-2.5 font-mono text-sm border border-[var(--border-strong)] focus:border-[var(--border-focus)] outline-none"
                         />
                       </div>
 
@@ -444,7 +444,7 @@ export default function App() {
                   </div>
 
                   {/* Action Bar */}
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between border-t border-[#261B3D] pt-4 gap-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between border-t border-[var(--border-subtle)] pt-4 gap-4">
                     <div className="flex items-center space-x-2 text-xs font-mono">
                       {isFormSubmittable ? (
                         <span className="flex items-center text-[#10B981] gap-1.5 font-semibold">
@@ -466,7 +466,7 @@ export default function App() {
                         ${
                           isFormSubmittable
                             ? 'bg-[#10B981] text-black hover:bg-[#059669] cursor-pointer shadow-lg shadow-[#10B981]/20'
-                            : 'bg-[#261B3D] text-[#7C6DA0] cursor-not-allowed border border-[#433068]'
+                            : 'bg-[var(--bg-elevated)] text-[var(--text-muted)] cursor-not-allowed border border-[var(--border-strong)]'
                         }
                       `}
                     >
@@ -477,31 +477,31 @@ export default function App() {
                 </div>
 
                 {/* Right Panel: Live A4 Real-Time Preview & Financial Breakdown (5 Cols) */}
-                <div className="xl:col-span-5 bg-[#0B0813] border border-[#433068] p-6 space-y-6 sticky top-20 shadow-xl">
-                  <div className="flex items-center justify-between border-b border-[#261B3D] pb-3">
-                    <span className="text-xs font-mono uppercase text-[#C4B5FD] font-bold tracking-wider flex items-center gap-2">
-                      <FileText className="w-4 h-4 text-[#A855F7]" />
+                <div className="xl:col-span-5 bg-[var(--bg-surface)] border border-[var(--border-strong)] p-6 space-y-6 sticky top-20 shadow-xl transition-colors">
+                  <div className="flex items-center justify-between border-b border-[var(--border-subtle)] pb-3">
+                    <span className="text-xs font-mono uppercase text-[var(--text-secondary)] font-bold tracking-wider flex items-center gap-2">
+                      <FileText className="w-4 h-4 text-[var(--accent-primary)]" />
                       Živi A4 Preglednik (Real-Time Preview)
                     </span>
-                    <span className="text-[10px] font-mono bg-[#261B3D] text-[#10B981] px-2 py-0.5 border border-[#10B981]/30">
+                    <span className="text-[10px] font-mono bg-[var(--bg-canvas)] text-[#10B981] px-2 py-0.5 border border-[#10B981]/30">
                       LIVE PREVIEW
                     </span>
                   </div>
 
                   {/* Simulated A4 Header */}
-                  <div className="border border-[#261B3D] bg-[#140F24] p-4 space-y-3 font-mono text-xs">
-                    <div className="flex justify-between items-start border-b border-[#261B3D] pb-3">
+                  <div className="border border-[var(--border-subtle)] bg-[var(--bg-elevated)]/60 p-4 space-y-3 font-mono text-xs">
+                    <div className="flex justify-between items-start border-b border-[var(--border-subtle)] pb-3">
                       <div>
                         <div className="font-bold text-white text-sm">Robot Hand Made</div>
-                        <div className="text-[#7C6DA0]">vl. Matija Obrtnik</div>
-                        <div className="text-[#7C6DA0]">OIB: 69435151530</div>
-                        <div className="text-[#7C6DA0]">Zagreb, Hrvatska</div>
+                        <div className="text-[var(--text-muted)]">vl. Matija Obrtnik</div>
+                        <div className="text-[var(--text-muted)]">OIB: 69435151530</div>
+                        <div className="text-[var(--text-muted)]">Zagreb, Hrvatska</div>
                       </div>
                       <div className="text-right">
-                        <div className="font-bold text-[#A855F7] text-sm">Račun br. 1/POSL1/1</div>
-                        <div className="text-[#7C6DA0]">Datum: 24.10.2026.</div>
-                        <div className="text-[#7C6DA0]">Dospijeće: 03.11.2026.</div>
-                        <span className="inline-block mt-1 bg-[#2A1F49] text-[#C4B5FD] text-[10px] px-2 py-0.5 border border-[#433068]">
+                        <div className="font-bold text-[var(--accent-primary)] text-sm">Račun br. 1/POSL1/1</div>
+                        <div className="text-[var(--text-muted)]">Datum: 24.10.2026.</div>
+                        <div className="text-[var(--text-muted)]">Dospijeće: 03.11.2026.</div>
+                        <span className="inline-block mt-1 bg-[var(--bg-subtle)] text-[var(--text-secondary)] text-[10px] px-2 py-0.5 border border-[var(--border-strong)]">
                           {taxZone}
                         </span>
                       </div>
@@ -509,21 +509,21 @@ export default function App() {
 
                     {/* Customer Info */}
                     <div className="pt-1">
-                      <span className="text-[#7C6DA0] block text-[10px] uppercase">KUPAC / PLATITELJ:</span>
+                      <span className="text-[var(--text-muted)] block text-[10px] uppercase">KUPAC / PLATITELJ:</span>
                       <div className="font-bold text-white">{partnerNaziv || 'Naziv kupca nije unesen'}</div>
-                      <div className="text-[#C4B5FD]">
+                      <div className="text-[var(--text-secondary)]">
                         OIB: {oib || '—'} {isOibValid && <span className="text-[#10B981]">✓</span>}
                       </div>
-                      <div className="text-[#7C6DA0]">
+                      <div className="text-[var(--text-muted)]">
                         IBAN za uplatu: <span className="text-white font-mono">{iban ? iban.slice(0, 15) + '...' : '—'}</span>
                       </div>
                     </div>
                   </div>
 
                   {/* Line Item Table Preview */}
-                  <div className="border border-[#261B3D] bg-[#140F24] overflow-hidden">
+                  <div className="border border-[var(--border-subtle)] bg-[var(--bg-canvas)] overflow-hidden">
                     <table className="w-full text-left font-mono text-xs">
-                      <thead className="bg-[#1E1635] text-[#C4B5FD] border-b border-[#261B3D] text-[11px]">
+                      <thead className="bg-[var(--bg-elevated)] text-[var(--text-secondary)] border-b border-[var(--border-subtle)] text-[11px]">
                         <tr>
                           <th className="p-2.5">Opis / KPD 2025</th>
                           <th className="p-2.5 text-center">Kol.</th>
@@ -531,11 +531,11 @@ export default function App() {
                           <th className="p-2.5 text-right">Ukupno</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-[#261B3D] text-white">
+                      <tbody className="divide-y divide-[var(--border-subtle)] text-white">
                         <tr>
                           <td className="p-2.5">
                             <div className="font-semibold text-[11px] truncate max-w-[200px]">{kpdNaziv || 'Usluga'}</div>
-                            <div className="text-[10px] text-[#A855F7]">KPD: {kpdSifra}</div>
+                            <div className="text-[10px] text-[var(--accent-primary)]">KPD: {kpdSifra}</div>
                           </td>
                           <td className="p-2.5 text-center tabular-nums">{kolicina}</td>
                           <td className="p-2.5 text-right tabular-nums">{cijena.toFixed(2)} €</td>
@@ -546,24 +546,24 @@ export default function App() {
                   </div>
 
                   {/* Financial Summary */}
-                  <div className="border border-[#261B3D] bg-[#140F24] p-4 space-y-2 font-mono text-xs">
-                    <div className="flex justify-between text-[#7C6DA0]">
+                  <div className="border border-[var(--border-subtle)] bg-[var(--bg-elevated)]/60 p-4 space-y-2 font-mono text-xs">
+                    <div className="flex justify-between text-[var(--text-muted)]">
                       <span>Ukupno osnovica:</span>
                       <span className="text-white tabular-nums">{(kolicina * cijena).toFixed(2)} €</span>
                     </div>
-                    <div className="flex justify-between text-[#7C6DA0]">
+                    <div className="flex justify-between text-[var(--text-muted)]">
                       <span>PDV (0% - čl. 90 st. 2):</span>
                       <span className="text-white tabular-nums">0,00 €</span>
                     </div>
-                    <div className="flex justify-between font-bold text-base text-[#10B981] pt-2 border-t border-[#261B3D]">
+                    <div className="flex justify-between font-bold text-base text-[#10B981] pt-2 border-t border-[var(--border-subtle)]">
                       <span>UKUPNO ZA PLATITI:</span>
                       <span className="tabular-nums">{(kolicina * cijena).toFixed(2)} €</span>
                     </div>
                   </div>
 
                   {/* Legal Clause Notice */}
-                  <div className="p-3 bg-[#140F24] border border-[#261B3D] text-[11px] font-mono text-[#7C6DA0] leading-relaxed">
-                    <span className="text-[#C4B5FD] block font-semibold mb-0.5">Zakonska klauzula:</span>
+                  <div className="p-3 bg-[var(--bg-canvas)] border border-[var(--border-subtle)] text-[11px] font-mono text-[var(--text-muted)] leading-relaxed">
+                    <span className="text-[var(--text-secondary)] block font-semibold mb-0.5">Zakonska klauzula:</span>
                     Paušalni obrt nije u sustavu PDV-a prema čl. 90. st. 2. Zakona o PDV-u. Izdano putem sustava ObrtnIQ.
                   </div>
                 </div>
@@ -573,44 +573,44 @@ export default function App() {
         </div>
 
         {/* Documentation & Manifest Reference */}
-        <div className="border border-[#261B3D] bg-[#140F24] p-6 space-y-4">
-          <div className="flex items-center justify-between border-b border-[#261B3D] pb-4">
+        <div className="border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-6 space-y-4 transition-colors">
+          <div className="flex items-center justify-between border-b border-[var(--border-subtle)] pb-4">
             <div className="flex items-center space-x-3">
-              <FileText className="w-5 h-5 text-[#A855F7]" />
+              <FileText className="w-5 h-5 text-[var(--accent-primary)]" />
               <div>
                 <h2 className="font-bold text-base">Implementacijski Dnevnik i Manifest</h2>
-                <p className="text-xs text-[#7C6DA0]">Evidencija faza, odluka i Gate-Check kriterija</p>
+                <p className="text-xs text-[var(--text-muted)]">Evidencija faza, odluka i Gate-Check kriterija</p>
               </div>
             </div>
-            <span className="font-mono text-xs text-[#C4B5FD] bg-[#1E1635] px-3 py-1 border border-[#261B3D]">
+            <span className="font-mono text-xs text-[var(--text-secondary)] bg-[var(--bg-elevated)] px-3 py-1 border border-[var(--border-subtle)]">
               docs/manifest_i_dnevnik_implementacije.md
             </span>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs font-mono">
-            <div className="bg-[#0B0813] p-4 border border-[#261B3D] space-y-2">
-              <span className="text-[#7C6DA0] block">GLAVNI DOKUMENT</span>
+            <div className="bg-[var(--bg-canvas)] p-4 border border-[var(--border-subtle)] space-y-2">
+              <span className="text-[var(--text-muted)] block">GLAVNI DOKUMENT</span>
               <span className="text-white font-semibold">docs/glavni_dizajn_dokument_i_plan_implementacije_obrtniq.md</span>
             </div>
-            <div className="bg-[#0B0813] p-4 border border-[#261B3D] space-y-2">
-              <span className="text-[#7C6DA0] block">UI KONTROLE</span>
+            <div className="bg-[var(--bg-canvas)] p-4 border border-[var(--border-subtle)] space-y-2">
+              <span className="text-[var(--text-muted)] block">UI KONTROLE</span>
               <span className="text-white font-semibold">apps/web/src/components/controls</span>
             </div>
-            <div className="bg-[#0B0813] p-4 border border-[#261B3D] space-y-2">
-              <span className="text-[#7C6DA0] block">GATE-CHECK STATUS</span>
-              <span className="text-[#10B981] font-semibold">Faza 0, 1 i 2 verificirane &bull; Faza 3 aktivna</span>
+            <div className="bg-[var(--bg-canvas)] p-4 border border-[var(--border-subtle)] space-y-2">
+              <span className="text-[var(--text-muted)] block">THEME ENGINE</span>
+              <span className="text-[#10B981] font-semibold">100% UI pokriven dinamičkim HSL varijablama</span>
             </div>
           </div>
         </div>
       </main>
 
       {/* Precision Footer */}
-      <footer className="border-t border-[#261B3D] bg-[#140F24] px-6 py-3 text-xs font-mono text-[#7C6DA0] flex items-center justify-between">
+      <footer className="border-t border-[var(--border-subtle)] bg-[var(--bg-surface)] px-6 py-3 text-xs font-mono text-[var(--text-muted)] flex items-center justify-between transition-colors">
         <div>ObrtnIQ &copy; 2026 &bull; Zakon o fiskalizaciji 1.0 (B2C) &amp; 2.0 (B2B EN 16931)</div>
         <div className="flex items-center space-x-4">
           <span className="flex items-center space-x-1.5 text-[#10B981]">
             <CheckCircle2 className="w-3.5 h-3.5" />
-            <span>Faza 3 Gate-Check Verified</span>
+            <span>Faza 3 + Full Dynamic Theme Verified</span>
           </span>
         </div>
       </footer>

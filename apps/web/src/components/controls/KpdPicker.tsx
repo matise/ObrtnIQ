@@ -79,7 +79,6 @@ export const KpdPicker: React.FC<KpdPickerProps> = ({
     );
   }, [search]);
 
-  // Close on outside click
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (wrapperRef.current && !wrapperRef.current.contains(event.target as Node)) {
@@ -100,10 +99,10 @@ export const KpdPicker: React.FC<KpdPickerProps> = ({
     <div ref={wrapperRef} className={`relative flex flex-col space-y-1.5 ${className}`}>
       {label && (
         <div className="flex items-center justify-between text-xs font-mono">
-          <label htmlFor={id} className="text-[#C4B5FD] font-semibold flex items-center gap-1">
+          <label htmlFor={id} className="text-[var(--text-secondary)] font-semibold flex items-center gap-1">
             {label} {required && <span className="text-[#EF4444]">*</span>}
           </label>
-          <span className="text-[11px] text-[#A855F7] font-semibold">
+          <span className="text-[11px] text-[var(--accent-primary)] font-semibold">
             EN 16931 Standard
           </span>
         </div>
@@ -115,34 +114,34 @@ export const KpdPicker: React.FC<KpdPickerProps> = ({
         type="button"
         disabled={disabled}
         onClick={() => !disabled && setIsOpen(!isOpen)}
-        className={`w-full bg-[#0B0813] text-left px-3.5 py-2.5 font-mono text-sm border outline-none transition-colors rounded-none flex items-center justify-between
-          ${disabled ? 'opacity-50 cursor-not-allowed bg-[#140F24]' : 'cursor-pointer hover:border-[#A855F7]'}
-          ${isOpen ? 'border-[#A855F7] ring-1 ring-[#A855F7]' : 'border-[#433068]'}
+        className={`w-full bg-[var(--bg-canvas)] text-left px-3.5 py-2.5 font-mono text-sm border outline-none transition-colors rounded-none flex items-center justify-between
+          ${disabled ? 'opacity-50 cursor-not-allowed bg-[var(--bg-surface)]' : 'cursor-pointer hover:border-[var(--border-focus)]'}
+          ${isOpen ? 'border-[var(--border-focus)] ring-1 ring-[var(--border-focus)]' : 'border-[var(--border-strong)]'}
         `}
       >
         <div className="flex items-center gap-2 truncate">
-          <Tag className="w-4 h-4 text-[#A855F7] shrink-0" />
+          <Tag className="w-4 h-4 text-[var(--accent-primary)] shrink-0" />
           {selectedItem ? (
             <div className="flex items-center gap-2 truncate">
-              <span className="bg-[#2A1F49] text-[#A855F7] px-1.5 py-0.5 text-xs font-bold border border-[#433068]">
+              <span className="bg-[var(--bg-subtle)] text-[var(--accent-primary)] px-1.5 py-0.5 text-xs font-bold border border-[var(--border-strong)]">
                 {selectedItem.sifra}
               </span>
               <span className="text-white text-xs truncate">{selectedItem.naziv}</span>
             </div>
           ) : (
-            <span className="text-[#7C6DA0] text-xs">{placeholder}</span>
+            <span className="text-[var(--text-muted)] text-xs">{placeholder}</span>
           )}
         </div>
 
-        <ChevronDown className={`w-4 h-4 text-[#7C6DA0] transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+        <ChevronDown className={`w-4 h-4 text-[var(--text-muted)] transition-transform ${isOpen ? 'rotate-180' : ''}`} />
       </button>
 
       {/* Dropdown Command Palette */}
       {isOpen && (
-        <div className="absolute top-full left-0 right-0 mt-1 z-50 bg-[#140F24] border border-[#433068] shadow-2xl p-2 space-y-2">
+        <div className="absolute top-full left-0 right-0 mt-1 z-50 bg-[var(--bg-surface)] border border-[var(--border-strong)] shadow-2xl p-2 space-y-2">
           {/* Search Field */}
-          <div className="relative flex items-center border border-[#261B3D] bg-[#0B0813]">
-            <Search className="w-4 h-4 text-[#7C6DA0] absolute left-2.5" />
+          <div className="relative flex items-center border border-[var(--border-subtle)] bg-[var(--bg-canvas)]">
+            <Search className="w-4 h-4 text-[var(--text-muted)] absolute left-2.5" />
             <input
               type="text"
               autoFocus
@@ -156,7 +155,7 @@ export const KpdPicker: React.FC<KpdPickerProps> = ({
           {/* List of items */}
           <div className="max-h-56 overflow-y-auto space-y-1">
             {filteredItems.length === 0 ? (
-              <div className="p-3 text-center text-xs font-mono text-[#7C6DA0]">
+              <div className="p-3 text-center text-xs font-mono text-[var(--text-muted)]">
                 Nema pronađenih KPD šifri za "{search}".
               </div>
             ) : (
@@ -167,18 +166,18 @@ export const KpdPicker: React.FC<KpdPickerProps> = ({
                     key={item.sifra}
                     type="button"
                     onClick={() => handleSelect(item)}
-                    className={`w-full text-left p-2 font-mono text-xs transition-colors flex items-center justify-between rounded-none
+                    className={`w-full text-left p-2 font-mono text-xs transition-colors flex items-center justify-between rounded-none cursor-pointer
                       ${
                         isSelected
-                          ? 'bg-[#2A1F49] text-white border-l-2 border-[#A855F7]'
-                          : 'text-[#C4B5FD] hover:bg-[#1E1635] hover:text-white'
+                          ? 'bg-[var(--bg-subtle)] text-white border-l-2 border-[var(--border-focus)]'
+                          : 'text-[var(--text-secondary)] hover:bg-[var(--bg-elevated)] hover:text-white'
                       }
                     `}
                   >
                     <div className="space-y-0.5">
                       <div className="flex items-center gap-2">
-                        <span className="font-bold text-[#A855F7]">{item.sifra}</span>
-                        <span className="text-[10px] text-[#7C6DA0] uppercase">({item.kategorija})</span>
+                        <span className="font-bold text-[var(--accent-primary)]">{item.sifra}</span>
+                        <span className="text-[10px] text-[var(--text-muted)] uppercase">({item.kategorija})</span>
                       </div>
                       <div className="text-white text-[11px] truncate max-w-sm">{item.naziv}</div>
                     </div>

@@ -74,15 +74,15 @@ export const TaxZoneToggle: React.FC<TaxZoneToggleProps> = ({
     <div className={`flex flex-col space-y-2 ${className}`}>
       {label && (
         <div className="flex items-center justify-between text-xs font-mono">
-          <span className="text-[#C4B5FD] font-semibold">{label}</span>
-          <span className="text-[11px] text-[#A855F7] font-semibold">
+          <span className="text-[var(--text-secondary)] font-semibold">{label}</span>
+          <span className="text-[11px] text-[var(--accent-primary)] font-semibold">
             {currentOption.label}
           </span>
         </div>
       )}
 
       {/* Segmented Grid / Bar */}
-      <div className="grid grid-cols-3 sm:grid-cols-6 border border-[#261B3D] bg-[#0B0813] p-1 gap-1">
+      <div className="grid grid-cols-3 sm:grid-cols-6 border border-[var(--border-subtle)] bg-[var(--bg-canvas)] p-1 gap-1">
         {TAX_ZONES.map((zone) => {
           const isActive = zone.key === value;
           return (
@@ -94,8 +94,8 @@ export const TaxZoneToggle: React.FC<TaxZoneToggleProps> = ({
               className={`py-2 px-1 text-center font-mono text-xs transition-all rounded-none flex flex-col items-center justify-center gap-0.5
                 ${
                   isActive
-                    ? 'bg-[#7C3AED] text-white font-bold shadow-md shadow-[#7C3AED]/20 border border-[#A855F7]'
-                    : 'text-[#7C6DA0] hover:text-[#C4B5FD] hover:bg-[#1E1635]'
+                    ? 'bg-[var(--accent-primary)] text-black font-bold shadow-md border border-[var(--border-focus)]'
+                    : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:bg-[var(--bg-elevated)]'
                 }
                 ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
               `}
@@ -104,7 +104,7 @@ export const TaxZoneToggle: React.FC<TaxZoneToggleProps> = ({
               {zone.badge && (
                 <span
                   className={`text-[9px] px-1 py-0.2 tracking-tighter ${
-                    isActive ? 'bg-[#2E1065] text-[#E9D5FF]' : 'text-[#7C6DA0]'
+                    isActive ? 'bg-black/20 text-black font-semibold' : 'text-[var(--text-muted)]'
                   }`}
                 >
                   {zone.badge}
@@ -116,9 +116,9 @@ export const TaxZoneToggle: React.FC<TaxZoneToggleProps> = ({
       </div>
 
       {/* Dynamic Legal Note */}
-      <div className="bg-[#140F24] px-3 py-1.5 border border-[#261B3D] text-[11px] font-mono text-[#C4B5FD] flex items-center justify-between">
+      <div className="bg-[var(--bg-surface)] px-3 py-1.5 border border-[var(--border-subtle)] text-[11px] font-mono text-[var(--text-secondary)] flex items-center justify-between">
         <span>{currentOption.legalNote}</span>
-        <span className="text-[#7C6DA0] text-[10px] uppercase ml-2 shrink-0">
+        <span className="text-[var(--text-muted)] text-[10px] uppercase ml-2 shrink-0">
           {currentOption.key}
         </span>
       </div>

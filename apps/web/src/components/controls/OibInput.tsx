@@ -40,10 +40,10 @@ export const OibInput: React.FC<OibInputProps> = ({
     <div className={`flex flex-col space-y-1.5 ${className}`}>
       {label && (
         <div className="flex items-center justify-between text-xs font-mono">
-          <label htmlFor={id} className="text-[#C4B5FD] font-semibold flex items-center gap-1">
+          <label htmlFor={id} className="text-[var(--text-secondary)] font-semibold flex items-center gap-1">
             {label} {required && <span className="text-[#EF4444]">*</span>}
           </label>
-          <span className="text-[11px] text-[#7C6DA0]">
+          <span className="text-[11px] text-[var(--text-muted)]">
             {sanitized.length}/11 znamenki
           </span>
         </div>
@@ -61,11 +61,11 @@ export const OibInput: React.FC<OibInputProps> = ({
           onChange={handleChange}
           placeholder={placeholder}
           maxLength={11}
-          className={`w-full bg-[#0B0813] text-white px-3.5 py-2.5 font-mono text-sm tracking-wider outline-none border transition-colors rounded-none tabular-nums
-            ${disabled ? 'opacity-50 cursor-not-allowed bg-[#140F24]' : ''}
+          className={`w-full bg-[var(--bg-canvas)] text-white px-3.5 py-2.5 font-mono text-sm tracking-wider outline-none border transition-colors rounded-none tabular-nums
+            ${disabled ? 'opacity-50 cursor-not-allowed bg-[var(--bg-surface)]' : ''}
             ${
               sanitized.length === 0
-                ? 'border-[#433068] focus:border-[#A855F7]'
+                ? 'border-[var(--border-strong)] focus:border-[var(--border-focus)]'
                 : isValid
                 ? 'border-[#10B981] focus:border-[#10B981] bg-[#064E3B]/10'
                 : 'border-[#EF4444] focus:border-[#EF4444] bg-[#450A0A]/10'
@@ -94,7 +94,7 @@ export const OibInput: React.FC<OibInputProps> = ({
         </span>
       )}
       {sanitized.length > 0 && sanitized.length < 11 && (
-        <span className="text-[11px] font-mono text-[#7C6DA0]">
+        <span className="text-[11px] font-mono text-[var(--text-muted)]">
           Nedostaje još {11 - sanitized.length} znamenki do punog OIB-a.
         </span>
       )}
