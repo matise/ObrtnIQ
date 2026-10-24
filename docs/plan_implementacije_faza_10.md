@@ -192,3 +192,69 @@ npm test
 | **V10-4** | **Gemini AI KPD Preporuka** | Unos opisa usluge (npr. *"izrada responzivnog dizajna i logotipa"*) putem Gemini API-ja točno preporučuje KPD 2025 šifru `74.10.11`. | Mock / Live API test |
 | **V10-5** | **UI Integracija & Prikaz Profila** | Uspješna prijava prikazuje Google avatar u zaglavlju (`AppHeader`) i zelenu ikonu aktivne cloud sinkronizacije. | Interaktivni UI test |
 | **V10-6** | **Nulta regresija koda** | Svi postojeći testovi (Faze 1 do 9) i novi testovi Faze 10 prolaze bez grešaka, uz čisti `tsc -b && vite build`. | `npm test` && `npm run build` |
+
+---
+
+## 6. Protokol Zajedničke Integracijske Validacije (End-to-End: Faza 9 + Faza 10)
+
+Ovaj protokol testira sinergiju i neprekinuti tok podataka između modula Faze 9 (Cjenik, KPR CSV, Lokalni Backup) i Faze 10 (Google Identity, Drive AppData Sync, Gemini AI Asistent).
+
+```
+┌────────────────────────────────────────────────────────────────────────────────────────┐
+│               ZAJEDNIČKI PROTOKOL INTEGRACIJSKE VALIDACIJE (FAZA 9 + FAZA 10)          │
+├────────────────────────────────────────────────────────────────────────────────────────┤
+│ 1. [FAZA 10] Google Login ──► Izvođenje Kripto Ključa (PBKDF2 iz googleSub)            │
+│ 2. [FAZA 10 + 9] Gemini AI ──► Preporuka KPD 2025 ──► Spremanje u Cjenik (Artikli)    │
+│ 3. [FAZA 9] Cjenik ──► 1-klik Dodavanje na Račun ──► Izdavanje (F2)                    │
+│ 4. [FAZA 9] KPR Evidencija ──► Generiranje i provjera KPR_2026.csv (Excel standard)   │
+│ 5. [FAZA 9 + 10] Kriptirani .obrtniq Backup ──► Google Drive AppData Cloud Sync        │
+│ 6. [DISASTER RECOVERY] Čišćenje baze ──► Google Restore s Drivea ──► 100% Integritet   │
+└────────────────────────────────────────────────────────────────────────────────────────┘
+```
+
+### 6.1. Scenarij Z1: Pametno Punjenje Cjenika uz Gemini AI (Faza 9 + 10)
+1. **Korak**: Korisnik otvara ladicu cjenika ([ArticleDrawer.tsx](file:///d:/Documents/Robot%20Hand%20Made/ObrtnIQ/apps/web/src/components/ArticleDrawer.tsx)) ili unosi stavku na radnoj plohi.
+2. **Akcija**: Unosi se opis usluge: *"izrada responzivnog weba i optimizacija performansi"*. Klikne se ikona Gemini asistenta.
+3. **Provjera**: Gemini asistent vraća točnu KPD šifru `62.01.11` i naziv djelatnosti. Korisnik klikne *"Spremi u cjenik"*. Artikl se sprema u Dexie bazu `artikli`.
+
+### 6.2. Scenarij Z2: Google Identity Kripto Sidro (Faza 10)
+1. **Korak**: Korisnik se prijavi putem Google računa u postavkama.
+2. **Provjera**:
+   - `useGoogleAuth` dohvaća `sub`, `email` i `picture`.
+   - Web Crypto izvodi AES-256-GCM ključ iz `sub` ID-a i lokalnog sola.
+   - U zaglavlju ([AppHeader.tsx](file:///d:/Documents/Robot%20Hand%20Made/ObrtnIQ/apps/web/src/components/layout/AppHeader.tsx)) prikazuje se avatar korisnika.
+
+### 6.3. Scenarij Z3: Izdavanje, KPR i Knjigovodstveni CSV Izvoz (Faza 9)
+1. **Korak**: S novim artiklom iz cjenika izdaje se račun (npr. `1/POSL1/1` na iznos `750,00 €`).
+2. **Akcija**: U Knjizi Prometa evidentira se uplata. Otvara se [KprDrawer.tsx](file:///d:/Documents/Robot%20Hand%20Made/ObrtnIQ/apps/web/src/components/KprDrawer.tsx) i klikne se *"Preuzmi KPR (CSV / Excel)"*.
+3. **Provjera**:
+   - Datoteka `KPR_2026.csv` sadrži UTF-8 BOM (`\uFEFF`), točka-zarez (`;`) i decimalni zarez (`750,00`).
+   - Excel otvara datoteku s ispravnim hrvatskim dijakritičkim znakovima (Č, Ć, Ž, Š, Đ).
+
+### 6.4. Scenarij Z4: End-to-End Cloud Disaster Recovery (Faza 9 + 10)
+1. **Korak (Sync)**: U postavkama se pokreće *"Sinkroniziraj na Google Drive"*.
+   - Lokalna baza (profil, partneri, cjenik, izdani računi, KPR) enkriptira se AES-256-GCM algoritmom u `.obrtniq` paket.
+   - Paket se uspješno šalje u skriveni Google Drive `appDataFolder`. Prikazuje se zeleni status *"Sinkronizirano"*.
+2. **Korak (Simulacija gubitka uređaja)**:
+   - U postavkama se klikne *"Obriši sve podatke (Reset na tvorničke postavke)"*.
+   - Lokalna IndexedDB baza se potpuno prazni (0 računa, 0 artikala, 0 partnera).
+3. **Korak (Cloud Restore)**:
+   - Korisnik se prijavljuje Google računom.
+   - Klikne *"Vrati podatke s Google Drivea"*.
+   - Sustav dohvaća najnoviju `.obrtniq` arhivu iz `appDataFolder` mape, dekriptira je i atomski puni bazu.
+4. **Provjera**:
+   - Svi računi, cjenik iz Faze 9, partneri iz Faze 8 i KPR evidencija su 100% vraćeni bez gubitka ijednog podatka.
+
+### 6.5. Cjelokupni Automatizirani Testni Cjevovod (Faza 9 + 10)
+```powershell
+# Pokretanje svih jediničnih i integracijskih testova za Fazu 9 i Fazu 10
+npm test
+
+# Produkcijska provjera tipova i bundling
+npm run build --workspaces
+
+# Provjera liveness signala aplikacije
+Invoke-WebRequest -Uri "http://localhost:5173/" -UseBasicParsing | Select-Object StatusCode, StatusDescription
+```
+* **Kriterij prolaznosti**: 100% prolaznih testova, 0 grešaka u kompilaciji, dev server HTTP 200 OK.
+

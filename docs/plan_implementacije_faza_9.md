@@ -161,10 +161,16 @@ graph TD
 
 ### 5.1. Automatski testovi (Vitest)
 ```bash
-# Pokretanje core testova za KPR CSV i backup
-npx vitest run packages/core/tests/kpr-csv.test.ts packages/core/tests/storage.test.ts
+# 1. Pokretanje testova za KPR CSV generator
+npx vitest run packages/core/tests/kpr-csv.test.ts
 
-# Pokretanje svih testova u monorepou
+# 2. Pokretanje testova za AES-256-GCM kripto backup i restore
+npx vitest run packages/core/tests/storage.test.ts
+
+# 3. Pokretanje testova za reaktivni cjenik artikala
+npx vitest run apps/web/tests/useArticles.test.ts
+
+# 4. Pokretanje cjelokupnog paketa testova u monorepou
 npm test
 ```
 
@@ -172,9 +178,22 @@ npm test
 
 | # | Kriterij provjere | Očekivani rezultat | Način provjere |
 |---|---|---|---|
-| **V9-1** | **KPR CSV Format za Excel** | Generirana datoteka počinje s `\uFEFF`, koristi točka-zarez `;`, decimalni zarez i točno sumira stupce gotovine i bezgotovinskih uplata. | Unit test + preuzimanje u pregledniku |
-| **V9-2** | **Cjenik Usluga & KPD 2025** | Korisnik može dodati novu uslugu s cijenom i KPD šifrom u `ArticleDrawer`; artikl se trajno perzistira u Dexie bazi. | Interaktivni test u sučelju |
-| **V9-3** | **1-klik odabir sa cjenika** | Klikom na artikl iz cjenika, forma na radnoj plohi u manje od 100 ms popunjava naziv, KPD šifru, jedinicu mjere i cijenu. | Interaktivni test unosa računa |
-| **V9-4** | **Spremi stavku u cjenik** | Klikom na ikonu spremanja u retku stavke, podaci se trenutno spremaju u bazu artikala i postaju dostupni za buduće račune. | Interaktivni test na radnoj plohi |
-| **V9-5** | **AES-256-GCM Kriptirani Backup** | Izvoz baze sa zadanom lozinkom stvara validan `.obrtniq` paket. Uvoz s točnom lozinkom vraća sve podatke; uvoz s netočnom lozinkom baca jasnu grešku bez oštećenja postojećih podataka. | Integracijski test u postavkama |
+| **V9-1** | **KPR CSV Format za Excel** | Generirana datoteka počinje s `\uFEFF` (UTF-8 BOM), koristi točka-zarez `;`, decimalni zarez i točno sumira stupce gotovine i bezgotovinskih uplata bez iskrivljenja dijakritika (Č, Ć, Ž, Š, Đ) u MS Excelu. | Unit test + preuzimanje u pregledniku |
+| **V9-2** | **Cjenik Usluga & KPD 2025** | Korisnik može dodati novu uslugu s cijenom i KPD šifrom u `ArticleDrawer`; artikl se trajno perzistira u Dexie bazi i pretražuje u realnom vremenu. | Interaktivni test u sučelju |
+| **V9-3** | **1-klik odabir sa cjenika** | Klikom na artikl iz cjenika na radnoj plohi, polja naziva, KPD šifre, mjerne jedinice i cijene popunjavaju se u manje od 100 ms. | Interaktivni test unosa računa |
+| **V9-4** | **Spremi stavku u cjenik** | Klikom na ikonu spremanja u retku stavke, novouneseni podaci se trenutno spremaju u bazu artikala i postaju dostupni za buduće račune. | Interaktivni test na radnoj plohi |
+| **V9-5** | **AES-256-GCM Kriptirani Backup** | Izvoz baze sa zadanom lozinkom stvara validan `.obrtniq` paket. Uvoz s točnom lozinkom atomski vraća sve podatke; uvoz s netočnom lozinkom baca jasnu grešku bez oštećenja postojećih podataka. | Integracijski test u postavkama |
 | **V9-6** | **Nulta regresija koda** | Svi postojeći testovi (92/92) plus novi testovi Faze 9 prolaze (`100% passed`), a `tsc -b && vite build` prolazi s 0 grešaka. | `npm test` && `npm run build` |
+
+---
+
+## 6. Most prema Fazi 10 i Zajednička Sinergija
+
+Faza 9 postavlja ključne temelje koji se u Fazi 10 proširuju na Cloud i AI:
+1. **Cjenik (Faza 9) ──► Gemini AI (Faza 10)**:
+   Artikli i stavke definirani u Fazi 9 dobivaju u Fazi 10 inteligentni **Gemini AI KPD Recommender** koji iz slobodnog opisa posla automatski sugerira točnu KPD 2025 šifru i popunjava cjenik.
+2. **Lokalni `.obrtniq` Backup (Faza 9) ──► Google Drive AppData Sync (Faza 10)**:
+   Kriptirani paket podataka generiran u Fazi 9 postaje standardni format koji se u Fazi 10 automatski i na 1-klik sinkronizira u skriveni `appDataFolder` korisničkog Google Drivea.
+3. **KPR CSV (Faza 9) ──► OCR Analiza (Faza 10)**:
+   Evidencija naplata u KPR-u u Fazi 10 dobiva mogućnost automatskog unosa putem Gemini Vision OCR analize slika uplatnica i izvoda.
+
