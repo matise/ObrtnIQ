@@ -67,7 +67,7 @@ export function generateKprCsv(
       s.brojKprStavke.toString(),
       formatHrvatskiDatum(s.datumNaplate),
       s.brojIzvoda ? `${s.brojIzvoda}` : 'Račun',
-      `"${s.opisPlatitelja.replace(/"/g, '""')}"`,
+      `"${(s.opisPlatitelja || '').replace(/"/g, '""')}"`,
       formatCsvIznos(s.iznosGotovina),
       formatCsvIznos(s.iznosBezgotovinski),
       formatCsvIznos(s.ukupnoNaplaceno),
