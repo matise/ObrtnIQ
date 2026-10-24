@@ -9,8 +9,8 @@ Ovaj dokument služi kao jedinstveni izvor istine za praćenje napretka, evident
 | Faza | Naziv Modula / Cjeline | Status | Gate-Check Kriterij | Zadnja Izmjena |
 |---|---|---|---|---|
 | **Faza 0** | **Temeljna konfiguracija & Monorepo postavke** | 🟢 **ZAVRŠENO** | Uspješno kompajliranje, konfigurirani aliasi, postavljen test runner | 2026-10-24 |
-| **Faza 1** | **Domena, Validacije i Poslovna Matematika (Core Engine)** | 🟡 **SLJEDEĆA NA REDU** | 100% prolaznost Vitest testova za OIB (ISO 7064), IBAN (MOD 97), popuste i HUB-3 | - |
-| **Faza 2** | **Sloj Pohrane (Storage Abstraction & Adapter)** | ⚪ Čeka | In-memory CRUD testovi, sekvenca računa bez rupa, export/import | - |
+| **Faza 1** | **Domena, Validacije i Poslovna Matematika (Core Engine)** | 🟢 **ZAVRŠENO** | 100% prolaznost Vitest testova za OIB (ISO 7064), IBAN (MOD 97), popuste i HUB-3 | 2026-10-24 |
+| **Faza 2** | **Sloj Pohrane (Storage Abstraction & Adapter)** | 🟡 **SLJEDEĆA NA REDU** | In-memory CRUD testovi, sekvenca računa bez rupa, export/import | - |
 | **Faza 3** | **Dizajn Sustav & Sharp UI Primitivi** | ⚪ Čeka | Responzivnost (375px/1440px), OibInput, IbanInput bank lookup | - |
 | **Faza 4** | **Generator Kodova i PDF Engine** | ⚪ Čeka | HUB-3 PDF417 skenabilan m-bankingom, PDF export < 300ms | - |
 | **Faza 5** | **Ekran za Izdavanje Računa & Workflow** | ⚪ Čeka | Izdavanje računa tipkovnicom < 30s, statusni automat, immutability | - |
@@ -31,6 +31,12 @@ Ovaj dokument služi kao jedinstveni izvor istine za praćenje napretka, evident
 | 2026-10-24 13:33 | Faza 0 | `packages/core` | Inicijalizacija TypeScript biblioteke za domenu s Vitest konfiguracijom | Završeno |
 | 2026-10-24 13:34 | Faza 0 | `apps/web` | Inicijalizacija React 19 + Vite + Tailwind CSS aplikacije s Midnight Amethyst temom i OPFS zaglavljima | Završeno |
 | 2026-10-24 13:36 | Faza 0 | Monorepo verifikacija | Pokrenut `npm run build` i `npm run test` (Vitest: 1 passed) | 🟢 Gate-Check PROŠAO |
+| 2026-10-24 13:41 | Faza 1 | `packages/core/src/utils/oib.ts` | Implementiran ISO 7064 MOD 11, 10 algoritam za OIB validaciju | Završeno |
+| 2026-10-24 13:41 | Faza 1 | `packages/core/src/utils/iban.ts` | Implementiran ISO 13616 MOD 97 IBAN validator i registar banaka HNB | Završeno |
+| 2026-10-24 13:42 | Faza 1 | `packages/core/src/utils/calculator.ts` | Precizni kalkulator stavki, rekapitulacije i paušalnog praga (centi) | Završeno |
+| 2026-10-24 13:42 | Faza 1 | `packages/core/src/utils/hub3.ts` | HUB-3 / HUB-3A HRVHUB30 generator i parser naloga za plaćanje | Završeno |
+| 2026-10-24 13:44 | Faza 1 | `packages/core/tests/*.test.ts` | 32 jedinična testa (OIB, IBAN, calculator, hub3) | 🟢 Gate-Check PROŠAO (32/32) |
+| 2026-10-24 13:45 | Faza 1 | `apps/web/src/App.tsx` | Dodan interaktivni Core Engine playground u UI | Završeno |
 
 ---
 
