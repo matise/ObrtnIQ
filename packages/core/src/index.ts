@@ -13,4 +13,4 @@ export * from './storage/sequence';
 export * from './storage/crypto-backup';
 export * from './storage/memory-adapter';
 export * from './logger';
-
+export * from './domain/workflow';

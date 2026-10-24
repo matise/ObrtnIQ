@@ -24,6 +24,18 @@ import {
   type PdfValidationResult as CorePdfValidationResult
 } from '@obrtniq/core';
 
+export interface InvoiceItemPreview {
+  id: string;
+  redniBroj?: number;
+  kpdSifra: string;
+  naziv: string;
+  jedinicaMjere?: string;
+  kolicina: number;
+  jedinicnaCijena: number;
+  popustPostotak?: number;
+  ukupno: number;
+}
+
 export interface InvoiceLivePreviewProps {
   obrtNaziv: string;
   obrtVlasnik: string;
@@ -36,6 +48,8 @@ export interface InvoiceLivePreviewProps {
   partnerOib: string;
   isPartnerOibValid: boolean;
 
+  vrstaDokumenta?: string; // 'RACUN' | 'PONUDA' | 'STORNO_RACUN'
+  statusDokumenta?: string; // 'NACRT' | 'IZDANO' | 'STORNIRANO'
   brojDokumenta: string;
   datumIzdavanja: string;
   datumDospijeca: string;
@@ -43,10 +57,14 @@ export interface InvoiceLivePreviewProps {
   nacinPlacanja: string;
   taxZone: string;
 
-  kpdSifra: string;
-  kpdNaziv: string;
-  kolicina: number;
-  cijena: number;
+  // Više stavaka dokumenta
+  items?: InvoiceItemPreview[];
+
+  // Fallback za pojedinačnu stavku (kompatibilnost)
+  kpdSifra?: string;
+  kpdNaziv?: string;
+  kolicina?: number;
+  cijena?: number;
 }
 
 export function InvoiceLivePreview(props: InvoiceLivePreviewProps) {
@@ -60,7 +78,36 @@ export function InvoiceLivePreview(props: InvoiceLivePreviewProps) {
   const hub3CanvasRef = useRef<HTMLCanvasElement | null>(null);
   const qrCanvasRef = useRef<HTMLCanvasElement | null>(null);
 
-  const ukupno = props.kolicina * props.cijena;
+  // Normalizirana lista stavaka
+  const displayItems = useMemo(() => {
+    if (props.items && props.items.length > 0) {
+      return props.items;
+    }
+    return [
+      {
+        id: 'default-1',
+        redniBroj: 1,
+        kpdSifra: props.kpdSifra || '62.01.11',
+        naziv: props.kpdNaziv || 'Računalno programiranje i razvoj softvera',
+        jedinicaMjere: 'sat',
+        kolicina: props.kolicina || 1,
+        jedinicnaCijena: props.cijena || 0,
+        popustPostotak: 0,
+        ukupno: (props.kolicina || 1) * (props.cijena || 0),
+      },
+    ];
+  }, [props.items, props.kpdSifra, props.kpdNaziv, props.kolicina, props.cijena]);
+
+  const ukupno = useMemo(() => {
+    return displayItems.reduce((acc, it) => acc + it.ukupno, 0);
+  }, [displayItems]);
+
+  const docTitle = props.vrstaDokumenta === 'PONUDA'
+    ? 'Ponuda'
+    : props.vrstaDokumenta === 'STORNO_RACUN'
+    ? 'Storno račun'
+    : 'Račun';
+
   const pozivNaBroj = `HR00 ${props.brojDokumenta.split('/')[0] || '1'}-2026`;
 
   // Validacija hrvatske tipografije i dijakritika u realnom vremenu
@@ -159,24 +206,23 @@ export function InvoiceLivePreview(props: InvoiceLivePreviewProps) {
           kupacNaziv: props.partnerNaziv,
           kupacOib: props.partnerOib,
           kupacAdresa: 'Hrvatska',
-          vrstaDokumentaNaziv: 'RAČUN',
+          vrstaDokumentaNaziv: docTitle.toUpperCase(),
           brojDokumenta: props.brojDokumenta,
           datumIzdavanja: props.datumIzdavanja,
           datumIsporuke: props.datumIsporuke,
           datumDospijeca: props.datumDospijeca,
           nacinPlacanjaNaziv: props.nacinPlacanja,
           pozivNaBroj: pozivNaBroj,
-          stavke: [
-            {
-              rbr: 1,
-              naziv: props.kpdNaziv || 'Računalno programiranje i savjetovanje',
-              kpdSifra: props.kpdSifra,
-              kolicina: props.kolicina,
-              jedinicaMjere: 'kom',
-              jedinicnaCijena: props.cijena,
-              ukupno: props.kolicina * props.cijena,
-            },
-          ],
+          stavke: displayItems.map((item, idx) => ({
+            rbr: item.redniBroj || idx + 1,
+            naziv: item.naziv,
+            kpdSifra: item.kpdSifra,
+            kolicina: item.kolicina,
+            jedinicaMjere: item.jedinicaMjere || 'sat',
+            jedinicnaCijena: item.jedinicnaCijena,
+            popustPostotak: item.popustPostotak || 0,
+            ukupno: item.ukupno,
+          })),
           ukupnoOsnovica: ukupno,
           ukupnoPdv: 0,
           ukupnoIznos: ukupno,
@@ -393,11 +439,28 @@ export function InvoiceLivePreview(props: InvoiceLivePreviewProps) {
 
             <div className="text-left sm:text-right space-y-1">
               <div
-                className={`font-bold text-sm tracking-tight ${
+                className={`font-bold text-sm tracking-tight flex items-center gap-2 sm:justify-end ${
                   isPaper ? 'text-slate-900' : 'text-[var(--accent-primary)]'
                 }`}
               >
-                Račun br. {props.brojDokumenta}
+                <span>{docTitle} br. {props.brojDokumenta}</span>
+                {props.statusDokumenta && (
+                  <span
+                    className={`text-[9px] font-bold px-1.5 py-0.5 border uppercase ${
+                      props.statusDokumenta === 'IZDANO'
+                        ? 'bg-[#064E3B] text-[#10B981] border-[#10B981]/40'
+                        : props.statusDokumenta === 'STORNIRANO'
+                        ? 'bg-[#7F1D1D] text-[#EF4444] border-[#EF4444]/40'
+                        : 'bg-[var(--bg-canvas)] text-[#F59E0B] border-[#F59E0B]/40'
+                    }`}
+                  >
+                    {props.statusDokumenta === 'IZDANO'
+                      ? 'IZDAN'
+                      : props.statusDokumenta === 'STORNIRANO'
+                      ? 'STORNIRAN'
+                      : 'NACRT'}
+                  </span>
+                )}
               </div>
               <div className={isPaper ? 'text-slate-600' : 'text-[var(--text-muted)]'}>
                 Datum izdavanja: {formatHrvatskiDatum(props.datumIzdavanja)}
@@ -475,26 +538,27 @@ export function InvoiceLivePreview(props: InvoiceLivePreviewProps) {
                 </tr>
               </thead>
               <tbody className="divide-y divide-current/10">
-                <tr>
-                  <td className="p-2.5 flow-text">
-                    {/* Naziv bez ikakvog umjetnog skraćivanja / rezanja */}
-                    <div className={`font-semibold text-xs leading-relaxed ${isPaper ? 'text-black' : 'text-white'}`}>
-                      {props.kpdNaziv || 'Usluga'}
-                    </div>
-                    <div
-                      className={`text-[10px] font-bold mt-0.5 ${
-                        isPaper ? 'text-purple-700' : 'text-[var(--accent-primary)]'
-                      }`}
-                    >
-                      KPD: {props.kpdSifra}
-                    </div>
-                  </td>
-                  <td className="p-2.5 text-center tabular-nums">{props.kolicina} sat</td>
-                  <td className="p-2.5 text-right tabular-nums">{formatHrvatskiIznos(props.cijena, false)} €</td>
-                  <td className={`p-2.5 text-right font-bold tabular-nums ${isPaper ? 'text-black' : 'text-white'}`}>
-                    {formatHrvatskiIznos(ukupno)}
-                  </td>
-                </tr>
+                {displayItems.map((item, idx) => (
+                  <tr key={item.id || idx}>
+                    <td className="p-2.5 flow-text">
+                      <div className={`font-semibold text-xs leading-relaxed ${isPaper ? 'text-black' : 'text-white'}`}>
+                        {item.naziv || 'Usluga'}
+                      </div>
+                      <div
+                        className={`text-[10px] font-bold mt-0.5 ${
+                          isPaper ? 'text-purple-700' : 'text-[var(--accent-primary)]'
+                        }`}
+                      >
+                        KPD: {item.kpdSifra}
+                      </div>
+                    </td>
+                    <td className="p-2.5 text-center tabular-nums">{item.kolicina} {item.jedinicaMjere || 'sat'}</td>
+                    <td className="p-2.5 text-right tabular-nums">{formatHrvatskiIznos(item.jedinicnaCijena, false)} €</td>
+                    <td className={`p-2.5 text-right font-bold tabular-nums ${isPaper ? 'text-black' : 'text-white'}`}>
+                      {formatHrvatskiIznos(item.ukupno)}
+                    </td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>
