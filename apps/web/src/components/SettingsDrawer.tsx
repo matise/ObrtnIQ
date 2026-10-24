@@ -26,7 +26,9 @@ import {
   Flame,
   Eye,
   EyeOff,
-  Activity
+  Activity,
+  Globe,
+  Wifi
 } from 'lucide-react';
 import type { ObrtProfil } from '@obrtniq/core';
 import { OibInput, IbanInput } from './controls';
@@ -35,7 +37,7 @@ import { useBackupRestore, type RestoreSummary } from '../hooks/useBackupRestore
 import { useGoogleAuth, type UseGoogleAuthReturn } from '../hooks/useGoogleAuth';
 import { useGoogleDriveSync, type UseGoogleDriveSyncReturn } from '../hooks/useGoogleDriveSync';
 import { useGeminiAssistant, type UseGeminiAssistantReturn } from '../hooks/useGeminiAssistant';
-import { googleAuthService } from '../services/google-auth-service';
+import { googleAuthService, type GoogleAuthFullHealthReport } from '../services/google-auth-service';
 import { googleDriveService } from '../services/google-drive-service';
 import { appLogger } from '../services/logger';
 
@@ -105,6 +107,7 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({
     tokenInfo?: { ok: boolean; scopes: string[]; email?: string; error?: string };
     driveApi?: { ok: boolean; statusText: string; enableUrl?: string };
     geminiApi?: { ok: boolean; msg: string };
+    healthReport?: GoogleAuthFullHealthReport;
   } | null>(null);
 
   useEffect(() => {
@@ -418,34 +421,22 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({
     setIsDiagnosing(true);
     setDiagResult(null);
 
-    const formatCheck = googleAuthService.validateClientIdFormat(googleAuth.clientId);
-    loggerDiag.debug('Google Client ID format provjeren', { valid: formatCheck.valid, msg: formatCheck.message });
+    // Pokreni cjeloviti zdravstveni pregled (Origin, Mreža, Sesija, Token, Scopes)
+    const healthReport = await googleAuthService.checkFullAuthHealth();
 
-    let tokenRes: { ok: boolean; scopes: string[]; email?: string; error?: string } | undefined;
     let driveRes: { ok: boolean; statusText: string; enableUrl?: string } | undefined;
-    let geminiRes: { ok: boolean; msg: string } | undefined;
-
     const token = await googleAuth.getAccessToken();
     if (token) {
-      loggerDiag.debug('OAuth pristupni token aktivan, provjeravam tokeninfo i Drive API...');
-      const inspected = await googleAuthService.inspectToken(token);
-      tokenRes = {
-        ok: inspected.ok,
-        scopes: inspected.scopes,
-        email: inspected.email,
-        error: inspected.error,
-      };
-
+      loggerDiag.debug('OAuth pristupni token aktivan, provjeravam Drive API pristup...');
       const driveCheck = await googleDriveService.testDriveApiAccess(token);
       driveRes = {
         ok: driveCheck.ok,
         statusText: driveCheck.statusText,
         enableUrl: driveCheck.enableUrl,
       };
-    } else {
-      loggerDiag.debug('Nema aktivnog Google OAuth tokena');
     }
 
+    let geminiRes: { ok: boolean; msg: string } | undefined;
     if (gemini.apiKey) {
       loggerDiag.debug('Provjeravam valjanost Gemini API ključa...');
       const ok = await gemini.testKey(gemini.apiKey);
@@ -457,19 +448,30 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({
       };
     }
 
-    loggerDiag.info('Dijagnostika API-ja završena', {
-      clientIdValid: formatCheck.valid,
-      tokenAktivan: !!tokenRes?.ok,
+    loggerDiag.info('Sveobuhvatna dijagnostika API-ja završena', {
+      clientIdValid: healthReport.clientId.validFormat,
+      originValid: healthReport.origin.valid,
+      networkAccountsOk: healthReport.network.googleAccountsOk,
+      sessionValid: healthReport.session.valid,
       driveDostupan: !!driveRes?.ok,
       geminiDostupan: !!geminiRes?.ok,
+      preporukaBroj: healthReport.recommendations.length,
     });
 
     setDiagResult({
-      clientIdValid: formatCheck.valid,
-      clientIdMsg: formatCheck.message,
-      tokenInfo: tokenRes,
+      clientIdValid: healthReport.clientId.validFormat,
+      clientIdMsg: healthReport.clientId.message,
+      tokenInfo: healthReport.tokenInfo
+        ? {
+            ok: healthReport.tokenInfo.ok,
+            scopes: healthReport.tokenInfo.scopes,
+            email: healthReport.tokenInfo.email,
+            error: healthReport.tokenInfo.error,
+          }
+        : undefined,
       driveApi: driveRes,
       geminiApi: geminiRes,
+      healthReport,
     });
     setIsDiagnosing(false);
   };
@@ -1171,7 +1173,87 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({
                         </span>
                       </div>
 
-                      {/* 2. Token & Scopes */}
+                      {/* 2. Web Origin & Sigurnosni GIS Protokol */}
+                      {diagResult.healthReport?.origin && (
+                        <div className="p-2.5 bg-[var(--bg-surface)] border border-[var(--border-subtle)] flex items-start justify-between gap-2">
+                          <div>
+                            <div className="font-bold text-white flex items-center gap-1.5">
+                              {diagResult.healthReport.origin.valid ? (
+                                <CheckCircle2 className="w-3.5 h-3.5 text-[#10B981]" />
+                              ) : (
+                                <AlertTriangle className="w-3.5 h-3.5 text-red-400" />
+                              )}
+                              <Globe className="w-3.5 h-3.5 text-cyan-400 ml-0.5" />
+                              <span>2. Web Origin &amp; GIS Protokol</span>
+                            </div>
+                            <div className="text-[11px] text-[var(--text-muted)] mt-0.5 space-y-0.5">
+                              <div>Ishodište: <span className="text-cyan-300">{diagResult.healthReport.origin.origin}</span></div>
+                              {diagResult.healthReport.origin.warning && (
+                                <div className="text-amber-300">{diagResult.healthReport.origin.warning}</div>
+                              )}
+                            </div>
+                          </div>
+                          <span className={`px-2 py-0.5 text-[10px] font-bold border ${diagResult.healthReport.origin.valid ? 'bg-[#064E3B] text-[#10B981] border-[#10B981]/40' : 'bg-red-950 text-red-400 border-red-500/40'}`}>
+                            {diagResult.healthReport.origin.valid ? (diagResult.healthReport.origin.isLocalhost ? 'LOCALHOST' : 'HTTPS') : 'NEPODRŽANO'}
+                          </span>
+                        </div>
+                      )}
+
+                      {/* 3. Povezanost s Google Poslužiteljima */}
+                      {diagResult.healthReport?.network && (
+                        <div className="p-2.5 bg-[var(--bg-surface)] border border-[var(--border-subtle)] flex items-start justify-between gap-2">
+                          <div>
+                            <div className="font-bold text-white flex items-center gap-1.5">
+                              {diagResult.healthReport.network.googleAccountsOk && diagResult.healthReport.network.googleApisOk ? (
+                                <CheckCircle2 className="w-3.5 h-3.5 text-[#10B981]" />
+                              ) : (
+                                <AlertTriangle className="w-3.5 h-3.5 text-red-400" />
+                              )}
+                              <Wifi className="w-3.5 h-3.5 text-cyan-400 ml-0.5" />
+                              <span>3. Povezanost s Google Poslužiteljima</span>
+                            </div>
+                            <div className="text-[11px] text-[var(--text-muted)] mt-0.5 flex flex-wrap gap-x-3 gap-y-1">
+                              <span>accounts.google.com: <b className={diagResult.healthReport.network.googleAccountsOk ? 'text-[#10B981]' : 'text-red-400'}>{diagResult.healthReport.network.googleAccountsOk ? 'DOSTUPAN' : 'NEDOSTUPAN'}</b></span>
+                              <span>googleapis.com: <b className={diagResult.healthReport.network.googleApisOk ? 'text-[#10B981]' : 'text-red-400'}>{diagResult.healthReport.network.googleApisOk ? 'DOSTUPAN' : 'NEDOSTUPAN'}</b></span>
+                              {diagResult.healthReport.network.latencyMs !== undefined && (
+                                <span className="text-cyan-300">({diagResult.healthReport.network.latencyMs} ms)</span>
+                              )}
+                            </div>
+                          </div>
+                          <span className={`px-2 py-0.5 text-[10px] font-bold border ${diagResult.healthReport.network.googleAccountsOk ? 'bg-[#064E3B] text-[#10B981] border-[#10B981]/40' : 'bg-red-950 text-red-400 border-red-500/40'}`}>
+                            {diagResult.healthReport.network.googleAccountsOk ? 'ONLINE' : 'OFFLINE'}
+                          </span>
+                        </div>
+                      )}
+
+                      {/* 4. Integritet Lokalne Sesije & Kripto Sidro */}
+                      {diagResult.healthReport?.session && (
+                        <div className="p-2.5 bg-[var(--bg-surface)] border border-[var(--border-subtle)] space-y-1">
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="font-bold text-white flex items-center gap-1.5">
+                              {diagResult.healthReport.session.valid ? (
+                                <CheckCircle2 className="w-3.5 h-3.5 text-[#10B981]" />
+                              ) : (
+                                <Shield className="w-3.5 h-3.5 text-[var(--text-muted)]" />
+                              )}
+                              <span>4. Lokalna Sesija &amp; Kripto Sidro</span>
+                            </div>
+                            <span className={`px-2 py-0.5 text-[10px] font-bold border ${diagResult.healthReport.session.valid ? 'bg-[#064E3B] text-[#10B981] border-[#10B981]/40' : 'bg-slate-800 text-slate-400 border-slate-700'}`}>
+                              {diagResult.healthReport.session.valid ? (diagResult.healthReport.session.tokenStatus === 'EXPIRED' ? 'ISTEKAO TOKEN' : 'VALIDNA SESIJA') : 'NEMA SESIJE'}
+                            </span>
+                          </div>
+                          {diagResult.healthReport.session.identity && (
+                            <div className="text-[11px] text-[var(--text-secondary)] space-y-0.5">
+                              <div>Google Sub ID: <code className="text-amber-300">{diagResult.healthReport.session.identity.googleSub}</code> ✓ (21-znamenkasti kripto hash)</div>
+                              {diagResult.healthReport.session.reason && (
+                                <div className="text-amber-400">{diagResult.healthReport.session.reason}</div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* 5. Token & Scopes */}
                       <div className="p-2.5 bg-[var(--bg-surface)] border border-[var(--border-subtle)] space-y-1.5">
                         <div className="flex items-start justify-between gap-2">
                           <div className="font-bold text-white flex items-center gap-1.5">
@@ -1180,7 +1262,7 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({
                             ) : (
                               <AlertTriangle className="w-3.5 h-3.5 text-[var(--text-muted)]" />
                             )}
-                            <span>2. OAuth Token &amp; Dozvole (Scopes)</span>
+                            <span>5. OAuth Token &amp; Dozvole (Scopes)</span>
                           </div>
                           <span className={`px-2 py-0.5 text-[10px] font-bold border ${diagResult.tokenInfo?.ok ? 'bg-[#064E3B] text-[#10B981] border-[#10B981]/40' : 'bg-slate-800 text-slate-400 border-slate-700'}`}>
                             {diagResult.tokenInfo?.ok ? 'AKTIVAN TOKEN' : 'NIJE PRIJAVLJEN'}
@@ -1191,12 +1273,21 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({
                             <div className="text-[11px] text-[var(--text-secondary)] space-y-1">
                               <div>Korisnik: <span className="text-white">{diagResult.tokenInfo.email || googleAuth.identity?.email}</span></div>
                               <div className="flex flex-wrap gap-1 mt-1">
-                                {diagResult.tokenInfo.scopes.map((sc) => (
-                                  <span key={sc} className="px-1.5 py-0.5 bg-[var(--bg-canvas)] border border-[var(--border-subtle)] text-[10px] text-cyan-300">
-                                    {sc.split('/').pop()}
-                                  </span>
-                                ))}
+                                {diagResult.tokenInfo.scopes.map((sc) => {
+                                  const shortName = sc.split('/').pop() || sc;
+                                  const isDrive = sc.includes('drive.appdata');
+                                  return (
+                                    <span key={sc} className={`px-1.5 py-0.5 border text-[10px] ${isDrive ? 'bg-[#064E3B] border-[#10B981] text-[#10B981] font-bold' : 'bg-[var(--bg-canvas)] border-[var(--border-subtle)] text-cyan-300'}`}>
+                                      {shortName}
+                                    </span>
+                                  );
+                                })}
                               </div>
+                              {diagResult.healthReport?.tokenInfo?.scopeVerification.hasDrive === false && (
+                                <div className="text-amber-300 text-[10px] mt-1 font-sans">
+                                  ⚠ Dozvola <code>drive.appdata</code> nedostaje! Ponovno se prijavite i označite kvačicu za Drive pohranu.
+                                </div>
+                              )}
                             </div>
                           ) : (
                             <div className="text-[11px] text-[#EF4444]">{diagResult.tokenInfo.error}</div>
@@ -1208,7 +1299,7 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({
                         )}
                       </div>
 
-                      {/* 3. Google Drive API */}
+                      {/* 6. Google Drive API */}
                       <div className="p-2.5 bg-[var(--bg-surface)] border border-[var(--border-subtle)] space-y-1.5">
                         <div className="flex items-start justify-between gap-2">
                           <div className="font-bold text-white flex items-center gap-1.5">
@@ -1219,7 +1310,7 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({
                             ) : (
                               <Cloud className="w-3.5 h-3.5 text-[var(--text-muted)]" />
                             )}
-                            <span>3. Google Drive API (appDataFolder)</span>
+                            <span>6. Google Drive API (appDataFolder)</span>
                           </div>
                           <span className={`px-2 py-0.5 text-[10px] font-bold border ${diagResult.driveApi?.ok ? 'bg-[#064E3B] text-[#10B981] border-[#10B981]/40' : diagResult.driveApi ? 'bg-red-950 text-[#EF4444] border-[#EF4444]/40' : 'bg-slate-800 text-slate-400 border-slate-700'}`}>
                             {diagResult.driveApi?.ok ? 'DOSTUPAN' : diagResult.driveApi ? 'NIJE OMOGUĆEN' : 'ČEKA PRIJAVU'}
@@ -1249,7 +1340,7 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({
                         )}
                       </div>
 
-                      {/* 4. Gemini AI Studio */}
+                      {/* 7. Gemini AI Studio */}
                       <div className="p-2.5 bg-[var(--bg-surface)] border border-[var(--border-subtle)] flex items-start justify-between gap-2">
                         <div>
                           <div className="font-bold text-white flex items-center gap-1.5">
@@ -1260,7 +1351,7 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({
                             ) : (
                               <Sparkles className="w-3.5 h-3.5 text-[var(--text-muted)]" />
                             )}
-                            <span>4. Google AI Studio (Gemini)</span>
+                            <span>7. Google AI Studio (Gemini)</span>
                           </div>
                           <div className="text-[11px] text-[var(--text-muted)] mt-0.5">
                             {diagResult.geminiApi?.msg || (gemini.apiKey ? 'Spreman za test' : 'Ključ nije unesen')}
@@ -1270,6 +1361,21 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({
                           {diagResult.geminiApi?.ok ? 'POVEZANO' : diagResult.geminiApi ? 'GREŠKA' : 'NIJE POSTAVLJENO'}
                         </span>
                       </div>
+
+                      {/* 8. Akcijske Preporuke za Otklanjanje Grešaka */}
+                      {diagResult.healthReport?.recommendations && diagResult.healthReport.recommendations.length > 0 && (
+                        <div className="p-3 bg-amber-950/40 border border-amber-500/40 space-y-1.5 mt-2">
+                          <div className="font-bold text-amber-300 flex items-center gap-1.5 text-xs">
+                            <AlertTriangle className="w-3.5 h-3.5 text-amber-400" />
+                            <span>Preporuke i Koraci za Otklanjanje Poteškoća:</span>
+                          </div>
+                          <ul className="list-disc pl-5 space-y-1 text-[11px] text-amber-200/90 leading-relaxed font-sans">
+                            {diagResult.healthReport.recommendations.map((rec, i) => (
+                              <li key={i}>{rec}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>

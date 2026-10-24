@@ -6,6 +6,69 @@ export interface GoogleAuthTokens {
   expiresAt: number; // Unix timestamp in ms
 }
 
+export interface GoogleAuthErrorDiagnosis {
+  code: string;
+  userMessage: string;
+  actionableAdvice: string;
+  technicalDetails?: string;
+  isRecoverable: boolean;
+}
+
+export interface GoogleAuthOriginCheck {
+  valid: boolean;
+  origin: string;
+  protocol: string;
+  isLocalhost: boolean;
+  warning?: string;
+}
+
+export interface GoogleAuthNetworkCheck {
+  googleAccountsOk: boolean;
+  googleApisOk: boolean;
+  latencyMs: number;
+  error?: string;
+}
+
+export interface GoogleAuthSessionIntegrity {
+  valid: boolean;
+  reason?: string;
+  identity?: GoogleAuthIdentity;
+  tokenStatus: 'VALID' | 'EXPIRED' | 'MISSING';
+  remainingMinutes: number;
+}
+
+export interface GoogleAuthScopeVerification {
+  hasProfile: boolean;
+  hasEmail: boolean;
+  hasDrive: boolean;
+  allRequiredGranted: boolean;
+  grantedScopes: string[];
+  missingScopes: string[];
+}
+
+export interface GoogleAuthFullHealthReport {
+  timestamp: string;
+  clientId: {
+    configured: boolean;
+    value: string;
+    validFormat: boolean;
+    message?: string;
+  };
+  origin: GoogleAuthOriginCheck;
+  network: GoogleAuthNetworkCheck;
+  sdkLoaded: boolean;
+  session: GoogleAuthSessionIntegrity;
+  tokenInfo?: {
+    ok: boolean;
+    scopes: string[];
+    email?: string;
+    error?: string;
+    scopeVerification: GoogleAuthScopeVerification;
+  };
+  overallStatus: 'HEALTHY' | 'DEGRADED' | 'CONFIG_REQUIRED' | 'OFFLINE';
+  recommendations: string[];
+}
+
 const STORAGE_KEY_IDENTITY = 'obrtniq_google_identity';
 const STORAGE_KEY_TOKENS = 'obrtniq_google_tokens';
 const STORAGE_KEY_CLIENT_ID = 'obrtniq_google_client_id';
@@ -133,6 +196,320 @@ class GoogleAuthService {
         error: err?.message || 'Neuspjelo dohvaćanje informacija o tokenu.',
       };
     }
+  }
+
+  /**
+   * Provjerava je li trenutni protokol i domena podržana od strane Google OAuth servisa
+   */
+  public validateAuthorizedOrigin(): GoogleAuthOriginCheck {
+    if (typeof window === 'undefined') {
+      return { valid: true, origin: '', protocol: '', isLocalhost: true };
+    }
+    const origin = window.location.origin;
+    const protocol = window.location.protocol;
+    const hostname = window.location.hostname;
+    const isLocalhost = hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '[::1]';
+
+    if (protocol === 'http:' && !isLocalhost) {
+      const warning = `UPOZORENJE: Google OAuth zabranjuje HTTP protokol za vanjske domene (${origin}). Google prijava će raditi samo na HTTPS protokolu ili na localhost-u.`;
+      appLogger.scope('AUTH:GOOGLE:ORIGIN').warn(warning, { origin, protocol });
+      return { valid: false, origin, protocol, isLocalhost: false, warning };
+    }
+
+    appLogger.scope('AUTH:GOOGLE:ORIGIN').debug('Domena i protokol su valjani za Google OAuth', { origin, protocol, isLocalhost });
+    return { valid: true, origin, protocol, isLocalhost };
+  }
+
+  /**
+   * Provjerava jesu li Google poslužitelji dostupni putem klijentske mreže
+   */
+  public async testGoogleEndpointsReachability(): Promise<GoogleAuthNetworkCheck> {
+    const t0 = performance.now();
+    let googleAccountsOk = false;
+    let googleApisOk = false;
+    let error: string | undefined;
+
+    try {
+      await fetch('https://accounts.google.com/gsi/client', { method: 'HEAD', mode: 'no-cors' });
+      googleAccountsOk = true;
+    } catch (e: any) {
+      error = `Neuspjelo povezivanje s accounts.google.com: ${e?.message}`;
+      appLogger.scope('AUTH:GOOGLE:NETWORK').warn(error);
+    }
+
+    try {
+      await fetch('https://www.googleapis.com/oauth2/v3/userinfo', { method: 'HEAD', mode: 'no-cors' });
+      googleApisOk = true;
+    } catch (e: any) {
+      if (!error) error = `Neuspjelo povezivanje s googleapis.com: ${e?.message}`;
+      appLogger.scope('AUTH:GOOGLE:NETWORK').warn(`Neuspjelo povezivanje s googleapis.com: ${e?.message}`);
+    }
+
+    const latencyMs = Math.round(performance.now() - t0);
+    appLogger.scope('AUTH:GOOGLE:NETWORK').info('Provjera dostupnosti Google poslužitelja završena', {
+      googleAccountsOk,
+      googleApisOk,
+      latencyMs,
+    });
+
+    return {
+      googleAccountsOk,
+      googleApisOk,
+      latencyMs,
+      error,
+    };
+  }
+
+  /**
+   * Provjerava integritet i valjanost lokalno pohranjene Google sesije
+   */
+  public verifySessionIntegrity(): GoogleAuthSessionIntegrity {
+    const rawIdentity = localStorage.getItem(STORAGE_KEY_IDENTITY);
+    const rawTokens = localStorage.getItem(STORAGE_KEY_TOKENS);
+    const remainingMinutes = this.getTokenRemainingMinutes();
+
+    if (!rawIdentity) {
+      return {
+        valid: false,
+        reason: 'Nema pohranjenog korisničkog identiteta u lokalnoj pohrani.',
+        tokenStatus: 'MISSING',
+        remainingMinutes: 0,
+      };
+    }
+
+    try {
+      const identity = JSON.parse(rawIdentity) as GoogleAuthIdentity;
+      if (!identity.email || !identity.googleSub || identity.provider !== 'GOOGLE') {
+        appLogger.scope('AUTH:GOOGLE:INTEGRITY').warn('Oštećen identitet u lokalnoj pohrani, čistim nevažeće podatke.');
+        this.clearSession();
+        return {
+          valid: false,
+          reason: 'Identitet ima nevažeću strukturu ili nedostaje googleSub/email.',
+          tokenStatus: 'MISSING',
+          remainingMinutes: 0,
+        };
+      }
+
+      let tokenStatus: 'VALID' | 'EXPIRED' | 'MISSING' = 'MISSING';
+      if (rawTokens) {
+        try {
+          const tokens = JSON.parse(rawTokens) as GoogleAuthTokens;
+          if (tokens.accessToken && tokens.expiresAt) {
+            tokenStatus = Date.now() < tokens.expiresAt ? 'VALID' : 'EXPIRED';
+          }
+        } catch {
+          tokenStatus = 'MISSING';
+        }
+      }
+
+      appLogger.scope('AUTH:GOOGLE:INTEGRITY').debug('Integritet sesije uspješno provjeren', {
+        email: identity.email,
+        sub: identity.googleSub,
+        tokenStatus,
+        remainingMinutes,
+      });
+
+      return {
+        valid: true,
+        identity,
+        tokenStatus,
+        remainingMinutes,
+      };
+    } catch (e: any) {
+      appLogger.scope('AUTH:GOOGLE:INTEGRITY').error('JSON greška pri parsiranju identiteta, čistim sesiju:', { error: e?.message });
+      this.clearSession();
+      return {
+        valid: false,
+        reason: `JSON greška: ${e?.message}`,
+        tokenStatus: 'MISSING',
+        remainingMinutes: 0,
+      };
+    }
+  }
+
+  /**
+   * Provjerava jesu li dodijeljeni svi potrebni OAuth scope-ovi (posebice drive.appdata)
+   */
+  public verifyScopesGranted(scopes: string[]): GoogleAuthScopeVerification {
+    const normalized = scopes.map((s) => s.trim().toLowerCase());
+    const hasProfile = normalized.some((s) => s.includes('profile') || s.includes('userinfo.profile'));
+    const hasEmail = normalized.some((s) => s.includes('email') || s.includes('userinfo.email'));
+    const hasDrive = normalized.some((s) => s.includes('drive.appdata'));
+    const allRequiredGranted = hasProfile && hasEmail && hasDrive;
+
+    const missingScopes: string[] = [];
+    if (!hasProfile) missingScopes.push('profile');
+    if (!hasEmail) missingScopes.push('email');
+    if (!hasDrive) missingScopes.push('drive.appdata');
+
+    if (!allRequiredGranted) {
+      appLogger.scope('AUTH:GOOGLE:SCOPES').warn('Nedostaju ključne Google dozvole (scopes)', {
+        granted: scopes,
+        missing: missingScopes,
+      });
+    } else {
+      appLogger.scope('AUTH:GOOGLE:SCOPES').debug('Sve potrebne Google dozvole su uspješno dodijeljene.', {
+        granted: scopes,
+      });
+    }
+
+    return {
+      hasProfile,
+      hasEmail,
+      hasDrive,
+      allRequiredGranted,
+      grantedScopes: scopes,
+      missingScopes,
+    };
+  }
+
+  /**
+   * Detaljno analizira Google OAuth greške i vraća strukturiranu dijagnozu i preporuku za korisnika
+   */
+  public diagnoseAuthError(rawError: any): GoogleAuthErrorDiagnosis {
+    const msg = (typeof rawError === 'string' ? rawError : rawError?.message || rawError?.error || '').toLowerCase();
+    const technical = rawError?.stack || (typeof rawError === 'object' ? JSON.stringify(rawError) : String(rawError));
+
+    let diagnosis: GoogleAuthErrorDiagnosis;
+
+    if (msg.includes('popup_closed') || msg.includes('closed by user')) {
+      diagnosis = {
+        code: 'POPUP_CLOSED',
+        userMessage: 'Prijava je prekinuta jer je prozor za prijavu zatvoren.',
+        actionableAdvice: 'Kliknite ponovno na "Prijavi se putem Google računa" i dovršite odabir računa u skočnom prozoru.',
+        technicalDetails: technical,
+        isRecoverable: true,
+      };
+    } else if (msg.includes('access_denied')) {
+      diagnosis = {
+        code: 'ACCESS_DENIED',
+        userMessage: 'Pristup Google računu je odbijen.',
+        actionableAdvice: 'U prozoru prijave morate označiti sve zatražene dozvole (uključujući pristup mapi aplikacije na Driveu).',
+        technicalDetails: technical,
+        isRecoverable: true,
+      };
+    } else if (msg.includes('origin_mismatch') || msg.includes('idpiframe_initialization_failed')) {
+      const currentOrigin = typeof window !== 'undefined' ? window.location.origin : '';
+      diagnosis = {
+        code: 'ORIGIN_MISMATCH',
+        userMessage: 'Domena aplikacije nije autorizirana u Google Cloud konzoli.',
+        actionableAdvice: `Otvorite Google Cloud Console > Credentials > Vaš OAuth Client ID i dodajte točno "${currentOrigin}" u "Authorized JavaScript origins".`,
+        technicalDetails: technical,
+        isRecoverable: false,
+      };
+    } else if (msg.includes('invalid_client') || msg.includes('unauthorized_client')) {
+      diagnosis = {
+        code: 'INVALID_CLIENT',
+        userMessage: 'Google Cloud Client ID nije valjan ili je obrisan.',
+        actionableAdvice: 'Provjerite uneseni Client ID u postavkama. Provjerite da je tip klijenta u Google konzoli "Web application".',
+        technicalDetails: technical,
+        isRecoverable: false,
+      };
+    } else if (msg.includes('network') || msg.includes('failed to fetch')) {
+      diagnosis = {
+        code: 'NETWORK_ERROR',
+        userMessage: 'Nije moguće uspostaviti vezu s Google poslužiteljem.',
+        actionableAdvice: 'Provjerite internetsku vezu, ad-blockere ili vatrozid koji možda blokira accounts.google.com.',
+        technicalDetails: technical,
+        isRecoverable: true,
+      };
+    } else {
+      diagnosis = {
+        code: 'UNKNOWN_AUTH_ERROR',
+        userMessage: rawError?.message || 'Neočekivana greška pri Google autentifikaciji.',
+        actionableAdvice: 'Pokušajte ponovno osvježiti stranicu ili provjerite postavke u tabu Google & AI.',
+        technicalDetails: technical,
+        isRecoverable: true,
+      };
+    }
+
+    appLogger.scope('AUTH:GOOGLE:DIAGNOSE').warn('Dijagnosticirana greška autentifikacije:', {
+      kod: diagnosis.code,
+      poruka: diagnosis.userMessage,
+      savjet: diagnosis.actionableAdvice,
+    });
+
+    return diagnosis;
+  }
+
+  /**
+   * Pokreće sveobuhvatnu analizu zdravlja Google računa, Client ID-a, mreže i sesije
+   */
+  public async checkFullAuthHealth(): Promise<GoogleAuthFullHealthReport> {
+    appLogger.scope('AUTH:GOOGLE:HEALTH').info('Pokrećem sveobuhvatnu analizu zdravlja Google računa i autentifikacije...');
+
+    const origin = this.validateAuthorizedOrigin();
+    const network = await this.testGoogleEndpointsReachability();
+    const session = this.verifySessionIntegrity();
+    const clientIdVal = this.getEffectiveClientId();
+    const formatCheck = this.validateClientIdFormat(clientIdVal);
+
+    const recommendations: string[] = [];
+    let overallStatus: 'HEALTHY' | 'DEGRADED' | 'CONFIG_REQUIRED' | 'OFFLINE' = 'HEALTHY';
+
+    if (!network.googleAccountsOk) {
+      overallStatus = 'OFFLINE';
+      recommendations.push('Uređaj nema pristup Google poslužiteljima. Provjerite internetsku vezu.');
+    }
+
+    if (!formatCheck.valid) {
+      if (overallStatus !== 'OFFLINE') overallStatus = 'CONFIG_REQUIRED';
+      recommendations.push('Unesite valjani Google Cloud Client ID (koji završava sa .apps.googleusercontent.com).');
+    }
+
+    if (!origin.valid) {
+      if (overallStatus === 'HEALTHY') overallStatus = 'DEGRADED';
+      recommendations.push(origin.warning || 'Protokol mora biti HTTPS za vanjske domene.');
+    }
+
+    let tokenInfo: any = undefined;
+    if (session.valid && session.tokenStatus === 'VALID') {
+      const storedTokens = this.getStoredTokens();
+      if (storedTokens?.accessToken) {
+        const inspected = await this.inspectToken(storedTokens.accessToken);
+        const scopeVer = this.verifyScopesGranted(inspected.scopes);
+        tokenInfo = {
+          ...inspected,
+          scopeVerification: scopeVer,
+        };
+
+        if (!scopeVer.hasDrive) {
+          if (overallStatus === 'HEALTHY') overallStatus = 'DEGRADED';
+          recommendations.push('Korisnik nije odobrio dozvolu za Google Drive (appdata). Sinkronizacija u oblak neće raditi bez ponovne prijave.');
+        }
+      }
+    } else if (session.valid && session.tokenStatus === 'EXPIRED') {
+      if (overallStatus === 'HEALTHY') overallStatus = 'DEGRADED';
+      recommendations.push('Google pristupni token je istekao. Pokrenite tiho obnavljanje ili ponovnu prijavu.');
+    }
+
+    if (recommendations.length === 0) {
+      recommendations.push('Google autentifikacija, sesija i dozvole su u potpunosti ispravni i spremni za rad.');
+    }
+
+    appLogger.scope('AUTH:GOOGLE:HEALTH').info('Sveobuhvatna analiza završena', {
+      overallStatus,
+      sessionValid: session.valid,
+      tokenStatus: session.tokenStatus,
+      recommendationsCount: recommendations.length,
+    });
+
+    return {
+      timestamp: new Date().toISOString(),
+      clientId: {
+        configured: this.hasCustomClientId(),
+        value: clientIdVal,
+        validFormat: formatCheck.valid,
+        message: formatCheck.message,
+      },
+      origin,
+      network,
+      sdkLoaded: this.scriptLoaded || !!window.google?.accounts,
+      session,
+      tokenInfo,
+      overallStatus,
+      recommendations,
+    };
   }
 
   public getEffectiveClientId(): string {
@@ -264,8 +641,11 @@ class GoogleAuthService {
                 });
                 resolve(response.access_token);
               } else {
+                const diagnosis = this.diagnoseAuthError(response.error);
                 appLogger.scope('AUTH:GOOGLE:SILENT').warn('Tiho obnavljanje tokena nije vratilo access_token:', {
                   error: response.error,
+                  kod: diagnosis.code,
+                  poruka: diagnosis.userMessage,
                 });
                 resolve(null);
               }
@@ -356,9 +736,15 @@ class GoogleAuthService {
           scope: scopes,
           callback: async (response) => {
             if (response.error || !response.access_token) {
-              const err = response.error || 'Prijava je otkazana ili neuspjela.';
-              appLogger.scope('AUTH:GOOGLE:LOGIN').warn('Google prijava otkazana ili neuspjela od strane korisnika:', { error: err });
-              reject(new Error(err));
+              const rawErr = response.error || 'Prijava je otkazana ili neuspjela.';
+              const diagnosis = this.diagnoseAuthError(rawErr);
+              appLogger.scope('AUTH:GOOGLE:LOGIN').warn('Google prijava neuspjela ili otkazana:', {
+                error: rawErr,
+                kod: diagnosis.code,
+                poruka: diagnosis.userMessage,
+                savjet: diagnosis.actionableAdvice,
+              });
+              reject(new Error(`${diagnosis.userMessage} ${diagnosis.actionableAdvice}`));
               return;
             }
 

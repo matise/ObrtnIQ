@@ -1,6 +1,11 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { GoogleAuthIdentity } from '@obrtniq/core';
-import { googleAuthService } from '../services/google-auth-service';
+import { 
+  googleAuthService, 
+  type GoogleAuthErrorDiagnosis, 
+  type GoogleAuthFullHealthReport 
+} from '../services/google-auth-service';
+import { appLogger } from '../services/logger';
 
 export interface UseGoogleAuthReturn {
   identity: GoogleAuthIdentity | null;
@@ -16,6 +21,8 @@ export interface UseGoogleAuthReturn {
   loginDemo: () => void;
   getAccessToken: () => Promise<string | null>;
   refreshAccessToken: () => Promise<string | null>;
+  runFullHealthCheck: () => Promise<GoogleAuthFullHealthReport>;
+  diagnoseError: (err: any) => GoogleAuthErrorDiagnosis;
 }
 
 export function useGoogleAuth(): UseGoogleAuthReturn {
@@ -31,12 +38,22 @@ export function useGoogleAuth(): UseGoogleAuthReturn {
     return googleAuthService.getTokenRemainingMinutes();
   });
 
+  const logger = appLogger.scope('AUTH:HOOK');
+
   useEffect(() => {
     // 1. Provjeri postojeću sesiju pri inicijalizaciji
     const existing = googleAuthService.getStoredIdentity();
     if (existing) {
       setIdentity(existing);
-      setTokenRemainingMinutes(googleAuthService.getTokenRemainingMinutes());
+      const remaining = googleAuthService.getTokenRemainingMinutes();
+      setTokenRemainingMinutes(remaining);
+      logger.info('Učitana postojeća Google sesija pri pokretanju', {
+        email: existing.email,
+        sub: existing.googleSub,
+        tokenPreostaloMinuta: remaining,
+      });
+    } else {
+      logger.debug('Inicijalizacija bez aktivne Google sesije.');
     }
 
     // 2. Automatsko održavanje sesije: provjera svake minute
@@ -48,31 +65,74 @@ export function useGoogleAuth(): UseGoogleAuthReturn {
       // tiho obnovi token u pozadini bez ometanja korisnika
       const currentIdentity = googleAuthService.getStoredIdentity();
       if (currentIdentity && remaining <= 5) {
+        logger.info('Token je pri kraju ili istekao (<=5 min), pokrećem pozadinsko tiho obnavljanje...');
         const refreshed = await googleAuthService.requestSilentToken();
         if (refreshed) {
-          setTokenRemainingMinutes(googleAuthService.getTokenRemainingMinutes());
+          const newRemaining = googleAuthService.getTokenRemainingMinutes();
+          setTokenRemainingMinutes(newRemaining);
+          logger.info('Automatsko tiho obnavljanje uspješno', { novoTrajanjeMinuta: newRemaining });
+        } else {
+          logger.warn('Automatsko tiho obnavljanje tokena nije uspjelo (korisnik će možda morati ponoviti prijavu).');
         }
       }
     }, 60000);
 
-    return () => clearInterval(interval);
+    // 3. Cross-Tab sinkronizacija sesije (ako se korisnik prijavi ili odjavi u drugom tabu)
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'obrtniq_google_identity' || e.key === 'obrtniq_google_tokens' || e.key === 'obrtniq_google_client_id') {
+        logger.info('Detektirana promjena stanja Google sesije u drugom tabu preglednika', { kljuc: e.key });
+        const updatedIdentity = googleAuthService.getStoredIdentity();
+        setIdentity(updatedIdentity);
+        setTokenRemainingMinutes(googleAuthService.getTokenRemainingMinutes());
+        setClientIdState(googleAuthService.getCustomClientId());
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('storage', handleStorageChange);
+    };
   }, []);
 
   const setClientId = useCallback((newId: string) => {
+    logger.info('Ažuriranje Google Client ID-a u stanju hooka', {
+      duzina: newId.trim().length,
+      postavljen: Boolean(newId.trim()),
+    });
     googleAuthService.setCustomClientId(newId);
     setClientIdState(newId);
   }, []);
 
   const login = useCallback(async () => {
+    const t0 = performance.now();
+    logger.info('Pokretanje Google OAuth prijave iz korisničkog sučelja...');
     try {
       setIsLoading(true);
       setError(null);
       const res = await googleAuthService.requestLogin();
       setIdentity(res.identity);
-      setTokenRemainingMinutes(googleAuthService.getTokenRemainingMinutes());
+      const remaining = googleAuthService.getTokenRemainingMinutes();
+      setTokenRemainingMinutes(remaining);
+      const trajanjeMs = Math.round(performance.now() - t0);
+      logger.info('Korisnik uspješno prijavljen u sustav', {
+        email: res.identity.email,
+        sub: res.identity.googleSub,
+        trajanjeMs,
+      });
     } catch (err: any) {
-      const msg = err?.message || 'Greška pri prijavi putem Google računa.';
-      setError(msg);
+      const trajanjeMs = Math.round(performance.now() - t0);
+      const diagnosis = googleAuthService.diagnoseAuthError(err);
+      const friendlyMessage = `${diagnosis.userMessage} ${diagnosis.actionableAdvice}`;
+      setError(friendlyMessage);
+      logger.error('Google prijava nije uspjela:', {
+        trajanjeMs,
+        kod: diagnosis.code,
+        poruka: diagnosis.userMessage,
+        savjet: diagnosis.actionableAdvice,
+        stack: err?.stack,
+      });
       throw err;
     } finally {
       setIsLoading(false);
@@ -80,6 +140,7 @@ export function useGoogleAuth(): UseGoogleAuthReturn {
   }, []);
 
   const loginDemo = useCallback(() => {
+    logger.info('Korisnik aktivirao offline demo profil');
     setError(null);
     const demo = googleAuthService.loginDemoUser();
     setIdentity(demo);
@@ -87,6 +148,7 @@ export function useGoogleAuth(): UseGoogleAuthReturn {
   }, []);
 
   const logout = useCallback(() => {
+    logger.info('Korisnik zatražio odjavu sa svog Google računa');
     googleAuthService.clearSession();
     setIdentity(null);
     setTokenRemainingMinutes(0);
@@ -100,18 +162,22 @@ export function useGoogleAuth(): UseGoogleAuthReturn {
     }
     // Ako nema aktivnog tokena, a korisnik je prijavljen:
     if (identity) {
+      logger.debug('Token nije u predmemoriji ili je istekao, pokušavam tiho obnavljanje...');
       // 1. Prvo pokušaj tiho (silent) pozadinsko obnavljanje
       const silentToken = await googleAuthService.requestSilentToken();
       if (silentToken) {
         setTokenRemainingMinutes(googleAuthService.getTokenRemainingMinutes());
+        logger.info('Tiho obnavljanje uspješno osiguralo novi pristupni token');
         return silentToken;
       }
       // 2. Ako tiho obnavljanje ne uspije (npr. odjava iz Googlea), zatraži interaktivnu prijavu
       try {
+        logger.warn('Tiho obnavljanje nije uspjelo, pokrećem interaktivnu prijavu...');
         const res = await googleAuthService.requestLogin();
         setTokenRemainingMinutes(googleAuthService.getTokenRemainingMinutes());
         return res.accessToken;
-      } catch {
+      } catch (err: any) {
+        logger.error('Interaktivna obnova tokena nije uspjela:', { error: err?.message });
         return null;
       }
     }
@@ -119,15 +185,26 @@ export function useGoogleAuth(): UseGoogleAuthReturn {
   }, [identity]);
 
   const refreshAccessToken = useCallback(async (): Promise<string | null> => {
+    logger.info('Zatraženo ručno osvježavanje Google pristupnog tokena');
     const res = await googleAuthService.requestSilentToken();
     if (res) {
       setTokenRemainingMinutes(googleAuthService.getTokenRemainingMinutes());
+      logger.info('Ručno tiho osvježavanje tokena uspješno');
       return res;
     }
+    logger.info('Tiho osvježavanje nije bilo moguće, pokrećem interaktivni dijalog...');
     const loginRes = await googleAuthService.requestLogin();
     setIdentity(loginRes.identity);
     setTokenRemainingMinutes(googleAuthService.getTokenRemainingMinutes());
     return loginRes.accessToken;
+  }, []);
+
+  const runFullHealthCheck = useCallback(async () => {
+    return await googleAuthService.checkFullAuthHealth();
+  }, []);
+
+  const diagnoseError = useCallback((err: any) => {
+    return googleAuthService.diagnoseAuthError(err);
   }, []);
 
   return {
@@ -144,5 +221,7 @@ export function useGoogleAuth(): UseGoogleAuthReturn {
     loginDemo,
     getAccessToken,
     refreshAccessToken,
+    runFullHealthCheck,
+    diagnoseError,
   };
 }
