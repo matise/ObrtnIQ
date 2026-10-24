@@ -82,6 +82,7 @@ Ovaj dokument služi kao jedinstveni izvor istine za praćenje napretka, evident
 | 2026-10-24 16:55 | Faza 7 | `apps/web/src/services/fiscal-service.ts`, `FiscalDrawer.tsx` | Izrađen klijentski fiskalni servis i ladica s 3 taba (FINA trezor, CIS gotovina s offline redom, e-Račun UBL 2.1) | Završeno |
 | 2026-10-24 16:58 | Faza 7 | `apps/web/src/App.tsx`, `InvoiceLivePreview.tsx` | Integrirana automatska fiskalizacija pri izdavanju gotovinskog računa (F2), prikaz ZKI/JIR-a, fiskalni QR Porezne uprave, A4 ispis i e-Račun preuzimanje | 🟢 Gate-Check PROŠAO |
 | 2026-10-24 17:15 | Refaktoring | `App.tsx`, `engine/*`, `hooks/*`, `components/*` | Dekompozicija monolitnog App.tsx (sa 1.273 na ~115 linija): izdvajanje engine sloja (types, obrt-profile, invoice-mapper), 5 custom hookova i 8 UI podkomponenti | 🟢 Gate-Check PROŠAO (89/89 testova, 0 grešaka) |
+| 2026-10-24 17:21 | Verifikacija | Monorepo (Faza 0 – 7) | Pokrenut cjelokupni Smoke Test cjevovod: 16 testnih datoteka (89/89 testova), tsc -b bez grešaka, Vite produkcijski build i provjera dev servera (200 OK) | 🟢 Gate-Check PROŠAO (100% uspješnost) |
 
 ---
 
