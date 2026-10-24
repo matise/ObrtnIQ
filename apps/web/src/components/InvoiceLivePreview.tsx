@@ -19,7 +19,8 @@ import {
   formatHrvatskiDatum,
   validateHrvatskaTipografija,
   type Hub3Nalog,
-  type EpcQrNalog
+  type EpcQrNalog,
+  type PdfValidationResult as CorePdfValidationResult
 } from '@obrtniq/core';
 
 export interface InvoiceLivePreviewProps {
@@ -52,6 +53,7 @@ export function InvoiceLivePreview(props: InvoiceLivePreviewProps) {
   const [layoutMode, setLayoutMode] = useState<'fluid' | 'a4' | 'pos'>('fluid');
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   const [lastGenTime, setLastGenTime] = useState<number | null>(null);
+  const [pdfValidation, setPdfValidation] = useState<CorePdfValidationResult | null>(null);
 
   const invoiceSheetRef = useRef<HTMLDivElement | null>(null);
   const hub3CanvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -137,6 +139,7 @@ export function InvoiceLivePreview(props: InvoiceLivePreviewProps) {
 
       const result = await generateInvoicePdfFromDom(invoiceSheetRef.current, filename);
       setLastGenTime(result.durationMs);
+      setPdfValidation(result.validation);
 
       // Preuzimanje generiranog PDF-a
       result.doc.save(result.filename);
@@ -279,17 +282,24 @@ export function InvoiceLivePreview(props: InvoiceLivePreviewProps) {
         </div>
       </div>
 
-      {/* Latency & Typography Verification Badge */}
+      {/* Latency, Typography & PDF Structure Verification Badge */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between px-3 py-1.5 bg-[#064E3B] border border-[#10B981]/40 text-[#10B981] font-mono text-xs gap-2 no-print">
         <span className="flex items-center gap-1.5 font-semibold">
           <Zap className="w-3.5 h-3.5 text-[#F59E0B]" />
           {lastGenTime !== null
-            ? `Klijentski PDF generiran u ${lastGenTime} ms!`
+            ? `Klijentski PDF generiran u ${lastGenTime} ms! ${pdfValidation?.isValidPdf ? `• ISO 32000-1 OK (${(pdfValidation.byteLength / 1024).toFixed(1)} KB)` : ''}`
             : 'Spreman Flow Layout engine (nema rezanja znakova, puna širina)'}
         </span>
-        <span className="text-[10px] bg-[#10B981]/20 px-1.5 py-0.5 border border-[#10B981]/30">
-          ČĆŽŠĐ UTF-8 PROLAZI
-        </span>
+        <div className="flex items-center gap-2">
+          {pdfValidation?.isValidPdf && (
+            <span className="text-[10px] bg-[#10B981] text-black font-bold px-1.5 py-0.5">
+              PDF {pdfValidation.version} ISO OK
+            </span>
+          )}
+          <span className="text-[10px] bg-[#10B981]/20 px-1.5 py-0.5 border border-[#10B981]/30">
+            ČĆŽŠĐ UTF-8 PROLAZI
+          </span>
+        </div>
       </div>
 
       {/* The Printable Sheet (Responsive Flow Layout & @media print support) */}

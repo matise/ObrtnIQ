@@ -6,9 +6,6 @@ import {
   FileText, 
   CheckCircle2, 
   Layers,
-  Sparkles,
-  Smartphone,
-  Monitor,
   Printer,
   Lock,
   Unlock
@@ -31,9 +28,6 @@ import type {
 export default function App() {
   const defaultDocType: VrstaDokumenta = 'RACUN';
   const defaultPayment: NacinPlacanja = 'TRANSAKCIJSKI_RACUN';
-
-  // Responsive View Mode Toggle (Desktop vs Mobile 375px preview)
-  const [viewMode, setViewMode] = useState<'desktop' | 'mobile'>('desktop');
 
   // Interactive Form State utilizing all Phase 3 UI Primitives
   const [oib, setOib] = useState('69435151530');
@@ -226,137 +220,8 @@ export default function App() {
           </div>
         </div>
 
-        {/* Phase 3 Live Showroom & Editor Desk */}
-        <div className="border border-[var(--border-strong)] bg-[var(--bg-surface)] p-6 space-y-6 transition-colors">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-[var(--border-subtle)] pb-4 gap-4">
-            <div className="flex items-center space-x-3">
-              <Sparkles className="w-5 h-5 text-[var(--accent-primary)]" />
-              <div>
-                <h2 className="font-bold text-base">Faza 3: Interaktivni Showroom Kontrola i Responzivnost</h2>
-                <p className="text-xs text-[var(--text-muted)]">Isprobajte specijalizirane kontrole u desktopu ili simuliranom 375px mobilnom prikazu</p>
-              </div>
-            </div>
-
-            {/* Desktop vs Mobile Toggle */}
-            <div className="flex items-center space-x-2 bg-[var(--bg-canvas)] p-1 border border-[var(--border-subtle)]">
-              <button
-                type="button"
-                onClick={() => setViewMode('desktop')}
-                className={`flex items-center gap-1.5 px-3 py-1 text-xs font-mono transition-colors ${
-                  viewMode === 'desktop' 
-                    ? 'bg-[var(--accent-primary)] text-black font-semibold shadow-sm' 
-                    : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)]'
-                }`}
-              >
-                <Monitor className="w-3.5 h-3.5" />
-                Desktop (100% širine)
-              </button>
-              <button
-                type="button"
-                onClick={() => setViewMode('mobile')}
-                className={`flex items-center gap-1.5 px-3 py-1 text-xs font-mono transition-colors ${
-                  viewMode === 'mobile' 
-                    ? 'bg-[var(--accent-primary)] text-black font-semibold shadow-sm' 
-                    : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)]'
-                }`}
-              >
-                <Smartphone className="w-3.5 h-3.5" />
-                Mobitel (375px)
-              </button>
-            </div>
-          </div>
-
-          {/* Form & Preview Container */}
-          <div className="w-full">
-            {viewMode === 'mobile' ? (
-              /* Mobile 375px Centered View */
-              <div className="flex justify-center">
-                <div className="w-full max-w-[375px] border-2 border-[var(--border-focus)] p-4 bg-[var(--bg-canvas)] shadow-2xl space-y-5">
-                  <div className="text-center font-mono text-[11px] text-[var(--accent-primary)] pb-2 border-b border-[var(--border-subtle)]">
-                    Simulirani zaslon pametnog telefona (375px)
-                  </div>
-
-                  <TaxZoneToggle value={taxZone} onChange={setTaxZone} />
-
-                  <div>
-                    <label className="text-xs font-mono text-[var(--text-secondary)] font-semibold block mb-1.5">
-                      Naziv Partnera *
-                    </label>
-                    <input
-                      type="text"
-                      value={partnerNaziv}
-                      onChange={(e) => setPartnerNaziv(e.target.value)}
-                      placeholder="Alpha d.o.o."
-                      className="w-full bg-[var(--bg-canvas)] text-white px-3 py-2 font-mono text-sm border border-[var(--border-strong)] focus:border-[var(--border-focus)] outline-none"
-                    />
-                  </div>
-
-                  <OibInput
-                    value={oib}
-                    onChange={(val, valid) => {
-                      setOib(val);
-                      setIsOibValid(valid);
-                    }}
-                    required
-                  />
-
-                  <div>
-                    <IbanInput
-                      value={iban}
-                      onChange={(val, valid, bank) => {
-                        setIban(val);
-                        setIsIbanValid(valid);
-                        setDetectedBank(bank);
-                      }}
-                      required
-                    />
-                    {detectedBank && (
-                      <div className="mt-1 text-[11px] font-mono text-[#10B981]">
-                        Banka: {detectedBank}
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="border border-[var(--border-subtle)] bg-[var(--bg-elevated)]/50 p-3 space-y-3">
-                    <KpdPicker
-                      value={kpdSifra}
-                      onChange={(sifra, naziv) => {
-                        setKpdSifra(sifra);
-                        setKpdNaziv(naziv);
-                      }}
-                      required
-                    />
-                    <div className="grid grid-cols-2 gap-2">
-                      <input
-                        type="number"
-                        min={1}
-                        value={kolicina}
-                        onChange={(e) => setKolicina(Math.max(1, parseInt(e.target.value, 10) || 1))}
-                        className="bg-[var(--bg-canvas)] text-white px-2 py-1.5 font-mono text-sm border border-[var(--border-strong)]"
-                      />
-                      <CurrencyInput value={cijena} onChange={setCijena} />
-                    </div>
-                  </div>
-
-                  <button
-                    type="button"
-                    disabled={!isFormSubmittable}
-                    className={`w-full py-2.5 font-mono text-xs font-bold transition-all flex items-center justify-center gap-2
-                      ${
-                        isFormSubmittable
-                          ? 'bg-[#10B981] text-black cursor-pointer shadow-lg shadow-[#10B981]/20'
-                          : 'bg-[var(--bg-elevated)] text-[var(--text-muted)] cursor-not-allowed border border-[var(--border-strong)]'
-                      }
-                    `}
-                  >
-                    <Printer className="w-4 h-4" />
-                    Izdaj Račun ({(kolicina * cijena).toFixed(2)} €)
-                  </button>
-                </div>
-              </div>
-            ) : (
-              /* Full-Width Desktop Split-Screen Layout (100% of Window Width) */
-              <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 w-full items-start">
+        {/* Workspace: Full-Width Split-Screen Layout (58% Input Desk / 42% Live Invoice Preview) */}
+        <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 w-full items-start">
                 {/* Left Panel: High-Density Input Desk (7 Cols) */}
                 <div className="xl:col-span-7 bg-[var(--bg-surface)] border border-[var(--border-subtle)] p-6 space-y-6 transition-colors no-print">
                   <div className="flex items-center justify-between border-b border-[var(--border-subtle)] pb-3">
@@ -517,9 +382,6 @@ export default function App() {
                   />
                 </div>
               </div>
-            )}
-          </div>
-        </div>
 
         {/* Documentation & Manifest Reference */}
         <div className="border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-6 space-y-4 transition-colors no-print">

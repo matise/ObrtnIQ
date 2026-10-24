@@ -123,15 +123,22 @@
     print-color-adjust: exact !important;
   }
 
-  /* Sakrij navigaciju, kontrolni panel unosa i alate */
-  header,
-  footer,
-  .no-print {
-    display: none !important;
+  /* 1. Sakrij apsolutno sve elemente korisničkog sučelja */
+  body * {
+    visibility: hidden !important;
   }
 
-  /* Glavni spremnik računa zauzima 100% širine papira */
+  /* 2. Pokaži isključivo račun i sav njegov sadržaj */
+  .printable-invoice,
+  .printable-invoice * {
+    visibility: visible !important;
+  }
+
+  /* 3. Pozicioniraj račun na vrh lista uz 100% širine A4 papira */
   .printable-invoice {
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
     width: 100% !important;
     max-width: 100% !important;
     margin: 0 !important;
@@ -140,6 +147,15 @@
     box-shadow: none !important;
     background: #ffffff !important;
     color: #0f172a !important;
+  }
+
+  /* Sakrij gumbe, zaglavlja, navigaciju i sve s no-print klasom */
+  header,
+  footer,
+  button,
+  .no-print {
+    display: none !important;
+    visibility: hidden !important;
   }
 
   /* Sprječavanje lomljenja redaka tablice i barkod sekcije preko stranica */

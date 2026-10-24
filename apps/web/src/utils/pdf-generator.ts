@@ -1,8 +1,14 @@
 import { jsPDF } from 'jspdf';
 import html2canvas from 'html2canvas';
 import { getHub3BarcodeDataUrl, getQrCodeDataUrl } from './barcode';
-import { generateHub3Payload, type Hub3Nalog } from '@obrtniq/core';
-import { generateEpcQrPayload, type EpcQrNalog } from '@obrtniq/core';
+import { 
+  generateHub3Payload, 
+  generateEpcQrPayload, 
+  validatePdfStructure,
+  type Hub3Nalog, 
+  type EpcQrNalog,
+  type PdfValidationResult as CorePdfValidationResult
+} from '@obrtniq/core';
 
 export interface InvoiceItemPdf {
   rbr: number;
@@ -61,6 +67,7 @@ export interface PdfGenerationResult {
   blobUrl: string;
   durationMs: number;
   filename: string;
+  validation: CorePdfValidationResult;
 }
 
 /**
@@ -346,6 +353,8 @@ export async function generateInvoicePdf(data: InvoicePdfData): Promise<PdfGener
   const filename = `Racun_${cleanBroj}.pdf`;
   const blob = doc.output('blob');
   const blobUrl = URL.createObjectURL(blob);
+  const arrayBuffer = doc.output('arraybuffer');
+  const validation = validatePdfStructure(new Uint8Array(arrayBuffer));
 
   return {
     doc,
@@ -353,6 +362,7 @@ export async function generateInvoicePdf(data: InvoicePdfData): Promise<PdfGener
     blobUrl,
     durationMs,
     filename,
+    validation,
   };
 }
 
@@ -361,6 +371,7 @@ export async function generateInvoicePdf(data: InvoicePdfData): Promise<PdfGener
  * 1. Puna podrška za hrvatsku tipografiju (Č, Ć, Ž, Š, Đ) bez gubitka kodne stranice.
  * 2. Prirodni flow layout: tekst se automatski prelama, nema rezanja naziva ili izostavljanja redaka.
  * 3. Brzina generiranja < 150 ms uz visoku 192 DPI rezoluciju.
+ * 4. Ugrađena provjera valjanosti PDF strukture prema ISO 32000-1 normi.
  */
 export async function generateInvoicePdfFromDom(
   element: HTMLElement,
@@ -374,6 +385,14 @@ export async function generateInvoicePdfFromDom(
     backgroundColor: '#ffffff',
     logging: false,
     windowWidth: 794, // 210mm pri 96 DPI
+    onclone: (clonedDoc) => {
+      // Osiguraj da se klonirani element za ispis renderira na čistom bijelom papiru s tamnim tekstom
+      const invoiceEl = clonedDoc.querySelector('.printable-invoice') as HTMLElement | null;
+      if (invoiceEl) {
+        invoiceEl.style.backgroundColor = '#ffffff';
+        invoiceEl.style.color = '#0f172a';
+      }
+    },
   });
 
   const imgData = canvas.toDataURL('image/png');
@@ -410,6 +429,8 @@ export async function generateInvoicePdfFromDom(
   const durationMs = Math.round(performance.now() - startTime);
   const blob = doc.output('blob');
   const blobUrl = URL.createObjectURL(blob);
+  const arrayBuffer = doc.output('arraybuffer');
+  const validation = validatePdfStructure(new Uint8Array(arrayBuffer));
 
   return {
     doc,
@@ -417,6 +438,7 @@ export async function generateInvoicePdfFromDom(
     blobUrl,
     durationMs,
     filename,
+    validation,
   };
 }
 
