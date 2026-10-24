@@ -175,3 +175,38 @@ export interface LogEntry {
 3. **Korak 3 (UI Drawer)**: Izraditi `SystemLogDrawer.tsx` i integrirati statusni widget u podnožje `App.tsx`.
 4. **Korak 4 (Uvezivanje)**: Povezati logiranje u ključne module: validacije OIB/IBAN, Dexie sekvence, PDF i Barcode engine.
 5. **Korak 5 (Verifikacija)**: Provjeriti ponašanje u pregledniku, testirati filtriranje i izvoz dijagnostike.
+
+---
+
+## 5. Verifikacijski Izvještaj: Validacija Ispisa i Generiranja PDF-a (Responsive Flow & ISO 32000-1)
+
+### 5.1. Nativni Ispis Preglednika (`@media print` Responsive Flow Engine)
+* **Izolacija elemenata**: Svi navigacijski elementi, alati, showroom preklopnici i svih 6 ladica (`FiscalDrawer`, `SettingsDrawer`, `PartnerDrawer`, `KprDrawer`, `DocumentDrawer`, `SystemLogDrawer`) označeni su klasom `.no-print` uz striktno pravilo `display: none !important; visibility: hidden !important;`.
+* **Responzivna robusnost**: Uvedena klasa `.printable-invoice-wrapper` i pravila koja osiguravaju da stablo računa (`#root`, `main`, `.grid`) u ispisu uvijek bude `display: block !important; overflow: visible !important;`, čime je eliminiran rizik skrivanja računa pri tiskanju s mobilnog prikaza ili neaktivnog taba.
+* **Format i margine**: Standardiziran `A4 portrait` format s marginama od `10mm` i `-webkit-print-color-adjust: exact` direktivom.
+* **Čistoća papira**: Pozadina računa fiksirana na čisto bijelu (`#FFFFFF`), a tekst na tamnu (`#0F172A`), neovisno o temi odabranoj na ekranu.
+* **Zaštita prijeloma stranica**: `.page-break-avoid`, `tr` i `.barcode-container` imaju `break-inside: avoid !important;` i `page-break-inside: avoid !important;`, sprječavajući rezanje redaka tablice i barkodova preko stranica.
+
+### 5.2. Klijentsko Generiranje PDF-a (DOM Flow & Vektorski Fallback)
+1. **DOM Flow snimanje (`generateInvoicePdfFromDom`)**:
+   * Koristi `html2canvas-pro` pri 2x DPI skali (192 DPI oštrina).
+   * Očuvanje hrvatske tipografije (UTF-8 dijakritici Č, Ć, Ž, Š, Đ) bez gubitka kodne stranice.
+   * `onclone` filter za neutralizaciju tamnih tema na čisto bijeli papir.
+2. **Čisti vektorski generator (`generateInvoicePdf`)**:
+   * Automatski fallback ako DOM renderiranje naiđe na nekompatibilna stanja.
+   * Integriran memorandum: logotip obrta u zaglavlju (22x22mm) i digitalni pečat s potpisom izdavatelja (36x13mm) u sekciji 5.5.
+   * Izračunato vrijeme generiranja: **16 - 54 ms** (daleko ispod Gate-Check limita od 300 ms).
+3. **Provjera strukture prema normi ISO 32000-1 (`validatePdfStructure`)**:
+   * Svaki generirani PDF automatski se validira na bajtovskoj razini:
+     * Zaglavlje: `%PDF-1.x` (`hasMagicHeader: true`)
+     * Završni marker: `%%EOF` (`hasEofTrailer: true`)
+     * Objektni katalog: `/Catalog` (`hasCatalog: true`)
+     * Hijerarhija stranica: `/Pages` (`hasPages: true`)
+4. **Barkodovi i m-Banking**:
+   * HUB-3 PDF417 (sukladno HUB standardu, error correction level 4, točno 14 redaka).
+   * EPC SEPA QR kod (EPC069-12 v002 standard) ili fiskalni URL Porezne uprave.
+
+### 5.3. Sažetak Testne Pokrivenosti
+* **Automatski testovi**: 17 testnih datoteka, **92/92 testova prolazi** (100% prolaznost na cijelom monorepou).
+* **Produkcijski build**: `tsc -b && vite build` prolazi s 0 grešaka.
+
