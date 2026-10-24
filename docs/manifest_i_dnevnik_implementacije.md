@@ -291,9 +291,16 @@ export interface LogEntry {
 * **Novi testovi**:
   * `packages/core/tests/crypto-anchor.test.ts`: 3/3 testa prolaze (V10-1: `buildIdentitySecret`, V10-2: `encrypt/decryptBackupWithGoogleSub`, V10-3: Google Sub + PIN).
   * `apps/web/tests/gemini.test.ts`: 9/9 testova prolazi (V10-4: Inteligentna RH heuristika za 5 ključnih djelatnosti i opći fallback, V10-5: Google Identity demo invarijante, V10-6: Upravljanje API ključem i modelom).
-* **Ukupno automatskih testova**: **21 testna datoteka, 114/114 testova prolazi** (100% prolaznost na cijelom monorepou).
+* **Ukupno automatskih testova**: **21 testna datoteka, 120/120 testova prolazi** (100% prolaznost na cijelom monorepou).
 * **TypeScript & Vite build**: `npm run build` na cijelom projektu završava s kodom 0 bez ikakvih grešaka.
 * **Lokalni dev server**: Radi stabilno na `http://localhost:5173/` (HTTP 200).
+
+---
+
+## 8. Plan Implementacije: MEĐU-FAZA 10.5 – Sveobuhvatni Dijagnostički & Telemetrijski Sustav
+* **Dokument:** [`docs/plan_implementacije_faza_10_5.md`](file:///d:/Documents/Robot%20Hand%20Made/ObrtnIQ/docs/plan_implementacije_faza_10_5.md)
+* **Status:** 🟡 Spremno za implementaciju
+* **Opseg:** Core & Web instrumentacija kroz 5 razina (VERBOSE, DEBUG, INFO, WARN, ERROR), raščlanjivač Call Stacka s isticanjem aplikacijskog koda, Global Error Trap (`window.onerror`, `unhandledrejection`), React `ErrorBoundary`, kontekstualno filtriranje u `SystemLogDrawer` i mehanika automatskog otvaranja na grešku (`Auto-Open on Error`).
 
 
 
