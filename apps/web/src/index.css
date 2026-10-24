@@ -101,3 +101,60 @@
 ::-webkit-scrollbar-thumb:hover {
   background: var(--border-strong);
 }
+
+/* =========================================================================
+   RESPONSIVE FLOW PRINT ENGINE (@media print)
+   Omogućuje dinamičku prilagodbu ispisa širini papira uz očuvanje prirodnog
+   flow layouta, bez rezanja teksta i bez izostavljanja elemenata.
+   ========================================================================= */
+
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 10mm;
+  }
+
+  body {
+    background: #ffffff !important;
+    color: #0f172a !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Sakrij navigaciju, kontrolni panel unosa i alate */
+  header,
+  footer,
+  .no-print {
+    display: none !important;
+  }
+
+  /* Glavni spremnik računa zauzima 100% širine papira */
+  .printable-invoice {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
+    background: #ffffff !important;
+    color: #0f172a !important;
+  }
+
+  /* Sprječavanje lomljenja redaka tablice i barkod sekcije preko stranica */
+  .page-break-avoid,
+  tr,
+  .barcode-container {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  /* Tekst teče prirodno bez rezanja */
+  .flow-text {
+    white-space: normal !important;
+    word-break: break-word !important;
+    overflow-wrap: break-word !important;
+  }
+}
+

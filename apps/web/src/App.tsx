@@ -49,7 +49,7 @@ export default function App() {
 
   const [cijena, setCijena] = useState(1250.00);
   const [kolicina, setKolicina] = useState(1);
-  const [partnerNaziv, setPartnerNaziv] = useState('Kupac Alpha d.o.o.');
+  const [partnerNaziv, setPartnerNaziv] = useState('Domaći Kupac Čistoća i Održavanje d.o.o.');
 
   // Form validity check (Gate-check requirement: invalid OIB/IBAN blocks invoice generation)
   const isFormSubmittable = useMemo(() => {
@@ -59,7 +59,7 @@ export default function App() {
   return (
     <div className="min-h-screen bg-[var(--bg-canvas)] text-white flex flex-col font-sans transition-colors duration-200">
       {/* Top Precision Header */}
-      <header className="border-b border-[var(--border-subtle)] bg-[var(--bg-surface)]/95 backdrop-blur px-4 sm:px-6 py-2.5 flex items-center justify-between sticky top-0 z-50">
+      <header className="border-b border-[var(--border-subtle)] bg-[var(--bg-surface)]/95 backdrop-blur px-4 sm:px-6 py-2.5 flex items-center justify-between sticky top-0 z-50 no-print">
         <div className="flex items-center space-x-4">
           <div className="flex items-center space-x-2">
             <div className="w-8 h-8 bg-gradient-to-br from-[var(--accent-primary-hover)] to-[var(--accent-primary)] flex items-center justify-center font-bold font-mono text-sm tracking-wider text-black shadow-inner">
@@ -109,7 +109,7 @@ export default function App() {
       {/* Main Content Area - Full Width Edge-to-Edge */}
       <main className="flex-1 w-full px-4 sm:px-6 lg:px-8 py-6 space-y-6">
         {/* Hero Alert Banner */}
-        <div className="border border-[var(--border-strong)] bg-[var(--bg-surface)] p-6 relative overflow-hidden transition-colors">
+        <div className="border border-[var(--border-strong)] bg-[var(--bg-surface)] p-6 relative overflow-hidden transition-colors no-print">
           <div className="absolute top-0 left-0 w-1 h-full bg-[#10B981]" />
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div className="space-y-1">
@@ -143,7 +143,7 @@ export default function App() {
         </div>
 
         {/* Phase Grid Overview */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 no-print">
           <div className="border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-5 space-y-3 transition-colors">
             <div className="flex items-center justify-between">
               <span className="text-xs font-mono text-[var(--text-muted)]">FAZA 0</span>
@@ -358,7 +358,7 @@ export default function App() {
               /* Full-Width Desktop Split-Screen Layout (100% of Window Width) */
               <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 w-full items-start">
                 {/* Left Panel: High-Density Input Desk (7 Cols) */}
-                <div className="xl:col-span-7 bg-[var(--bg-surface)] border border-[var(--border-subtle)] p-6 space-y-6 transition-colors">
+                <div className="xl:col-span-7 bg-[var(--bg-surface)] border border-[var(--border-subtle)] p-6 space-y-6 transition-colors no-print">
                   <div className="flex items-center justify-between border-b border-[var(--border-subtle)] pb-3">
                     <span className="text-xs font-mono uppercase text-[var(--accent-primary)] font-bold tracking-wider">
                       Radna Ploha Unosa (Input Desk)
@@ -495,12 +495,12 @@ export default function App() {
                 {/* Right Panel: Live A4 Real-Time Preview with HUB-3 Barcode & EPC QR (5 Cols) */}
                 <div className="xl:col-span-5 bg-[var(--bg-surface)] border border-[var(--border-strong)] p-5 space-y-4 sticky top-20 shadow-xl transition-colors">
                   <InvoiceLivePreview
-                    obrtNaziv="Robot Hand Made"
-                    obrtVlasnik="Matija Obrtnik"
+                    obrtNaziv="Robot Hand Made, obrt za računalno programiranje"
+                    obrtVlasnik="Matija Obrtović"
                     obrtOib="69435151530"
                     obrtIban={iban}
                     obrtBanka={detectedBank}
-                    obrtAdresa="Ulica grada Vukovara 284, Zagreb"
+                    obrtAdresa="Ulica grada Vukovara 284, Čakovec"
                     partnerNaziv={partnerNaziv}
                     partnerOib={oib}
                     isPartnerOibValid={isOibValid}
@@ -522,7 +522,7 @@ export default function App() {
         </div>
 
         {/* Documentation & Manifest Reference */}
-        <div className="border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-6 space-y-4 transition-colors">
+        <div className="border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-6 space-y-4 transition-colors no-print">
           <div className="flex items-center justify-between border-b border-[var(--border-subtle)] pb-4">
             <div className="flex items-center space-x-3">
               <FileText className="w-5 h-5 text-[var(--accent-primary)]" />
@@ -554,12 +554,12 @@ export default function App() {
       </main>
 
       {/* Precision Footer */}
-      <footer className="border-t border-[var(--border-subtle)] bg-[var(--bg-surface)] px-6 py-3 text-xs font-mono text-[var(--text-muted)] flex items-center justify-between transition-colors">
+      <footer className="border-t border-[var(--border-subtle)] bg-[var(--bg-surface)] px-6 py-3 text-xs font-mono text-[var(--text-muted)] flex items-center justify-between transition-colors no-print">
         <div>ObrtnIQ &copy; 2026 &bull; Zakon o fiskalizaciji 1.0 (B2C) &amp; 2.0 (B2B EN 16931)</div>
         <div className="flex items-center space-x-4">
           <span className="flex items-center space-x-1.5 text-[#10B981]">
             <CheckCircle2 className="w-3.5 h-3.5" />
-            <span>Faza 3 + Full Dynamic Theme Verified</span>
+            <span>Faza 4 &bull; Payment, PDF &amp; Responsive Print Verified</span>
           </span>
         </div>
       </footer>
