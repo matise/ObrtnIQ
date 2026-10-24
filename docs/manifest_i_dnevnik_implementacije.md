@@ -10,8 +10,8 @@ Ovaj dokument služi kao jedinstveni izvor istine za praćenje napretka, evident
 |---|---|---|---|---|
 | **Faza 0** | **Temeljna konfiguracija & Monorepo postavke** | 🟢 **ZAVRŠENO** | Uspješno kompajliranje, konfigurirani aliasi, postavljen test runner | 2026-10-24 |
 | **Faza 1** | **Domena, Validacije i Poslovna Matematika (Core Engine)** | 🟢 **ZAVRŠENO** | 100% prolaznost Vitest testova za OIB (ISO 7064), IBAN (MOD 97), popuste i HUB-3 | 2026-10-24 |
-| **Faza 2** | **Sloj Pohrane (Storage Abstraction & Adapter)** | 🟡 **SLJEDEĆA NA REDU** | In-memory CRUD testovi, sekvenca računa bez rupa, export/import | - |
-| **Faza 3** | **Dizajn Sustav & Sharp UI Primitivi** | ⚪ Čeka | Responzivnost (375px/1440px), OibInput, IbanInput bank lookup | - |
+| **Faza 2** | **Sloj Pohrane (Storage Abstraction & Adapter)** | 🟢 **ZAVRŠENO** | In-memory CRUD testovi, sekvenca računa bez rupa, export/import | 2026-10-24 |
+| **Faza 3** | **Dizajn Sustav & Sharp UI Primitivi** | 🟡 **SLJEDEĆA NA REDU** | Responzivnost (375px/1440px), OibInput, IbanInput bank lookup | - |
 | **Faza 4** | **Generator Kodova i PDF Engine** | ⚪ Čeka | HUB-3 PDF417 skenabilan m-bankingom, PDF export < 300ms | - |
 | **Faza 5** | **Ekran za Izdavanje Računa & Workflow** | ⚪ Čeka | Izdavanje računa tipkovnicom < 30s, statusni automat, immutability | - |
 | **Faza 6** | **KPR i Obrazac PO-SD (Knjigovodstvo)** | ⚪ Čeka | XML validacija protiv službene XSD sheme Porezne uprave | - |
@@ -37,6 +37,12 @@ Ovaj dokument služi kao jedinstveni izvor istine za praćenje napretka, evident
 | 2026-10-24 13:42 | Faza 1 | `packages/core/src/utils/hub3.ts` | HUB-3 / HUB-3A HRVHUB30 generator i parser naloga za plaćanje | Završeno |
 | 2026-10-24 13:44 | Faza 1 | `packages/core/tests/*.test.ts` | 32 jedinična testa (OIB, IBAN, calculator, hub3) | 🟢 Gate-Check PROŠAO (32/32) |
 | 2026-10-24 13:45 | Faza 1 | `apps/web/src/App.tsx` | Dodan interaktivni Core Engine playground u UI | Završeno |
+| 2026-10-24 13:49 | Faza 2 | `packages/core/src/storage/interfaces.ts` | Definiran apstraktni repozitorijski sloj (IObrtnIQStorage) | Završeno |
+| 2026-10-24 13:49 | Faza 2 | `packages/core/src/storage/sequence.ts` | Sekvencijalni generator brojeva računa (1/POSL1/1) i storno servis | Završeno |
+| 2026-10-24 13:49 | Faza 2 | `packages/core/src/storage/crypto-backup.ts` | AES-256-GCM enkripcija i JSON snapshot backup/restore servis | Završeno |
+| 2026-10-24 13:50 | Faza 2 | `packages/core/src/storage/memory-adapter.ts` | In-memory adapter za brzo i izolirano testiranje pohrane | Završeno |
+| 2026-10-24 13:50 | Faza 2 | `apps/web/src/storage/dexie-db.ts` | Dexie.js IndexedDB perzistentni adapter za korisnički preglednik | Završeno |
+| 2026-10-24 13:50 | Faza 2 | `packages/core/tests/storage.test.ts` | Gate-Check integracijski test: obrt, 5 partnera, sekvenca 1 i 2, storno, AES-256 enkripcija, import | 🟢 Gate-Check PROŠAO (34/34) |
 
 ---
 

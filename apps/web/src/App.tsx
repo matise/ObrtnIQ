@@ -99,7 +99,7 @@ export default function App() {
 
           <div className="text-right">
             <span className="text-[11px] font-mono block text-[#7C6DA0]">Status Sustava</span>
-            <span className="text-xs font-mono text-[#10B981] font-semibold">Faza 1 Verificirana (32/32 testa)</span>
+            <span className="text-xs font-mono text-[#10B981] font-semibold">Faza 2 Verificirana (34/34 testa)</span>
           </div>
         </div>
       </header>
@@ -172,36 +172,37 @@ export default function App() {
             </p>
           </div>
 
+          <div className="border border-[#10B981]/40 bg-[#140F24] p-5 space-y-3 relative">
+            <div className="absolute top-0 right-0 w-2 h-2 bg-[#10B981]" />
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-mono text-[#C4B5FD]">FAZA 2</span>
+              <span className="text-[10px] font-mono px-2 py-0.5 bg-[#064E3B] text-[#10B981] border border-[#10B981]/30">
+                GOTOVO
+              </span>
+            </div>
+            <div className="flex items-center space-x-3">
+              <Database className="w-5 h-5 text-[#10B981]" />
+              <h3 className="font-semibold text-sm text-white">Storage Adapter</h3>
+            </div>
+            <p className="text-xs text-[#C4B5FD] leading-relaxed">
+              Dexie.js IndexedDB, sekvenca računa bez rupa, storniranje i AES-256 backup.
+            </p>
+          </div>
+
           <div className="border border-[#433068] bg-[#1E1635] p-5 space-y-3 relative">
             <div className="absolute top-0 right-0 w-2 h-2 bg-[#A855F7]" />
             <div className="flex items-center justify-between">
-              <span className="text-xs font-mono text-[#C4B5FD]">FAZA 2</span>
+              <span className="text-xs font-mono text-[#C4B5FD]">FAZA 3</span>
               <span className="text-[10px] font-mono px-2 py-0.5 bg-[#2A1F49] text-[#A855F7] border border-[#A855F7]/30">
                 SLJEDEĆA
               </span>
             </div>
             <div className="flex items-center space-x-3">
-              <Database className="w-5 h-5 text-[#A855F7]" />
-              <h3 className="font-semibold text-sm">Storage Adapter</h3>
+              <Layers className="w-5 h-5 text-[#A855F7]" />
+              <h3 className="font-semibold text-sm">Sharp UI Primitivi</h3>
             </div>
             <p className="text-xs text-[#C4B5FD] leading-relaxed">
-              Dexie.js / SQLite Wasm OPFS repozitorij, automatska sekvenca računa i backup.
-            </p>
-          </div>
-
-          <div className="border border-[#261B3D] bg-[#140F24] p-5 space-y-3 opacity-70">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-mono text-[#7C6DA0]">FAZA 3-7</span>
-              <span className="text-[10px] font-mono px-2 py-0.5 bg-[#1E1635] text-[#7C6DA0] border border-[#261B3D]">
-                NA ČEKANJU
-              </span>
-            </div>
-            <div className="flex items-center space-x-3">
-              <Layers className="w-5 h-5 text-[#7C6DA0]" />
-              <h3 className="font-semibold text-sm">UI, PDF, KPR & Fiskal</h3>
-            </div>
-            <p className="text-xs text-[#7C6DA0] leading-relaxed">
-              Split-Screen editor, PDF engine, PO-SD XML generator i FINA CIS/e-Račun proxy.
+              OibInput, IbanInput, CurrencyInput, KpdPicker i responzivni Split-Screen.
             </p>
           </div>
         </div>
