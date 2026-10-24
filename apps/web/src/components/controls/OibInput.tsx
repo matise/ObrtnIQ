@@ -1,6 +1,7 @@
 import React from 'react';
 import { validateOib, sanitizeOib } from '@obrtniq/core';
 import { Check, AlertCircle } from 'lucide-react';
+import { appLogger } from '../../services/logger';
 
 export interface OibInputProps {
   id?: string;
@@ -33,6 +34,15 @@ export const OibInput: React.FC<OibInputProps> = ({
     const raw = e.target.value;
     const clean = sanitizeOib(raw);
     const valid = clean.length === 11 && validateOib(clean);
+    
+    if (clean.length === 11) {
+      if (valid) {
+        appLogger.scope('CORE:OIB').verbose(`OIB ${clean} je ispravan (ISO 7064 MOD 11, 10 prošao)`);
+      } else {
+        appLogger.scope('CORE:OIB').warn(`OIB ${clean} je neispravan (kontrolna znamenka ne odgovara)`);
+      }
+    }
+
     onChange(clean, valid);
   };
 

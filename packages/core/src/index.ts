@@ -12,3 +12,5 @@ export * from './storage/interfaces';
 export * from './storage/sequence';
 export * from './storage/crypto-backup';
 export * from './storage/memory-adapter';
+export * from './logger';
+

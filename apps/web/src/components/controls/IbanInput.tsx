@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import { validateIban, sanitizeIban, formatIban, getBankNameFromIban } from '@obrtniq/core';
 import { Check, AlertCircle, Building2 } from 'lucide-react';
+import { appLogger } from '../../services/logger';
 
 export interface IbanInputProps {
   id?: string;
@@ -35,6 +36,13 @@ export const IbanInput: React.FC<IbanInputProps> = ({
     const sanitized = sanitizeIban(raw);
     const valid = sanitized.length >= 15 && validateIban(sanitized);
     const bank = getBankNameFromIban(sanitized);
+
+    if (valid) {
+      appLogger.scope('CORE:IBAN').verbose(`IBAN validiran (${sanitized.slice(0, 4)} **** ${sanitized.slice(-4)})`, {
+        bankName: bank || 'Nepoznata banka',
+      });
+    }
+
     onChange(sanitized, valid, bank);
   };
 

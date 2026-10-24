@@ -1,6 +1,7 @@
 import { jsPDF } from 'jspdf';
 import html2canvas from 'html2canvas';
 import { getHub3BarcodeDataUrl, getQrCodeDataUrl } from './barcode';
+import { appLogger } from '../services/logger';
 import { 
   generateHub3Payload, 
   generateEpcQrPayload, 
@@ -74,6 +75,12 @@ export interface PdfGenerationResult {
  * Generira službeni A4 PDF račun u klijentu u manje od 300 ms
  */
 export async function generateInvoicePdf(data: InvoicePdfData): Promise<PdfGenerationResult> {
+  const log = appLogger.scope('PDF:VECTOR');
+  log.info(`Započinjem generiranje vektorskog A4 računa br. ${data.brojDokumenta}`, {
+    stavke: data.stavke.length,
+    ukupno: data.ukupnoIznos,
+    kupac: data.kupacNaziv,
+  });
   const startTime = performance.now();
 
   // Dimenzije: A4 portret = 210 x 297 mm
@@ -361,6 +368,13 @@ export async function generateInvoicePdf(data: InvoicePdfData): Promise<PdfGener
   const arrayBuffer = doc.output('arraybuffer');
   const validation = validatePdfStructure(new Uint8Array(arrayBuffer));
 
+  log.info(`Vektorski PDF račun br. ${data.brojDokumenta} uspješno generiran`, {
+    durationMs,
+    valid: validation.isValidPdf,
+    sizeBytes: validation.byteLength,
+    version: validation.version,
+  });
+
   return {
     doc,
     blob,
@@ -382,6 +396,8 @@ export async function generateInvoicePdfFromDom(
   element: HTMLElement,
   filename: string
 ): Promise<PdfGenerationResult> {
+  const log = appLogger.scope('PDF:DOM');
+  log.info(`Pokrećem snimanje DOM Flow prikaza u PDF (${filename})`);
   const startTime = performance.now();
 
   const canvas = await html2canvas(element, {
@@ -455,6 +471,13 @@ export async function generateInvoicePdfFromDom(
   const blobUrl = URL.createObjectURL(blob);
   const arrayBuffer = doc.output('arraybuffer');
   const validation = validatePdfStructure(new Uint8Array(arrayBuffer));
+
+  log.info(`DOM Flow PDF (${filename}) uspješno snimljen i ISO-32000-1 validiran`, {
+    durationMs,
+    valid: validation.isValidPdf,
+    sizeBytes: validation.byteLength,
+    version: validation.version,
+  });
 
   return {
     doc,

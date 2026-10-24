@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { renderHub3Barcode, renderQrCode } from '../utils/barcode';
 import { generateInvoicePdf, generateInvoicePdfFromDom, type PdfGenerationResult } from '../utils/pdf-generator';
+import { appLogger } from '../services/logger';
 import { 
   generateHub3Payload, 
   generateEpcQrPayload, 
@@ -125,6 +126,9 @@ export function InvoiceLivePreview(props: InvoiceLivePreviewProps) {
 
   // 1. Nativni ispis putem browser print enginea (Ctrl+P / @media print)
   const handlePrint = () => {
+    appLogger.scope('UI:PRINT').info('Korisnik pokrenuo nativni ispis računa (window.print / Ctrl+P)', {
+      brojDokumenta: props.brojDokumenta,
+    });
     window.print();
   };
 
@@ -140,8 +144,10 @@ export function InvoiceLivePreview(props: InvoiceLivePreviewProps) {
       try {
         if (!invoiceSheetRef.current) throw new Error('DOM element računa nije pronađen');
         result = await generateInvoicePdfFromDom(invoiceSheetRef.current, filename);
-      } catch (domErr) {
-        console.warn('DOM PDF generiranje nije uspjelo, prebacujem na brzi vektorski generator:', domErr);
+      } catch (domErr: any) {
+        appLogger.scope('PDF:FLOW').warn('DOM PDF snimanje nije uspjelo, automatski prelazim na čisti vektorski generator', {
+          error: domErr?.message || String(domErr),
+        });
         // Automatski prelazak na pouzdani vektorski generator s HUB-3 i QR kodovima
         result = await generateInvoicePdf({
           obrtNaziv: props.obrtNaziv,
@@ -182,10 +188,15 @@ export function InvoiceLivePreview(props: InvoiceLivePreviewProps) {
       setLastGenTime(result.durationMs);
       setPdfValidation(result.validation);
 
+      appLogger.scope('UI:PREVIEW').info(`Račun ${props.brojDokumenta} uspješno spremljen u PDF formatu (${result.filename})`, {
+        durationMs: result.durationMs,
+        sizeBytes: result.validation.byteLength,
+      });
+
       // Preuzimanje generiranog PDF-a
       result.doc.save(result.filename);
     } catch (err: any) {
-      console.error('Greška pri generiranju PDF-a:', err);
+      appLogger.scope('UI:PREVIEW').error('Kritična greška pri generiranju ili preuzimanju PDF-a', err);
       alert(`Greška pri generiranju PDF-a: ${err?.message || 'Nepoznata greška'}`);
     } finally {
       setIsGeneratingPdf(false);

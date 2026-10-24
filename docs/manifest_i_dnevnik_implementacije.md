@@ -13,8 +13,8 @@ Ovaj dokument služi kao jedinstveni izvor istine za praćenje napretka, evident
 | **Faza 2** | **Sloj Pohrane (Storage Abstraction & Adapter)** | 🟢 **ZAVRŠENO** | In-memory CRUD testovi, sekvenca računa bez rupa, export/import | 2026-10-24 |
 | **Faza 3** | **Dizajn Sustav & Sharp UI Primitivi** | 🟢 **ZAVRŠENO** | Responzivnost (375px/1440px), OibInput, IbanInput bank lookup | 2026-10-24 |
 | **Faza 4** | **Generator Kodova i PDF Engine** | 🟢 **ZAVRŠENO** | HUB-3 PDF417 skenabilan m-bankingom, EPC QR, PDF export < 300ms, ISO 32000-1 validacija | 2026-10-24 |
-| **Faza 4.5** | **Sustav Logiranja i Dijagnostički Dnevnik (Logging Engine)** | 🟡 **U TIJEKU** | Višerazinski Scoped Logger (VERBOSE do ERROR), Ring Buffer (500 zapisa), UI Drawer konzola, JSON izvoz | 2026-10-24 |
-| **Faza 5** | **Ekran za Izdavanje Računa & Workflow** | ⚪ Čeka | Izdavanje računa tipkovnicom < 30s, statusni automat, immutability | - |
+| **Faza 4.5** | **Sustav Logiranja i Dijagnostički Dnevnik (Logging Engine)** | 🟢 **ZAVRŠENO** | Višerazinski Scoped Logger (VERBOSE do ERROR), Ring Buffer (500 zapisa), UI Drawer konzola, JSON izvoz | 2026-10-24 |
+| **Faza 5** | **Ekran za Izdavanje Računa & Workflow** | 🟡 **SLJEDEĆA NA REDU** | Izdavanje računa tipkovnicom < 30s, statusni automat, immutability | - |
 | **Faza 6** | **KPR i Obrazac PO-SD (Knjigovodstvo)** | ⚪ Čeka | XML validacija protiv službene XSD sheme Porezne uprave | - |
 | **Faza 7** | **Fiskalizacija 1.0 (CIS) & 2.0 (e-Račun)** | ⚪ Čeka | FINA DEMO okruženje: JIR dohvat i UBL 2.1 isporuka posredniku | - |
 
@@ -63,6 +63,8 @@ Ovaj dokument služi kao jedinstveni izvor istine za praćenje napretka, evident
 | 2026-10-24 15:03 | Print Flow | `apps/web/src/index.css`, `pdf-generator.ts`, `InvoiceLivePreview.tsx` | Implementiran Responsive Flow Print Engine (@media print, DOM-based high-DPI PDF capture, fluid/A4/POS 80mm širine, no-print zaštita) | Završeno |
 | 2026-10-24 15:15 | PDF Validacija | `packages/core/src/utils/pdf-validator.ts`, `tests/pdf-validator.test.ts` | Implementiran ISO 32000-1 PDF strukturalni validator (%PDF-1.x magic header, %%EOF trailer, /Catalog, /Pages stablo) | 🟢 Verificirano (4 testa, 52/52 ukupno) |
 | 2026-10-24 15:18 | UI & Print Čišćenje | `apps/web/src/App.tsx`, `index.css`, `InvoiceLivePreview.tsx`, `pdf-generator.ts` | Uklonjen showroom switch (desktop/mobitel 375px) u korist pune širine; rigorozna @media print izolacija (visibility: hidden za sve osim računa); bijeli papir onclone sanitizacija | 🟢 Gate-Check PROŠAO |
+| 2026-10-24 15:40 | Faza 4.5 | `packages/core/src/logger/*`, `tests/logger.test.ts` | Implementiran Core Logging Engine (RingBuffer, ScopedLogger, level filtering, data sanitization, 7 testova) | 🟢 Gate-Check PROŠAO (59/59) |
+| 2026-10-24 15:44 | Faza 4.5 | `apps/web/src/services/logger.ts`, `SystemLogDrawer.tsx`, `useSystemLogs.ts`, `App.tsx` | Izrađen Web logger cjevovod (console pipe, localStorage prag), Drawer konzola, footer widget i log uvezivanje | 🟢 Gate-Check PROŠAO |
 
 ---
 

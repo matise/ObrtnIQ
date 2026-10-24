@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { 
   ShieldCheck, 
   Database, 
@@ -8,7 +8,8 @@ import {
   Layers,
   Printer,
   Lock,
-  Unlock
+  Unlock,
+  Terminal
 } from 'lucide-react';
 import { 
   OibInput, 
@@ -19,6 +20,9 @@ import {
 } from './components/controls';
 import { ThemeSelector } from './components/ThemeSelector';
 import { InvoiceLivePreview } from './components/InvoiceLivePreview';
+import { SystemLogDrawer } from './components/SystemLogDrawer';
+import { useSystemLogs } from './hooks/useSystemLogs';
+import { appLogger } from './services/logger';
 import type { 
   PoreznaZona, 
   VrstaDokumenta, 
@@ -44,6 +48,17 @@ export default function App() {
   const [cijena, setCijena] = useState(1250.00);
   const [kolicina, setKolicina] = useState(1);
   const [partnerNaziv, setPartnerNaziv] = useState('Domaći Kupac Čistoća i Održavanje d.o.o.');
+
+  // System Logging Engine state & boot notification
+  const [isLogDrawerOpen, setIsLogDrawerOpen] = useState(false);
+  const { errorCount, warnCount } = useSystemLogs();
+
+  useEffect(() => {
+    appLogger.scope('SYSTEM:BOOT').info('ObrtnIQ sustav uspješno pokrenut (Offline OPFS Ready, Logging Engine aktivan)', {
+      vrijeme: new Date().toLocaleTimeString('hr-HR'),
+      okruzenje: 'Lokalni preglednik',
+    });
+  }, []);
 
   // Form validity check (Gate-check requirement: invalid OIB/IBAN blocks invoice generation)
   const isFormSubmittable = useMemo(() => {
@@ -415,16 +430,53 @@ export default function App() {
         </div>
       </main>
 
-      {/* Precision Footer */}
-      <footer className="border-t border-[var(--border-subtle)] bg-[var(--bg-surface)] px-6 py-3 text-xs font-mono text-[var(--text-muted)] flex items-center justify-between transition-colors no-print">
-        <div>ObrtnIQ &copy; 2026 &bull; Zakon o fiskalizaciji 1.0 (B2C) &amp; 2.0 (B2B EN 16931)</div>
+      {/* Precision Footer with Live System Log Trigger */}
+      <footer className="border-t border-[var(--border-subtle)] bg-[var(--bg-surface)] px-4 sm:px-6 py-2.5 text-xs font-mono text-[var(--text-muted)] flex flex-col sm:flex-row items-center justify-between gap-3 transition-colors no-print">
+        <div className="flex items-center space-x-3">
+          <span>ObrtnIQ &copy; 2026 &bull; Zakon o fiskalizaciji 1.0 &amp; 2.0</span>
+          <span className="text-[var(--border-strong)]">|</span>
+          {/* Status Widget Trigger */}
+          <button
+            type="button"
+            onClick={() => setIsLogDrawerOpen((prev) => !prev)}
+            title="Otvori / Zatvori Sustavni Dnevnik (Event & Error Console)"
+            className={`flex items-center space-x-1.5 px-2 py-0.5 border text-[11px] transition-all cursor-pointer ${
+              errorCount > 0
+                ? 'bg-[#EF4444]/15 border-[#EF4444]/40 text-[#EF4444] animate-pulse font-bold'
+                : warnCount > 0
+                ? 'bg-[#F59E0B]/15 border-[#F59E0B]/40 text-[#F59E0B] font-bold'
+                : 'bg-[var(--bg-canvas)] border-[var(--border-subtle)] text-[#10B981] hover:border-[var(--accent-primary)] hover:text-white'
+            }`}
+          >
+            <span
+              className={`w-2 h-2 rounded-full ${
+                errorCount > 0 ? 'bg-[#EF4444]' : warnCount > 0 ? 'bg-[#F59E0B]' : 'bg-[#10B981]'
+              }`}
+            />
+            <span>
+              {errorCount > 0
+                ? `${errorCount} ${errorCount === 1 ? 'greška' : 'greške'}!`
+                : warnCount > 0
+                ? `${warnCount} ${warnCount === 1 ? 'upozorenje' : 'upozorenja'}`
+                : 'Sustav stabilan'}
+            </span>
+            <Terminal className="w-3 h-3 ml-1 opacity-70" />
+          </button>
+        </div>
+
         <div className="flex items-center space-x-4">
           <span className="flex items-center space-x-1.5 text-[#10B981]">
             <CheckCircle2 className="w-3.5 h-3.5" />
-            <span>Faza 4 &bull; Payment, PDF &amp; Responsive Print Verified</span>
+            <span>Faza 4.5 &bull; Diagnostic &amp; Event Logging Engine</span>
           </span>
         </div>
       </footer>
+
+      {/* System Log Terminal Drawer */}
+      <SystemLogDrawer
+        isOpen={isLogDrawerOpen}
+        onClose={() => setIsLogDrawerOpen(false)}
+      />
     </div>
   );
 }
