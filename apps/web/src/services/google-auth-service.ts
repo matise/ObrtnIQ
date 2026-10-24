@@ -60,14 +60,17 @@ class GoogleAuthService {
   public validateClientIdFormat(clientId: string): { valid: boolean; message?: string } {
     const trimmed = (clientId || '').trim();
     if (!trimmed) {
+      appLogger.scope('AUTH:GOOGLE:VALIDATE').debug('Client ID nije zadan (prazan niz).');
       return { valid: false, message: 'Client ID nije unesen.' };
     }
     if (!trimmed.endsWith('.apps.googleusercontent.com')) {
+      appLogger.scope('AUTH:GOOGLE:VALIDATE').warn('Neispravan format Google Client ID-a:', { clientId: trimmed });
       return { 
         valid: false, 
         message: 'Google Client ID mora završavati sa ".apps.googleusercontent.com".' 
       };
     }
+    appLogger.scope('AUTH:GOOGLE:VALIDATE').debug('Format Google Client ID-a je valjan.', { clientId: trimmed });
     return { valid: true };
   }
 
@@ -81,7 +84,10 @@ class GoogleAuthService {
     clientId?: string;
     error?: string;
   }> {
+    appLogger.scope('AUTH:GOOGLE:INSPECT').debug('Započinjem provjeru valjanosti tokena i opsega (tokeninfo)...');
+
     if (accessToken.startsWith('demo-')) {
+      appLogger.scope('AUTH:GOOGLE:INSPECT').info('Tokeninfo vraćen za lokalni demo token.');
       return {
         ok: true,
         scopes: ['openid', 'email', 'profile', 'https://www.googleapis.com/auth/drive.appdata'],
@@ -94,16 +100,24 @@ class GoogleAuthService {
       const res = await fetch(`https://www.googleapis.com/oauth2/v3/tokeninfo?access_token=${accessToken}`);
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
+        const errMsg = err.error_description || `Greška tokeninfo endpointa (${res.status})`;
+        appLogger.scope('AUTH:GOOGLE:INSPECT').warn('Tokeninfo endpoint vratio grešku:', { status: res.status, error: errMsg });
         return {
           ok: false,
           scopes: [],
-          error: err.error_description || `Greška tokeninfo endpointa (${res.status})`,
+          error: errMsg,
         };
       }
 
       const data = await res.json();
       const scopeStr: string = data.scope || '';
       const scopes = scopeStr.split(' ').filter(Boolean);
+
+      appLogger.scope('AUTH:GOOGLE:INSPECT').info('Token uspješno verificiran na Google poslužitelju', {
+        email: data.email,
+        scopesCount: scopes.length,
+        scopes,
+      });
 
       return {
         ok: true,
@@ -112,6 +126,7 @@ class GoogleAuthService {
         clientId: data.azp || data.aud,
       };
     } catch (err: any) {
+      appLogger.scope('AUTH:GOOGLE:INSPECT').error('Mrežna greška pri provjeri tokena:', { error: err?.message });
       return {
         ok: false,
         scopes: [],
@@ -146,6 +161,7 @@ class GoogleAuthService {
       const tokens = JSON.parse(raw) as GoogleAuthTokens;
       // Provjeri valjanost
       if (Date.now() > tokens.expiresAt) {
+        appLogger.scope('AUTH:GOOGLE:TOKENS').debug('Pohranjeni Google token je istekao.');
         return null;
       }
       return tokens;
@@ -171,17 +187,22 @@ class GoogleAuthService {
     if (tokens) {
       localStorage.setItem(STORAGE_KEY_TOKENS, JSON.stringify(tokens));
     }
+    const preostaloMinuta = tokens ? Math.max(0, Math.floor((tokens.expiresAt - Date.now()) / 60000)) : 0;
     appLogger.scope('AUTH:GOOGLE').info('Google sesija spremljena lokalno', {
       email: identity.email,
       provider: identity.provider,
       sub: identity.googleSub,
+      tokenTrajanjeMinuta: preostaloMinuta,
     });
   }
 
   public clearSession(): void {
+    const ident = this.getStoredIdentity();
     localStorage.removeItem(STORAGE_KEY_IDENTITY);
     localStorage.removeItem(STORAGE_KEY_TOKENS);
-    appLogger.scope('AUTH:GOOGLE').info('Google sesija odjavljena.');
+    appLogger.scope('AUTH:GOOGLE').info('Google sesija odjavljena i uklonjena iz lokalnog spremnika.', {
+      odjavljeniKorisnik: ident?.email,
+    });
   }
 
   /**
@@ -189,7 +210,10 @@ class GoogleAuthService {
    */
   public async requestSilentToken(): Promise<string | null> {
     const identity = this.getStoredIdentity();
-    if (!identity) return null;
+    if (!identity) {
+      appLogger.scope('AUTH:GOOGLE:SILENT').debug('Tiho obnavljanje preskočeno: nema aktivnog korisničkog identiteta.');
+      return null;
+    }
 
     // Ako je demo korisnik, produži demo sesiju
     if (identity.provider === 'GOOGLE' && identity.googleSub === '108392174981273981273') {
@@ -198,13 +222,21 @@ class GoogleAuthService {
         expiresAt: Date.now() + 24 * 3600 * 1000,
       };
       this.saveSession(identity, demoTokens);
+      appLogger.scope('AUTH:GOOGLE:SILENT').info('Demo sesija automatski produžena na 24h.');
       return demoTokens.accessToken;
     }
 
     try {
+      appLogger.scope('AUTH:GOOGLE:SILENT').info('Započinjem tiho (silent) obnavljanje Google OAuth access tokena...');
       await this.loadGisScript();
-      if (!window.google?.accounts?.oauth2) return null;
-      if (!this.hasCustomClientId()) return null;
+      if (!window.google?.accounts?.oauth2) {
+        appLogger.scope('AUTH:GOOGLE:SILENT').warn('Google accounts.oauth2 objekt nije dostupan u prozoru.');
+        return null;
+      }
+      if (!this.hasCustomClientId()) {
+        appLogger.scope('AUTH:GOOGLE:SILENT').warn('Nema konfiguriranog Google Client ID-a za tiho obnavljanje.');
+        return null;
+      }
 
       const clientId = this.getEffectiveClientId();
       const scopes = [
@@ -227,9 +259,14 @@ class GoogleAuthService {
                   expiresAt: Date.now() + expiresIn * 1000 - 60000,
                 };
                 this.saveSession(identity, tokens);
-                appLogger.scope('AUTH:GOOGLE').info('Google token uspješno tiho obnovljen u pozadini.');
+                appLogger.scope('AUTH:GOOGLE:SILENT').info('Google token uspješno tiho obnovljen u pozadini.', {
+                  expiresInSec: expiresIn,
+                });
                 resolve(response.access_token);
               } else {
+                appLogger.scope('AUTH:GOOGLE:SILENT').warn('Tiho obnavljanje tokena nije vratilo access_token:', {
+                  error: response.error,
+                });
                 resolve(null);
               }
             },
@@ -237,11 +274,15 @@ class GoogleAuthService {
 
           // prompt: '' traži token u pozadini bez ponovnog ometanja korisnika ako je suglasnost već dana
           client.requestAccessToken({ prompt: '' });
-        } catch {
+        } catch (innerErr: any) {
+          appLogger.scope('AUTH:GOOGLE:SILENT').error('Greška pri pozivu initTokenClient za tiho obnavljanje:', {
+            error: innerErr?.message,
+          });
           resolve(null);
         }
       });
-    } catch {
+    } catch (err: any) {
+      appLogger.scope('AUTH:GOOGLE:SILENT').warn('Tiho obnavljanje nije uspjelo:', { error: err?.message });
       return null;
     }
   }
@@ -255,6 +296,7 @@ class GoogleAuthService {
       return;
     }
 
+    appLogger.scope('AUTH:GOOGLE:SDK').debug('Učitavam vanjski Google Identity Services (GIS) SDK...');
     return new Promise((resolve, reject) => {
       const script = document.createElement('script');
       script.src = 'https://accounts.google.com/gsi/client';
@@ -262,9 +304,11 @@ class GoogleAuthService {
       script.defer = true;
       script.onload = () => {
         this.scriptLoaded = true;
+        appLogger.scope('AUTH:GOOGLE:SDK').info('Google Identity Services SDK uspješno učitan (accounts.google.com/gsi/client).');
         resolve();
       };
       script.onerror = () => {
+        appLogger.scope('AUTH:GOOGLE:SDK').error('Neuspjelo učitavanje Google Identity Services SDK-a (mrežna greška).');
         reject(new Error('Neuspjelo učitavanje Google Identity Services SDK-a. Provjerite internetsku vezu.'));
       };
       document.head.appendChild(script);
@@ -275,16 +319,21 @@ class GoogleAuthService {
    * Pokreće interaktivni Google OAuth 2.0 flow za dohvat tokena i korisničkog profila
    */
   public async requestLogin(): Promise<{ identity: GoogleAuthIdentity; accessToken: string }> {
+    appLogger.scope('AUTH:GOOGLE:LOGIN').info('Započinjem interaktivnu Google OAuth 2.0 prijavu...');
     await this.loadGisScript();
 
     if (!window.google?.accounts?.oauth2) {
-      throw new Error('Google Identity SDK nije inicijaliziran.');
+      const err = new Error('Google Identity SDK nije inicijaliziran.');
+      appLogger.scope('AUTH:GOOGLE:LOGIN').error(err.message);
+      throw err;
     }
 
     if (!this.hasCustomClientId()) {
-      throw new Error(
+      const err = new Error(
         'Nije postavljen Google Cloud Client ID. Za trenutno testiranje kliknite "Isprobaj Demo Prijavu", ili unesite svoj Client ID u Naprednim postavkama.'
       );
+      appLogger.scope('AUTH:GOOGLE:LOGIN').warn(err.message);
+      throw err;
     }
 
     const clientId = this.getEffectiveClientId();
@@ -295,6 +344,11 @@ class GoogleAuthService {
       'https://www.googleapis.com/auth/drive.appdata'
     ].join(' ');
 
+    appLogger.scope('AUTH:GOOGLE:LOGIN').debug('Konfiguriran Google token client', {
+      clientIdPrefix: clientId.slice(0, 15) + '...',
+      scopes,
+    });
+
     return new Promise((resolve, reject) => {
       try {
         const client = window.google!.accounts.oauth2.initTokenClient({
@@ -303,7 +357,7 @@ class GoogleAuthService {
           callback: async (response) => {
             if (response.error || !response.access_token) {
               const err = response.error || 'Prijava je otkazana ili neuspjela.';
-              appLogger.scope('AUTH:GOOGLE').warn('Google prijava neuspjela:', { error: err });
+              appLogger.scope('AUTH:GOOGLE:LOGIN').warn('Google prijava otkazana ili neuspjela od strane korisnika:', { error: err });
               reject(new Error(err));
               return;
             }
@@ -311,13 +365,23 @@ class GoogleAuthService {
             const accessToken = response.access_token;
             const expiresIn = response.expires_in || 3600;
 
+            appLogger.scope('AUTH:GOOGLE:LOGIN').info('Google OAuth access token uspješno zaprimljen u callbacku.', {
+              expiresInSec: expiresIn,
+            });
+
             try {
               // Dohvati korisničke podatke (sub, email, name, picture)
+              appLogger.scope('AUTH:GOOGLE:USERINFO').debug('Dohvaćam korisnički profil s Google UserInfo endpointa...');
               const userInfoRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
                 headers: { Authorization: `Bearer ${accessToken}` },
               });
 
               if (!userInfoRes.ok) {
+                const errText = await userInfoRes.text().catch(() => '');
+                appLogger.scope('AUTH:GOOGLE:USERINFO').error('Google UserInfo API vratio grešku:', {
+                  status: userInfoRes.status,
+                  body: errText,
+                });
                 throw new Error('Neuspjelo dohvaćanje korisničkog profila s Google API-ja.');
               }
 
@@ -338,15 +402,28 @@ class GoogleAuthService {
               };
 
               this.saveSession(identity, tokens);
+              appLogger.scope('AUTH:GOOGLE:LOGIN').info('Korisnik uspješno prijavljen putem Google računa!', {
+                email: identity.email,
+                ime: identity.name,
+                googleSub: identity.googleSub,
+              });
+
               resolve({ identity, accessToken });
             } catch (err: any) {
+              appLogger.scope('AUTH:GOOGLE:LOGIN').error('Greška pri dohvaćanju i obradi profila korisnika:', {
+                error: err?.message,
+              });
               reject(err);
             }
           },
         });
 
+        appLogger.scope('AUTH:GOOGLE:LOGIN').debug('Otvaram Google OAuth popup prozor za odabir računa...');
         client.requestAccessToken();
       } catch (err: any) {
+        appLogger.scope('AUTH:GOOGLE:LOGIN').error('Greška pri inicijalizaciji requestAccessToken:', {
+          error: err?.message,
+        });
         reject(err);
       }
     });
@@ -356,6 +433,7 @@ class GoogleAuthService {
    * Simulira prijavu u Demo / Offline načinu (korisno za demonstraciju, razvoj i testiranje bez Client ID-a)
    */
   public loginDemoUser(): GoogleAuthIdentity {
+    appLogger.scope('AUTH:GOOGLE:DEMO').info('Aktivirana simulirana Demo prijava s determinističkim Google identitetom.');
     const demoIdentity: GoogleAuthIdentity = {
       provider: 'GOOGLE',
       googleSub: '108392174981273981273', // Deterministički 21-znamenkasti ID

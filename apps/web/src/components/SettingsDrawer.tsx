@@ -37,6 +37,7 @@ import { useGoogleDriveSync, type UseGoogleDriveSyncReturn } from '../hooks/useG
 import { useGeminiAssistant, type UseGeminiAssistantReturn } from '../hooks/useGeminiAssistant';
 import { googleAuthService } from '../services/google-auth-service';
 import { googleDriveService } from '../services/google-drive-service';
+import { appLogger } from '../services/logger';
 
 export interface SettingsDrawerProps {
   isOpen: boolean;
@@ -59,6 +60,16 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({
   const [activeTab, setActiveTab] = useState<'osnovno' | 'poslovanje' | 'memorandum' | 'backup' | 'cloud'>('osnovno');
   const [formData, setFormData] = useState<ObrtProfil>(profil);
   const [savedSuccess, setSavedSuccess] = useState(false);
+
+  // Scoped Loggeri za postavke
+  const logger = appLogger.scope('SETTINGS');
+  const loggerProfile = appLogger.scope('SETTINGS:PROFILE');
+  const loggerMemorandum = appLogger.scope('SETTINGS:MEMORANDUM');
+  const loggerBackup = appLogger.scope('SETTINGS:BACKUP');
+  const loggerAuth = appLogger.scope('SETTINGS:GOOGLE');
+  const loggerDrive = appLogger.scope('SETTINGS:DRIVE');
+  const loggerGemini = appLogger.scope('SETTINGS:GEMINI');
+  const loggerDiag = appLogger.scope('SETTINGS:DIAGNOSTICS');
 
   // Google, Drive & Gemini Hooks (koriste proslijeđene ili fallback instance)
   const internalGoogleAuth = useGoogleAuth();
@@ -100,7 +111,18 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({
     setFormData(profil);
   }, [profil, isOpen]);
 
+  useEffect(() => {
+    if (isOpen) {
+      logger.info('Otvoren prozor postavki obrta', { aktivniTab: activeTab });
+    }
+  }, [isOpen]);
+
   if (!isOpen) return null;
+
+  const handleTabChange = (tab: 'osnovno' | 'poslovanje' | 'memorandum' | 'backup' | 'cloud') => {
+    logger.debug('Korisnik promijenio tab postavki', { prethodniTab: activeTab, noviTab: tab });
+    setActiveTab(tab);
+  };
 
   const handleTextChange = (field: keyof ObrtProfil, val: any) => {
     setFormData((prev) => ({ ...prev, [field]: val }));
@@ -109,16 +131,37 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    await saveProfil(formData);
-    setSavedSuccess(true);
-    setTimeout(() => setSavedSuccess(false), 3000);
+    loggerProfile.info('Spremanje profila obrta', {
+      naziv: formData.naziv,
+      oib: formData.oib,
+      ibanPostavljen: !!formData.iban,
+      uSustavuPdv: formData.uSustavuPdv,
+      jePausalist: formData.jePausalist,
+    });
+    try {
+      await saveProfil(formData);
+      setSavedSuccess(true);
+      loggerProfile.info('Profil obrta uspješno spremljen');
+      setTimeout(() => setSavedSuccess(false), 3000);
+    } catch (err: any) {
+      loggerProfile.error('Greška pri spremanju profila obrta:', { error: err?.message });
+    }
   };
 
   const handleReset = async () => {
     const confirmReset = confirm('Jeste li sigurni da želite vratiti profil obrta na tvorničke postavke?');
-    if (!confirmReset) return;
-    await resetToDefault();
-    setFormData(profil);
+    if (!confirmReset) {
+      loggerProfile.debug('Korisnik odustao od tvorničkog reseta profila obrta');
+      return;
+    }
+    loggerProfile.warn('Korisnik potvrdio tvornički reset profila obrta na početne vrijednosti');
+    try {
+      await resetToDefault();
+      setFormData(profil);
+      loggerProfile.info('Profil obrta uspješno vraćen na početno');
+    } catch (err: any) {
+      loggerProfile.error('Greška pri vraćanju profila obrta na početno:', { error: err?.message });
+    }
   };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>, field: 'logoImageData' | 'pecatPotpisImageData') => {
@@ -126,17 +169,38 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({
     if (!file) return;
 
     if (file.size > 500 * 1024) {
+      loggerMemorandum.warn('Učitavanje slike memoranduma odbijeno: premašuje 500 KB', {
+        polje: field,
+        velicinaKb: Math.round(file.size / 1024),
+        maxKb: 500,
+      });
       alert('Veličina slike ne smije premašiti 500 KB.');
       return;
     }
+
+    loggerMemorandum.info('Učitavanje slike memoranduma', {
+      polje: field,
+      imeDatoteke: file.name,
+      velicinaKb: Math.round(file.size / 1024),
+      format: file.type,
+    });
 
     const reader = new FileReader();
     reader.onload = () => {
       const base64 = reader.result as string;
       setFormData((prev) => ({ ...prev, [field]: base64 }));
       setSavedSuccess(false);
+      loggerMemorandum.info('Slika memoranduma uspješno pročitana u Base64', { polje: field });
+    };
+    reader.onerror = (err) => {
+      loggerMemorandum.error('Greška pri čitanju datoteke slike memoranduma:', { error: err });
     };
     reader.readAsDataURL(file);
+  };
+
+  const handleRemoveImage = (field: 'logoImageData' | 'pecatPotpisImageData') => {
+    loggerMemorandum.info(`Uklonjena slika memoranduma: ${field}`);
+    handleTextChange(field, undefined);
   };
 
   // Backup / Restore Handlers
@@ -145,19 +209,23 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({
       alert('Molimo unesite lozinku od najmanje 4 znaka za enkripciju sigurnosne kopije.');
       return;
     }
+    loggerBackup.info('Zatražen izvoz šifrirane sigurnosne kopije (AES-256-GCM)');
     try {
       await backupHook.exportEncryptedBackup(backupPassword);
       setBackupPassword('');
-    } catch {
-      // Greška je evidentirana u hooku
+      loggerBackup.info('Šifrirana sigurnosna kopija uspješno stvorena i preuzeta');
+    } catch (err: any) {
+      loggerBackup.error('Greška pri izvozu šifrirane sigurnosne kopije:', { error: err?.message });
     }
   };
 
   const handleExportJson = async () => {
+    loggerBackup.info('Zatražen izvoz nešifriranog JSON snimka baze');
     try {
       await backupHook.exportJsonSnapshot();
-    } catch {
-      // Greška je evidentirana u hooku
+      loggerBackup.info('Nešifrirani JSON snapshot uspješno stvoren i preuzet');
+    } catch (err: any) {
+      loggerBackup.error('Greška pri izvozu nešifriranog JSON snimka:', { error: err?.message });
     }
   };
 
@@ -166,11 +234,17 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({
     if (!file) return;
     setRestoreFile(file);
     setRestoreSummary(null);
+    loggerBackup.debug('Odabrana datoteka za obnovu baze podataka', {
+      naziv: file.name,
+      velicinaKb: Math.round(file.size / 1024),
+    });
     try {
       const inspect = await backupHook.inspectBackupFile(file);
       setIsEncryptedFile(inspect.isEncrypted);
-    } catch {
+      loggerBackup.info('Inspekcija datoteke za obnovu uspješna', { isEncrypted: inspect.isEncrypted });
+    } catch (err: any) {
       setIsEncryptedFile(null);
+      loggerBackup.warn('Neuspješna inspekcija datoteke za obnovu:', { error: err?.message });
     }
   };
 
@@ -186,7 +260,15 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({
     const confirmed = confirm(
       'POZOR: Obnova iz sigurnosne kopije zamijenit će podatke u lokalnoj bazi. Želite li nastaviti?'
     );
-    if (!confirmed) return;
+    if (!confirmed) {
+      loggerBackup.info('Korisnik odustao od obnove baze nakon potvrdnog dijaloga');
+      return;
+    }
+
+    loggerBackup.warn('Započinje obnova baze podataka iz sigurnosne kopije', {
+      datoteka: restoreFile.name,
+      jeSifrirana: !!isEncryptedFile,
+    });
 
     try {
       const summary = await backupHook.restoreFromFile(restoreFile, restorePassword);
@@ -195,8 +277,9 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({
       // Ponovno učitaj profil obrta u formu
       const updatedProfil = await obrtProfileHook.profil;
       setFormData(updatedProfil);
-    } catch {
-      // Greška je evidentirana u hooku
+      loggerBackup.info('Baza podataka uspješno obnovljena iz kopije', { summary });
+    } catch (err: any) {
+      loggerBackup.error('Greška pri obnovi baze podataka iz kopije:', { error: err?.message });
     }
   };
 
@@ -208,8 +291,12 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({
     const confirmed = confirm(
       'Jeste li STVARNO sigurni da želite nepovratno obrisati sve račune, KPR i partnere iz lokalne baze?'
     );
-    if (!confirmed) return;
+    if (!confirmed) {
+      loggerBackup.info('Korisnik odustao od tvorničkog brisanja baze (OBRISI dijalog)');
+      return;
+    }
 
+    loggerBackup.error('POKRENUTO TRAJNO NEPOVRATNO BRISANJE LOKALNE BAZE PODATAKA (FACTORY RESET DB)');
     await backupHook.resetDatabase();
     setResetConfirmInput('');
     alert('Baza podataka je ispražnjena.');
@@ -218,7 +305,9 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({
 
   // Google Auth Handlers
   const handleGoogleLogin = async () => {
+    loggerAuth.info('Korisnik zatražio Google OAuth prijavu');
     if (!googleAuth.hasCustomClientId) {
+      loggerAuth.warn('Google prijava odbijena: nije postavljen prilagođeni Google Client ID');
       alert(
         'Za prijavu stvarnim Google računom potrebno je unijeti vaš besplatni Google Cloud Client ID u "Naprednim postavkama" ispod.\n\nZa trenutno testiranje svih mogućnosti (kripto-sidro, AES-256 enkripcija, Drive sync) bez konfiguracije kliknite "Isprobaj Demo Prijavu"!'
       );
@@ -226,23 +315,47 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({
     }
     try {
       await googleAuth.login();
-    } catch {
-      // Greška je zabilježena u hooku
+      loggerAuth.info('Google OAuth prijava dovršena');
+    } catch (err: any) {
+      loggerAuth.error('Google OAuth prijava nije uspjela:', { error: err?.message });
     }
   };
 
+  const handleGoogleLogout = () => {
+    loggerAuth.info('Korisnik kliknuo Odjava s Google računa');
+    googleAuth.logout();
+  };
+
+  const handleGoogleDemoLogin = async () => {
+    loggerAuth.info('Korisnik kliknuo Demo prijavu Google računa');
+    await googleAuth.loginDemo();
+  };
+
+  const handleGoogleRefreshToken = async () => {
+    loggerAuth.info('Korisnik zatražio ručno osvježavanje OAuth pristupnog tokena');
+    await googleAuth.refreshAccessToken();
+  };
+
   const handleSaveClientId = () => {
+    loggerAuth.info('Spremanje prilagođenog Google Client ID-a', {
+      postavljen: !!customClientIdInput,
+      duljina: customClientIdInput?.length || 0,
+    });
     googleAuth.setClientId(customClientIdInput);
     alert('Google Client ID spremljen.');
   };
 
   // Google Drive Sync Handlers
   const handleSyncToDrive = async () => {
+    loggerDrive.info('Pokretanje sinkronizacije baze na Google Drive', {
+      imaZastitniPin: !!drivePinInput,
+    });
     try {
       await driveSync.syncToDrive(drivePinInput || undefined);
+      loggerDrive.info('Baza podataka uspješno sinkronizirana na Google Drive');
       alert('Baza podataka uspješno je sinkronizirana na Google Drive!');
-    } catch {
-      // Greška je zabilježena u hooku
+    } catch (err: any) {
+      loggerDrive.error('Sinkronizacija na Google Drive nije uspjela:', { error: err?.message });
     }
   };
 
@@ -250,45 +363,71 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({
     const confirmed = confirm(
       'POZOR: Vraćanje baze s Google Drivea zamijenit će trenutne lokalne podatke. Želite li nastaviti?'
     );
-    if (!confirmed) return;
+    if (!confirmed) {
+      loggerDrive.info('Korisnik odustao od vraćanja baze s Google Drivea');
+      return;
+    }
+    loggerDrive.warn('Pokretanje obnove baze s Google Drivea', { fileId, imaZastitniPin: !!drivePinInput });
     try {
       await driveSync.restoreFromDrive(fileId, drivePinInput || undefined);
+      loggerDrive.info('Baza podataka uspješno vraćena s Google Drivea');
       alert('Baza podataka uspješno je vraćena s Google Drivea!');
       window.location.reload();
-    } catch {
-      // Greška je zabilježena u hooku
+    } catch (err: any) {
+      loggerDrive.error('Vraćanje baze s Google Drivea nije uspjelo:', { error: err?.message });
     }
+  };
+
+  const handleRefreshDriveBackups = async () => {
+    loggerDrive.info('Osvježavanje popisa sigurnosnih kopija na Google Driveu');
+    await driveSync.refreshDriveBackups();
   };
 
   // Gemini AI Handlers
   const handleSaveGeminiKey = () => {
+    loggerGemini.info('Spremanje Gemini API ključa u lokalnu pohranu', {
+      postavljen: !!geminiApiKeyInput,
+      duljina: geminiApiKeyInput?.length || 0,
+    });
     gemini.setApiKey(geminiApiKeyInput);
     alert('Gemini API ključ spremljen lokalno u preglednik.');
   };
 
   const handleTestGeminiKey = async () => {
+    loggerGemini.info('Pokretanje testiranja valjanosti Gemini API ključa');
     setGeminiTestStatus('TESTING');
     const ok = await gemini.testKey(geminiApiKeyInput);
     if (ok) {
+      loggerGemini.info('Test Gemini API ključa uspješan');
       setGeminiTestStatus('SUCCESS');
       setTimeout(() => setGeminiTestStatus(null), 4000);
     } else {
+      loggerGemini.warn('Test Gemini API ključa nije uspio');
       setGeminiTestStatus('ERROR');
     }
   };
 
+  const handleModelChange = (noviModel: string) => {
+    loggerGemini.info('Promijenjen odabrani Gemini AI model', { model: noviModel });
+    gemini.setModel(noviModel);
+  };
+
   // Dijagnostika Google i Gemini API-ja
   const handleRunDiagnostics = async () => {
+    loggerDiag.info('Pokretanje sveobuhvatne dijagnostike API-ja i dozvola (Health Check)');
     setIsDiagnosing(true);
     setDiagResult(null);
 
     const formatCheck = googleAuthService.validateClientIdFormat(googleAuth.clientId);
+    loggerDiag.debug('Google Client ID format provjeren', { valid: formatCheck.valid, msg: formatCheck.message });
+
     let tokenRes: { ok: boolean; scopes: string[]; email?: string; error?: string } | undefined;
     let driveRes: { ok: boolean; statusText: string; enableUrl?: string } | undefined;
     let geminiRes: { ok: boolean; msg: string } | undefined;
 
     const token = await googleAuth.getAccessToken();
     if (token) {
+      loggerDiag.debug('OAuth pristupni token aktivan, provjeravam tokeninfo i Drive API...');
       const inspected = await googleAuthService.inspectToken(token);
       tokenRes = {
         ok: inspected.ok,
@@ -303,9 +442,12 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({
         statusText: driveCheck.statusText,
         enableUrl: driveCheck.enableUrl,
       };
+    } else {
+      loggerDiag.debug('Nema aktivnog Google OAuth tokena');
     }
 
     if (gemini.apiKey) {
+      loggerDiag.debug('Provjeravam valjanost Gemini API ključa...');
       const ok = await gemini.testKey(gemini.apiKey);
       geminiRes = {
         ok,
@@ -314,6 +456,13 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({
           : 'Gemini API poziv nije uspio (provjerite ključ ili kvotu na AI Studio).',
       };
     }
+
+    loggerDiag.info('Dijagnostika API-ja završena', {
+      clientIdValid: formatCheck.valid,
+      tokenAktivan: !!tokenRes?.ok,
+      driveDostupan: !!driveRes?.ok,
+      geminiDostupan: !!geminiRes?.ok,
+    });
 
     setDiagResult({
       clientIdValid: formatCheck.valid,
@@ -365,7 +514,7 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({
           <div className="flex border-b border-[var(--border-subtle)] bg-[var(--bg-canvas)] font-mono text-xs">
             <button
               type="button"
-              onClick={() => setActiveTab('osnovno')}
+              onClick={() => handleTabChange('osnovno')}
               className={`flex-1 py-3 px-4 flex items-center justify-center gap-2 border-b-2 font-semibold transition-all ${
                 activeTab === 'osnovno'
                   ? 'border-[var(--accent-primary)] text-[var(--accent-primary)] bg-[var(--bg-surface)]'
@@ -377,7 +526,7 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({
             </button>
             <button
               type="button"
-              onClick={() => setActiveTab('poslovanje')}
+              onClick={() => handleTabChange('poslovanje')}
               className={`flex-1 py-3 px-4 flex items-center justify-center gap-2 border-b-2 font-semibold transition-all ${
                 activeTab === 'poslovanje'
                   ? 'border-[var(--accent-primary)] text-[var(--accent-primary)] bg-[var(--bg-surface)]'
@@ -389,7 +538,7 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({
             </button>
             <button
               type="button"
-              onClick={() => setActiveTab('memorandum')}
+              onClick={() => handleTabChange('memorandum')}
               className={`flex-1 py-3 px-3 flex items-center justify-center gap-1.5 border-b-2 font-semibold transition-all ${
                 activeTab === 'memorandum'
                   ? 'border-[var(--accent-primary)] text-[var(--accent-primary)] bg-[var(--bg-surface)]'
@@ -401,7 +550,7 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({
             </button>
             <button
               type="button"
-              onClick={() => setActiveTab('backup')}
+              onClick={() => handleTabChange('backup')}
               className={`flex-1 py-3 px-2 flex items-center justify-center gap-1 border-b-2 font-semibold transition-all ${
                 activeTab === 'backup'
                   ? 'border-[var(--accent-primary)] text-[var(--accent-primary)] bg-[var(--bg-surface)]'
@@ -413,7 +562,7 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({
             </button>
             <button
               type="button"
-              onClick={() => setActiveTab('cloud')}
+              onClick={() => handleTabChange('cloud')}
               className={`flex-1 py-3 px-2 flex items-center justify-center gap-1 border-b-2 font-semibold transition-all ${
                 activeTab === 'cloud'
                   ? 'border-[var(--accent-primary)] text-[var(--accent-primary)] bg-[var(--bg-surface)]'
@@ -649,7 +798,7 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({
                     {formData.logoImageData && (
                       <button
                         type="button"
-                        onClick={() => handleTextChange('logoImageData', undefined)}
+                        onClick={() => handleRemoveImage('logoImageData')}
                         className="text-xs font-mono text-[#EF4444] hover:underline flex items-center gap-1 cursor-pointer"
                       >
                         <Trash2 className="w-3.5 h-3.5" /> Ukloni logo
@@ -698,7 +847,7 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({
                     {formData.pecatPotpisImageData && (
                       <button
                         type="button"
-                        onClick={() => handleTextChange('pecatPotpisImageData', undefined)}
+                        onClick={() => handleRemoveImage('pecatPotpisImageData')}
                         className="text-xs font-mono text-[#EF4444] hover:underline flex items-center gap-1 cursor-pointer"
                       >
                         <Trash2 className="w-3.5 h-3.5" /> Ukloni pečat
@@ -1171,7 +1320,7 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({
 
                         <button
                           type="button"
-                          onClick={googleAuth.logout}
+                          onClick={handleGoogleLogout}
                           className="px-3 py-1.5 bg-[var(--bg-canvas)] hover:bg-[var(--bg-elevated)] text-[#EF4444] border border-[#EF4444]/40 text-xs font-mono flex items-center gap-1.5 cursor-pointer transition-all"
                         >
                           <LogOut className="w-3.5 h-3.5" />
@@ -1209,7 +1358,7 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({
                           </div>
                           <button
                             type="button"
-                            onClick={() => googleAuth.refreshAccessToken()}
+                            onClick={handleGoogleRefreshToken}
                             className="text-[10px] text-[var(--accent-primary)] hover:underline flex items-center gap-1 cursor-pointer"
                             title="Prisilno obnovi Google pristupni token"
                           >
@@ -1252,7 +1401,7 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({
 
                         <button
                           type="button"
-                          onClick={googleAuth.loginDemo}
+                          onClick={handleGoogleDemoLogin}
                           className="px-3 py-2 bg-[#064E3B] hover:bg-[#047857] text-[#10B981] border border-[#10B981]/40 font-mono text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer transition-all shadow-sm"
                           title="Simulira Google prijavu za testiranje bez unosa Google Client ID-a"
                         >
@@ -1371,7 +1520,7 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({
                         <span>Spremljene verzije u AppData mapi ({driveSync.driveBackups.length}):</span>
                         <button
                           type="button"
-                          onClick={driveSync.refreshDriveBackups}
+                          onClick={handleRefreshDriveBackups}
                           className="text-[11px] text-[var(--accent-primary)] hover:underline flex items-center gap-1 cursor-pointer"
                         >
                           <RefreshCw className="w-3 h-3" />
@@ -1501,7 +1650,7 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({
                       </label>
                       <select
                         value={gemini.model}
-                        onChange={(e) => gemini.setModel(e.target.value)}
+                        onChange={(e) => handleModelChange(e.target.value)}
                         className="w-full bg-[var(--bg-surface)] text-white px-3 py-2 font-mono text-xs border border-[var(--border-strong)] outline-none"
                       >
                         <option value="gemini-2.0-flash">gemini-2.0-flash (Najbrži, najprecizniji, besplatna kvota)</option>

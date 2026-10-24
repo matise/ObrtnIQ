@@ -46,16 +46,20 @@ export function useZigoAgent(options: UseZigoAgentOptions = {}): UseZigoAgentRet
     toolsContextRef.current = options.toolsContext;
   }, [options.toolsContext]);
 
-  const logger = appLogger.scope('AGENT:ZIGO');
+  const loggerSession = appLogger.scope('AGENT:SESSION');
+  const loggerChat = appLogger.scope('AGENT:CHAT');
+  const loggerRez = appLogger.scope('AGENT:REZ');
+  const loggerAction = appLogger.scope('AGENT:ACTION');
 
   // Učitavanje svih sesija iz baze
   const loadSesije = useCallback(async () => {
     try {
       const list = await dexieStorage.chat.getAllSesije(false);
       setSesije(list);
+      loggerSession.debug('Učitane sesije iz baze', { brojSesija: list.length });
       return list;
     } catch (err: any) {
-      logger.error('Greška pri dohvaćanju chat sesija:', { error: err?.message });
+      loggerSession.error('Greška pri dohvaćanju chat sesija:', { error: err?.message });
       return [];
     }
   }, []);
@@ -65,8 +69,9 @@ export function useZigoAgent(options: UseZigoAgentOptions = {}): UseZigoAgentRet
     try {
       const msgs = await dexieStorage.chat.getPorukeBySesijaId(sesijaId);
       setPoruke(msgs);
+      loggerChat.debug('Učitane poruke za sesiju', { sesijaId, brojPoruka: msgs.length });
     } catch (err: any) {
-      logger.error(`Greška pri dohvaćanju poruka sesije ${sesijaId}:`, { error: err?.message });
+      loggerChat.error(`Greška pri dohvaćanju poruka sesije ${sesijaId}:`, { error: err?.message });
     }
   }, []);
 
@@ -101,6 +106,8 @@ export function useZigoAgent(options: UseZigoAgentOptions = {}): UseZigoAgentRet
         };
         await dexieStorage.chat.savePoruka(dobrodoslica);
 
+        loggerSession.info('Inicijalizirana prva sesija dobrodošlice sa Žigom', { id: novaId });
+
         if (isMounted) {
           setSesije([nova]);
           setAktivnaSesijaId(novaId);
@@ -117,6 +124,7 @@ export function useZigoAgent(options: UseZigoAgentOptions = {}): UseZigoAgentRet
   // Odabir sesije
   const odaberiSesiju = useCallback(
     async (sesijaId: string) => {
+      loggerSession.info('Odabrana sesija razgovora', { sesijaId });
       setAktivnaSesijaId(sesijaId);
       await loadPoruke(sesijaId);
     },
@@ -145,6 +153,7 @@ export function useZigoAgent(options: UseZigoAgentOptions = {}): UseZigoAgentRet
       };
       await dexieStorage.chat.savePoruka(dobrodoslica);
 
+      loggerSession.info('Stvorena nova sesija razgovora', { id: novaId, naslov: nova.naslov });
       await loadSesije();
       setAktivnaSesijaId(novaId);
       setPoruke([dobrodoslica]);
@@ -156,6 +165,7 @@ export function useZigoAgent(options: UseZigoAgentOptions = {}): UseZigoAgentRet
   // Brisanje sesije
   const obrisiSesiju = useCallback(
     async (sesijaId: string) => {
+      loggerSession.warn('Brisanje sesije razgovora', { sesijaId });
       await dexieStorage.chat.deleteSesija(sesijaId);
       const preostale = await loadSesije();
       if (preostale.length > 0 && preostale[0]) {
@@ -171,6 +181,10 @@ export function useZigoAgent(options: UseZigoAgentOptions = {}): UseZigoAgentRet
   // Izvršavanje pripremljenog alata (ručno ili preko akcijske kartice)
   const izvrsiPripremljeniAlat = useCallback(
     async (toolPoziv: ZigoToolCall): Promise<ZigoToolResult> => {
+      loggerAction.info('Korisnik potvrdio ručno izvršavanje pripremljenog alata', {
+        alat: toolPoziv.imeFunkcije,
+        argumenti: toolPoziv.argumenti,
+      });
       const ctx = toolsContextRef.current || {};
       const rez = await executeZigoTool(toolPoziv.imeFunkcije, toolPoziv.argumenti, ctx);
       return rez;
@@ -190,6 +204,12 @@ export function useZigoAgent(options: UseZigoAgentOptions = {}): UseZigoAgentRet
       if (!cleanTekst && (!privitci || privitci.length === 0)) {
         return;
       }
+
+      loggerChat.info('Korisnik šalje poruku agentu', {
+        sesijaId: currentSesijaId,
+        duljinaTeksta: cleanTekst.length,
+        brojPrivitaka: privitci?.length || 0,
+      });
 
       // 1. Stvori i spremi korisničku poruku
       const userMsg: ZigoChatPoruka = {
@@ -216,12 +236,27 @@ export function useZigoAgent(options: UseZigoAgentOptions = {}): UseZigoAgentRet
         }
       }
 
+      const t0 = performance.now();
       try {
         // 2. Pozovi Gemini ili lokalni heuristički asistent
+        loggerChat.debug('Pokretanje Gemini / heurističkog agenta', {
+          brojPorukaUKontekstu: azuriranePoruke.length,
+          imaApiKeyOverride: !!options.apiKeyOverride,
+        });
+
         const agentResponse = await geminiService.chatWithAgent(
           azuriranePoruke,
           options.apiKeyOverride
         );
+        const trajanjeMs = Math.round(performance.now() - t0);
+
+        loggerChat.info('Žigo generirao odgovor', {
+          sesijaId: currentSesijaId,
+          trajanjeMs,
+          jeAiGenerirano: agentResponse.jeAiGenerirano,
+          imaToolPoziv: !!agentResponse.toolPoziv,
+          toolIme: agentResponse.toolPoziv?.imeFunkcije,
+        });
 
         let toolRezultat: ZigoToolResult | undefined = undefined;
 
@@ -249,7 +284,12 @@ export function useZigoAgent(options: UseZigoAgentOptions = {}): UseZigoAgentRet
         await dexieStorage.chat.savePoruka(assistantMsg);
         setPoruke([...azuriranePoruke, assistantMsg]);
       } catch (err: any) {
-        logger.error('Greška pri obradi odgovora agenta:', { error: err?.message });
+        const trajanjeMs = Math.round(performance.now() - t0);
+        loggerChat.error('Greška pri obradi odgovora agenta:', {
+          error: err?.message,
+          stack: err?.stack,
+          trajanjeMs,
+        });
         const errorMsg: ZigoChatPoruka = {
           id: `msg-${Date.now()}-error`,
           sesijaId: currentSesijaId,
@@ -263,14 +303,15 @@ export function useZigoAgent(options: UseZigoAgentOptions = {}): UseZigoAgentRet
         setIsThinking(false);
       }
     },
-    [aktivnaSesijaId, poruke, sesije, stvoriNovuSesiju, loadSesije, options.apiKeyOverride, logger]
+    [aktivnaSesijaId, poruke, sesije, stvoriNovuSesiju, loadSesije, options.apiKeyOverride, loggerChat, loggerSession]
   );
 
   // Instant aktivacija Žiginog Reza
   const aktivirajRez = useCallback(async () => {
+    loggerRez.info('Korisnik okinuo "Žigin Rez" (instant trijaža i presijecanje)');
     setIsDrawerOpen(true);
     await posaljiPoruku('Žigo, presijeci.');
-  }, [posaljiPoruku]);
+  }, [posaljiPoruku, loggerRez]);
 
   const toggleDrawer = useCallback(() => {
     setIsDrawerOpen((prev) => !prev);

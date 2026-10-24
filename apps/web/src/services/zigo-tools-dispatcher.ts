@@ -77,35 +77,55 @@ export async function executeZigoTool(
   context: ZigoToolsContext
 ): Promise<ZigoToolResult> {
   const storage = context.storage || dexieStorage;
-  const logger = appLogger.scope('AGENT:TOOL');
+  const startTime = performance.now();
+  const toolScope = `AGENT:TOOL:${toolName.toUpperCase()}`;
+  const logger = appLogger.scope(toolScope);
 
-  logger.info(`Izvršavam agentni alat [${toolName}]`, args);
+  logger.info(`Započinjem izvršavanje alata [${toolName}]`, {
+    argumenti: args,
+    timestamp: new Date().toISOString(),
+  });
 
   try {
+    let result: ZigoToolResult;
+
     switch (toolName) {
       // 1. Postavljanje kupca na radnu plohu
       case 'postavi_kupca': {
         const { partnerNaziv, oib, iban, taxZone, adresa } = args;
         if (!partnerNaziv || typeof partnerNaziv !== 'string' || !partnerNaziv.trim()) {
+          logger.warn('Neuspjelo postavljanje kupca: naziv nije zadan.');
           return { uspjeh: false, poruka: 'Naziv kupca je obvezan parametar.' };
         }
+
+        const isOibVal = oib ? validateOib(oib.trim()) : false;
+        const isIbanVal = iban ? validateIban(iban.trim()) : false;
+
+        logger.debug('Validacija podataka partnera', {
+          partnerNaziv: partnerNaziv.trim(),
+          oib: oib?.trim(),
+          isOibValid: isOibVal,
+          iban: iban?.trim(),
+          isIbanValid: isIbanVal,
+          taxZone: taxZone || 'DOMACI_B2B',
+        });
 
         if (context.form) {
           context.form.setPartnerNaziv(partnerNaziv.trim());
           if (oib) {
             context.form.setOib(oib.trim());
-            context.form.setIsOibValid(validateOib(oib.trim()));
+            context.form.setIsOibValid(isOibVal);
           }
           if (iban) {
             context.form.setIban(iban.trim());
-            context.form.setIsIbanValid(validateIban(iban.trim()));
+            context.form.setIsIbanValid(isIbanVal);
           }
           if (taxZone) {
             context.form.setTaxZone(taxZone as PoreznaZona);
           }
         }
 
-        return {
+        result = {
           uspjeh: true,
           podaci: {
             partnerNaziv: partnerNaziv.trim(),
@@ -116,18 +136,21 @@ export async function executeZigoTool(
           },
           poruka: `Kupac "${partnerNaziv.trim()}" postavljen je na radnu plohu.`,
         };
+        break;
       }
 
       // 2. Dodavanje stavke na radnu plohu
       case 'dodaj_stavku_racuna': {
         const { naziv, kpdSifra, kolicina, cijena, jedinicaMjere } = args;
         if (!naziv || !kpdSifra) {
+          logger.warn('Neuspjelo dodavanje stavke: nedostaje naziv ili KPD šifra.');
           return { uspjeh: false, poruka: 'Naziv i KPD 2025 šifra stavke su obvezni.' };
         }
 
         const parsedKolicina = Number(kolicina) > 0 ? Number(kolicina) : 1;
         const parsedCijena = Number(cijena) >= 0 ? Number(cijena) : 0;
         const jm = jedinicaMjere || 'sat';
+        const redakUkupno = parsedKolicina * parsedCijena;
 
         const novaStavka: FormItem = {
           id: `item-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
@@ -138,19 +161,26 @@ export async function executeZigoTool(
           jedinicaMjere: jm,
         };
 
+        logger.debug('Izračunata nova stavka računa', {
+          kpdSifra: novaStavka.kpdSifra,
+          naziv: novaStavka.kpdNaziv,
+          iznos: redakUkupno,
+        });
+
         if (context.items) {
           const currentItems = context.items.items || [];
           context.items.setItems([...currentItems, novaStavka]);
         }
 
-        return {
+        result = {
           uspjeh: true,
           podaci: {
             stavka: novaStavka,
-            ukupno: parsedKolicina * parsedCijena,
+            ukupno: redakUkupno,
           },
           poruka: `Dodana stavka "${naziv.trim()}" (${parsedKolicina} ${jm} x ${parsedCijena.toFixed(2)} €).`,
         };
+        break;
       }
 
       // 3. Čišćenje stavki s radne plohe
@@ -158,10 +188,12 @@ export async function executeZigoTool(
         if (context.items) {
           context.items.resetItems();
         }
-        return {
+        logger.info('Radna ploha očišćena od stavki (reset).');
+        result = {
           uspjeh: true,
           poruka: 'Radna ploha je očišćena. Sve prethodne stavke su uklonjene.',
         };
+        break;
       }
 
       // 4. Priprema i izdavanje aktivnog računa
@@ -169,7 +201,12 @@ export async function executeZigoTool(
         const ukupno = context.items?.ukupniIznos || 0;
         const isSubmittable = context.workflow?.isFormSubmittable ?? false;
 
-        return {
+        logger.info('Pripremljeno izdavanje aktivnog računa', {
+          ukupnoIznos: ukupno,
+          isSubmittable,
+        });
+
+        result = {
           uspjeh: true,
           podaci: {
             akcija: 'POTVRDA_IZDAVANJA',
@@ -178,26 +215,36 @@ export async function executeZigoTool(
           },
           poruka: `Račun u ukupnom iznosu od ${ukupno.toFixed(2)} € je pripremljen za izdavanje. Pritisnite F2 ili potvrdite karticu za konačno fiskalno pečaćenje.`,
         };
+        break;
       }
 
       // 5. Storniranje računa
       case 'storniraj_racun': {
         const { brojDokumenta, razlog } = args;
         if (!brojDokumenta) {
+          logger.warn('Storniranje odbijeno: brojDokumenta nije naveden.');
           return { uspjeh: false, poruka: 'Broj dokumenta za storniranje je obvezan.' };
         }
 
+        logger.debug('Pretražujem bazu za storno dokumenta:', { brojDokumenta });
         const sviDokumenti = await storage.dokumenti.getAll();
         const ciljaniDoc = sviDokumenti.find((d) => d.brojDokumenta === brojDokumenta.trim());
 
         if (!ciljaniDoc) {
+          logger.warn('Dokument za storno nije pronađen u bazi', { brojDokumenta });
           return {
             uspjeh: false,
             poruka: `Dokument s brojem "${brojDokumenta}" nije pronađen u bazi.`,
           };
         }
 
-        return {
+        logger.info('Pronađen dokument za storniranje', {
+          id: ciljaniDoc.id,
+          broj: ciljaniDoc.brojDokumenta,
+          iznos: ciljaniDoc.ukupnoIznos,
+        });
+
+        result = {
           uspjeh: true,
           podaci: {
             dokumentId: ciljaniDoc.id,
@@ -206,11 +253,13 @@ export async function executeZigoTool(
           },
           poruka: `Pripremljen storno za dokument ${ciljaniDoc.brojDokumenta}. Potvrdite radnju za generiranje storno računa.`,
         };
+        break;
       }
 
       // 6. Pretraga cjenika
       case 'pretrazi_cjenik': {
         const pojam = (args.pojam || '').toLowerCase().trim();
+        logger.debug('Pretražujem katalog artikala', { pojam });
         const artikli = await storage.artikli.getAll(true);
         const rezultati = pojam
           ? artikli.filter(
@@ -221,17 +270,20 @@ export async function executeZigoTool(
             )
           : artikli;
 
-        return {
+        logger.info(`Pronađeno ${rezultati.length} artikala u cjeniku za pojam "${pojam}".`);
+        result = {
           uspjeh: true,
           podaci: rezultati,
           poruka: `Pronađeno ${rezultati.length} stavki u cjeniku.`,
         };
+        break;
       }
 
       // 7. Spremanje u cjenik
       case 'dodaj_u_cjenik': {
         const { naziv, kpdSifra, cijena, jedinicaMjere, opis } = args;
         if (!naziv || !kpdSifra) {
+          logger.warn('Neuspjelo spremanje u cjenik: nedostaje naziv ili KPD šifra.');
           return { uspjeh: false, poruka: 'Naziv i KPD šifra su obvezni za cjenik.' };
         }
 
@@ -249,16 +301,25 @@ export async function executeZigoTool(
         };
 
         await storage.artikli.save(newArtikl);
-        return {
+        logger.info('Novi artikl uspješno spremljen u cjenik', {
+          id: newArtikl.id,
+          naziv: newArtikl.naziv,
+          kpdSifra: newArtikl.kpdSifra,
+          cijena: newArtikl.cijenaOsnovica,
+        });
+
+        result = {
           uspjeh: true,
           podaci: newArtikl,
           poruka: `Usluga "${newArtikl.naziv}" (KPD: ${newArtikl.kpdSifra}, ${newArtikl.cijenaOsnovica.toFixed(2)} €) spremljena je u cjenik.`,
         };
+        break;
       }
 
       // 8. Pretraga partnera
       case 'pretrazi_partnere': {
         const pojam = (args.pojam || '').toLowerCase().trim();
+        logger.debug('Pretražujem adresar partnera', { pojam });
         const partneri = await storage.partneri.getAll(true);
         const rezultati = pojam
           ? partneri.filter(
@@ -269,17 +330,20 @@ export async function executeZigoTool(
             )
           : partneri;
 
-        return {
+        logger.info(`Pronađeno ${rezultati.length} partnera u adresaru za pojam "${pojam}".`);
+        result = {
           uspjeh: true,
           podaci: rezultati,
           poruka: `Pronađeno ${rezultati.length} partnera u adresaru.`,
         };
+        break;
       }
 
       // 9. Financijski status i paušalni prag od 40.000 €
       case 'dohvati_financijski_status': {
         const tekuciDatum = new Date();
         const godina = tekuciDatum.getFullYear();
+        logger.debug('Dohvaćam financijsko stanje za godinu:', { godina });
         const sveNaplate = await storage.kpr.getAll(godina);
         const sviDokumenti = await storage.dokumenti.getAll(godina);
 
@@ -292,7 +356,15 @@ export async function executeZigoTool(
           (d) => d.vrstaDokumenta === 'RACUN' && d.status !== 'STORNIRANO'
         );
 
-        return {
+        logger.info('Izračunat financijski status KPR-a', {
+          godina,
+          ukupnoNaplaceno,
+          ostaloDoPraga,
+          prekoracenPrag,
+          brojIzdatihRacuna: izdaniRacuni.length,
+        });
+
+        result = {
           uspjeh: true,
           podaci: {
             godina,
@@ -304,11 +376,13 @@ export async function executeZigoTool(
           },
           poruka: `U ${godina}. godini naplaćeno je ukupno ${ukupnoNaplaceno.toFixed(2)} €. Do poreznog praga od 40.000,00 € preostalo je ${ostaloDoPraga.toFixed(2)} €.`,
         };
+        break;
       }
 
       // 10. Izvoz KPR u CSV format (s Excel BOM)
       case 'izvezi_kpr_csv': {
         const godina = new Date().getFullYear();
+        logger.info('Započinjem izvoz Knjige prometa (KPR) u CSV za godinu:', { godina });
         const naplate = await storage.kpr.getAll(godina);
         const profil = await storage.obrt.getProfil();
 
@@ -317,20 +391,28 @@ export async function executeZigoTool(
           obrtOib: profil?.oib,
         });
 
-        downloadFile(csvContent, `KPR_${godina}_${profil?.oib || 'obrt'}.csv`, 'text/csv;charset=utf-8;');
-        return {
+        const filename = `KPR_${godina}_${profil?.oib || 'obrt'}.csv`;
+        downloadFile(csvContent, filename, 'text/csv;charset=utf-8;');
+        logger.info(`KPR CSV uspješno generiran i poslan na preuzimanje (${filename})`, {
+          brojStavaka: naplate.length,
+        });
+
+        result = {
           uspjeh: true,
           poruka: `Knjiga prometa (KPR) za ${godina}. godinu uspješno je preuzeta kao CSV datoteka prilagođena za Excel.`,
         };
+        break;
       }
 
       // 11. Izvoz PO-SD XML obrasca za ePoreznu
       case 'izvezi_posd_xml': {
         const godina = new Date().getFullYear();
+        logger.info('Započinjem generiranje službenog PO-SD XML obrasca za godinu:', { godina });
         const naplate = await storage.kpr.getAll(godina);
         const profil = await storage.obrt.getProfil();
 
         if (!profil || !profil.oib) {
+          logger.warn('Generiranje PO-SD XML-a odbijeno: profil obrta ili OIB nije popunjen.');
           return { uspjeh: false, poruka: 'Profil obrta s valjanim OIB-om mora biti popunjen za generiranje PO-SD obrasca.' };
         }
 
@@ -346,15 +428,22 @@ export async function executeZigoTool(
           djelatnostNkd: profil.nkdSifra,
         });
 
-        downloadFile(xmlContent, `PO-SD_${godina}_${profil.oib}.xml`, 'application/xml;charset=utf-8;');
-        return {
+        const filename = `PO-SD_${godina}_${profil.oib}.xml`;
+        downloadFile(xmlContent, filename, 'application/xml;charset=utf-8;');
+        logger.info(`PO-SD XML obrazac uspješno generiran (${filename})`, {
+          ukupnoGodina: izvjestaj.ukupnoGodina,
+        });
+
+        result = {
           uspjeh: true,
           poruka: `Službeni PO-SD XML obrazac za ${godina}. godinu uspješno je pripremljen i preuzet za predaju na ePoreznu.`,
         };
+        break;
       }
 
       // 12. Specijalna mehanika: Žigin Rez (Instant trijaža stanja u 3 točke)
       case 'aktiviraj_zigin_rez': {
+        logger.info('Aktivirana instant trijaža stanja (Žigin Rez)');
         const godina = new Date().getFullYear();
         const naplate = await storage.kpr.getAll(godina);
         const ukupnoNaplaceno = naplate.reduce((sum, n) => sum + (n.ukupnoNaplaceno || 0), 0);
@@ -392,7 +481,13 @@ export async function executeZigoTool(
           akcijaSad = 'Izdaj račun koji je trenutno otvoren na radnoj plohi (F2).';
         }
 
-        return {
+        logger.info('Žigin Rez trijaža uspješno formirana', {
+          ostaloDoPraga,
+          neplaceniCount: neplaceni.length,
+          nacrtiCount: nacrti.length,
+        });
+
+        result = {
           uspjeh: true,
           podaci: {
             stoGori,
@@ -401,16 +496,30 @@ export async function executeZigoTool(
           },
           poruka: `Žigin Rez aktiviran:\n1. ŠTO GORI: ${stoGori}\n2. ŠTO ČEKA: ${stoCeka}\n3. AKCIJA SAD: ${akcijaSad}`,
         };
+        break;
       }
 
       default:
+        logger.warn(`Pozvan nepoznat alat: "${toolName}"`);
         return {
           uspjeh: false,
           poruka: `Nepoznat alat sustava: "${toolName}".`,
         };
     }
+
+    const durationMs = Math.round(performance.now() - startTime);
+    logger.info(`Alat [${toolName}] uspješno dovršen u ${durationMs}ms`, {
+      uspjeh: result.uspjeh,
+      trajanjeMs: durationMs,
+    });
+    return result;
   } catch (err: any) {
-    logger.error(`Greška pri izvršavanju alata [${toolName}]`, { error: err?.message });
+    const durationMs = Math.round(performance.now() - startTime);
+    logger.error(`Greška pri izvršavanju alata [${toolName}] nakon ${durationMs}ms:`, {
+      error: err?.message,
+      stack: err?.stack,
+      trajanjeMs: durationMs,
+    });
     return {
       uspjeh: false,
       poruka: `Greška alata: ${err?.message || 'Neobjašnjena greška dispečera.'}`,
