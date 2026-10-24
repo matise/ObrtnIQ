@@ -10,8 +10,8 @@ const STORAGE_KEY_IDENTITY = 'obrtniq_google_identity';
 const STORAGE_KEY_TOKENS = 'obrtniq_google_tokens';
 const STORAGE_KEY_CLIENT_ID = 'obrtniq_google_client_id';
 
-// Zadani javni Web Client ID za demonstraciju i lokalni razvoj
-export const DEFAULT_GOOGLE_CLIENT_ID = '938172948172-demo-client-id.apps.googleusercontent.com';
+// Zadani službeni Web Client ID projekta ObrtIQ (Robot Hand Made)
+export const DEFAULT_GOOGLE_CLIENT_ID = '46149025714-vkc36k4sh11d8sdimk13dsr135a9h0bo.apps.googleusercontent.com';
 
 declare global {
   interface Window {
@@ -47,7 +47,11 @@ class GoogleAuthService {
   }
 
   public hasCustomClientId(): boolean {
-    return Boolean(this.getCustomClientId() || (import.meta as any).env?.VITE_GOOGLE_CLIENT_ID);
+    return Boolean(
+      this.getCustomClientId() ||
+      (import.meta as any).env?.VITE_GOOGLE_CLIENT_ID ||
+      (DEFAULT_GOOGLE_CLIENT_ID && !DEFAULT_GOOGLE_CLIENT_ID.includes('demo-client-id'))
+    );
   }
 
   /**
