@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { 
   Terminal, 
   X, 
@@ -10,7 +10,12 @@ import {
   ChevronRight, 
   ChevronDown,
   Copy,
-  Check
+  Check,
+  Filter,
+  Code,
+  Bug,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 import { LogLevel, LogEntry } from '@obrtniq/core';
 import { useSystemLogs } from '../hooks/useSystemLogs';
@@ -24,7 +29,11 @@ export function SystemLogDrawer({ isOpen, onClose }: SystemLogDrawerProps) {
   const { 
     logs, 
     activeLevel, 
+    autoOpenOnError,
+    lastErrorEntry,
+    availableContexts,
     setLogLevel, 
+    setAutoOpen,
     clearLogs, 
     exportLogs, 
     errorCount, 
@@ -32,25 +41,46 @@ export function SystemLogDrawer({ isOpen, onClose }: SystemLogDrawerProps) {
   } = useSystemLogs();
 
   const [filterLevel, setFilterLevel] = useState<string>('ALL');
+  const [filterContext, setFilterContext] = useState<string>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [showVendorFrames, setShowVendorFrames] = useState<Record<string, boolean>>({});
 
-  // Filtriranje zapisa po razini i tekstualnom upitu
+  // Automatski proširi najnoviju grešku kad se panel otvori zbog greške
+  useEffect(() => {
+    if (isOpen && lastErrorEntry) {
+      setExpandedId(lastErrorEntry.id);
+    }
+  }, [isOpen, lastErrorEntry]);
+
+  // Filtriranje zapisa po razini, kontekstu i tekstu
   const filteredLogs = useMemo(() => {
     return logs.filter((entry) => {
+      // 1. Filter razine
       if (filterLevel !== 'ALL' && entry.level !== filterLevel) {
         return false;
       }
+      // 2. Filter konteksta / modula
+      if (filterContext !== 'ALL') {
+        if (!entry.context.startsWith(filterContext)) {
+          return false;
+        }
+      }
+      // 3. Tekstualna pretraga
       if (searchQuery.trim()) {
         const query = searchQuery.toLowerCase();
         const matchesContext = entry.context.toLowerCase().includes(query);
         const matchesMessage = entry.message.toLowerCase().includes(query);
-        return matchesContext || matchesMessage;
+        const matchesData = entry.data ? JSON.stringify(entry.data).toLowerCase().includes(query) : false;
+        const matchesError = entry.error 
+          ? (entry.error.message.toLowerCase().includes(query) || (entry.error.stack || '').toLowerCase().includes(query))
+          : false;
+        return matchesContext || matchesMessage || matchesData || matchesError;
       }
       return true;
     });
-  }, [logs, filterLevel, searchQuery]);
+  }, [logs, filterLevel, filterContext, searchQuery]);
 
   // Brojači za tabove
   const counts = useMemo(() => {
@@ -65,30 +95,41 @@ export function SystemLogDrawer({ isOpen, onClose }: SystemLogDrawerProps) {
 
   const copyEntryToClipboard = (entry: LogEntry) => {
     const text = `[${entry.displayTime}] [${entry.level}] [${entry.context}] ${entry.message} ${
-      entry.data ? JSON.stringify(entry.data, null, 2) : ''
-    } ${entry.error?.stack || ''}`;
+      entry.data ? '\nData: ' + JSON.stringify(entry.data, null, 2) : ''
+    } ${entry.error?.stack ? '\nStack:\n' + entry.error.stack : ''}`;
     navigator.clipboard.writeText(text);
     setCopiedId(entry.id);
     setTimeout(() => setCopiedId(null), 2000);
   };
 
+  const copyStackToClipboard = (entry: LogEntry) => {
+    if (!entry.error?.stack) return;
+    navigator.clipboard.writeText(entry.error.stack);
+    setCopiedId(`stack_${entry.id}`);
+    setTimeout(() => setCopiedId(null), 2000);
+  };
+
+  const toggleVendorFrames = (id: string) => {
+    setShowVendorFrames((prev) => ({ ...prev, [id]: !prev[id] }));
+  };
+
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-x-0 bottom-0 z-50 bg-[var(--bg-canvas)] border-t border-[var(--border-strong)] shadow-2xl flex flex-col h-[400px] max-h-[80vh] transition-all no-print">
-      {/* Top Header Bar */}
-      <div className="px-4 py-2.5 bg-[var(--bg-surface)] border-b border-[var(--border-subtle)] flex items-center justify-between gap-3">
+    <div className="fixed inset-x-0 bottom-0 z-50 bg-[var(--bg-canvas)] border-t border-[var(--border-strong)] shadow-2xl flex flex-col h-[420px] max-h-[85vh] transition-all no-print font-mono text-xs">
+      {/* 1. Top Header Bar */}
+      <div className="px-4 py-2 bg-[var(--bg-surface)] border-b border-[var(--border-subtle)] flex items-center justify-between gap-3">
         <div className="flex items-center space-x-3">
           <div className="flex items-center space-x-2 text-white">
             <Terminal className="w-4 h-4 text-[var(--accent-primary)]" />
             <span className="font-mono text-xs font-bold uppercase tracking-wider">
-              Sustavni Dnevnik &bull; Kronološki Zapisnik
+              Sustavni Dnevnik &bull; Telemetrija &amp; Call Stack
             </span>
           </div>
 
           <div className="flex items-center space-x-1.5 text-[11px] font-mono">
             {errorCount > 0 && (
-              <span className="px-2 py-0.5 bg-[#EF4444]/20 border border-[#EF4444]/40 text-[#EF4444] font-bold flex items-center gap-1">
+              <span className="px-2 py-0.5 bg-[#EF4444]/20 border border-[#EF4444]/40 text-[#EF4444] font-bold flex items-center gap-1 animate-pulse">
                 <AlertCircle className="w-3 h-3" /> {errorCount}
               </span>
             )}
@@ -98,20 +139,35 @@ export function SystemLogDrawer({ isOpen, onClose }: SystemLogDrawerProps) {
               </span>
             )}
             <span className="text-[var(--text-muted)] text-[10px] hidden sm:inline">
-              ({logs.length}/500 zapisa)
+              ({logs.length}/500 unosa)
             </span>
           </div>
         </div>
 
-        {/* Level Selector & Controls */}
-        <div className="flex items-center space-x-2">
-          {/* Active Level Selector */}
+        {/* Level Selector, Auto-Open Switch & Actions */}
+        <div className="flex items-center space-x-2.5">
+          {/* Auto-Open on Error Toggle */}
+          <label 
+            className="flex items-center space-x-1.5 text-[11px] font-mono text-[var(--text-secondary)] hover:text-white cursor-pointer select-none bg-[var(--bg-canvas)] px-2 py-1 border border-[var(--border-subtle)]"
+            title="Kada je uključeno, pojava bilo koje greške (ERROR) automatski otvara ovaj panel"
+          >
+            <input
+              type="checkbox"
+              checked={autoOpenOnError}
+              onChange={(e) => setAutoOpen(e.target.checked)}
+              className="w-3.5 h-3.5 rounded border-[var(--border-strong)] accent-[var(--accent-primary)] cursor-pointer"
+            />
+            <span className="hidden md:inline">Auto-Open na grešku</span>
+          </label>
+
+          {/* Active Recording Threshold Selector */}
           <div className="flex items-center space-x-1.5 text-xs font-mono">
-            <span className="text-[var(--text-muted)] text-[11px] hidden md:inline">Prag bilježenja:</span>
+            <span className="text-[var(--text-muted)] text-[11px] hidden lg:inline">Prag zapisa:</span>
             <select
               value={activeLevel}
               onChange={(e) => setLogLevel(e.target.value as LogLevel)}
               className="bg-[var(--bg-canvas)] text-white text-[11px] font-mono border border-[var(--border-subtle)] px-2 py-1 outline-none focus:border-[var(--accent-primary)] cursor-pointer"
+              title="Postavlja minimalnu razinu koja se bilježi u memorijski spremnik"
             >
               <option value="ERROR">ERROR</option>
               <option value="WARN">WARN</option>
@@ -126,7 +182,7 @@ export function SystemLogDrawer({ isOpen, onClose }: SystemLogDrawerProps) {
             type="button"
             onClick={exportLogs}
             disabled={logs.length === 0}
-            title="Preuzmi sanitizirani dijagnostički JSON paket"
+            title="Preuzmi sanitizirani dijagnostički JSON paket za analizu"
             className="px-2.5 py-1 bg-[var(--bg-elevated)] hover:bg-[var(--bg-subtle)] text-white border border-[var(--border-subtle)] text-[11px] font-mono flex items-center gap-1 disabled:opacity-40 cursor-pointer"
           >
             <Download className="w-3 h-3 text-[var(--accent-primary)]" />
@@ -155,14 +211,14 @@ export function SystemLogDrawer({ isOpen, onClose }: SystemLogDrawerProps) {
         </div>
       </div>
 
-      {/* Filter and Search Bar */}
+      {/* 2. Filter and Search Bar */}
       <div className="px-4 py-2 bg-[var(--bg-canvas)] border-b border-[var(--border-subtle)] flex flex-wrap items-center justify-between gap-2 text-xs font-mono">
         {/* Level Tabs */}
         <div className="flex items-center space-x-1">
           <button
             type="button"
             onClick={() => setFilterLevel('ALL')}
-            className={`px-2 py-0.5 transition-colors ${
+            className={`px-2 py-0.5 transition-colors cursor-pointer ${
               filterLevel === 'ALL'
                 ? 'bg-[var(--accent-primary)] text-black font-bold'
                 : 'text-[var(--text-muted)] hover:text-white'
@@ -173,7 +229,7 @@ export function SystemLogDrawer({ isOpen, onClose }: SystemLogDrawerProps) {
           <button
             type="button"
             onClick={() => setFilterLevel('ERROR')}
-            className={`px-2 py-0.5 transition-colors flex items-center gap-1 ${
+            className={`px-2 py-0.5 transition-colors flex items-center gap-1 cursor-pointer ${
               filterLevel === 'ERROR'
                 ? 'bg-[#EF4444] text-white font-bold'
                 : 'text-[#EF4444] hover:bg-[#EF4444]/10'
@@ -184,7 +240,7 @@ export function SystemLogDrawer({ isOpen, onClose }: SystemLogDrawerProps) {
           <button
             type="button"
             onClick={() => setFilterLevel('WARN')}
-            className={`px-2 py-0.5 transition-colors flex items-center gap-1 ${
+            className={`px-2 py-0.5 transition-colors flex items-center gap-1 cursor-pointer ${
               filterLevel === 'WARN'
                 ? 'bg-[#F59E0B] text-black font-bold'
                 : 'text-[#F59E0B] hover:bg-[#F59E0B]/10'
@@ -195,7 +251,7 @@ export function SystemLogDrawer({ isOpen, onClose }: SystemLogDrawerProps) {
           <button
             type="button"
             onClick={() => setFilterLevel('INFO')}
-            className={`px-2 py-0.5 transition-colors ${
+            className={`px-2 py-0.5 transition-colors flex items-center gap-1 cursor-pointer ${
               filterLevel === 'INFO'
                 ? 'bg-[#10B981] text-black font-bold'
                 : 'text-[#10B981] hover:bg-[#10B981]/10'
@@ -206,7 +262,7 @@ export function SystemLogDrawer({ isOpen, onClose }: SystemLogDrawerProps) {
           <button
             type="button"
             onClick={() => setFilterLevel('DEBUG')}
-            className={`px-2 py-0.5 transition-colors ${
+            className={`px-2 py-0.5 transition-colors flex items-center gap-1 cursor-pointer ${
               filterLevel === 'DEBUG'
                 ? 'bg-[#3B82F6] text-white font-bold'
                 : 'text-[#3B82F6] hover:bg-[#3B82F6]/10'
@@ -217,7 +273,7 @@ export function SystemLogDrawer({ isOpen, onClose }: SystemLogDrawerProps) {
           <button
             type="button"
             onClick={() => setFilterLevel('VERBOSE')}
-            className={`px-2 py-0.5 transition-colors ${
+            className={`px-2 py-0.5 transition-colors flex items-center gap-1 cursor-pointer ${
               filterLevel === 'VERBOSE'
                 ? 'bg-slate-400 text-black font-bold'
                 : 'text-slate-400 hover:bg-slate-700/20'
@@ -227,24 +283,42 @@ export function SystemLogDrawer({ isOpen, onClose }: SystemLogDrawerProps) {
           </button>
         </div>
 
-        {/* Search input */}
-        <div className="relative w-48 sm:w-64">
-          <Search className="w-3.5 h-3.5 text-[var(--text-muted)] absolute left-2.5 top-2" />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Pretraži poruke i module..."
-            className="w-full bg-[var(--bg-surface)] text-white text-xs pl-8 pr-2 py-1 border border-[var(--border-subtle)] outline-none focus:border-[var(--accent-primary)] placeholder:text-[var(--text-muted)]"
-          />
+        {/* Module / Context Filter & Search Input */}
+        <div className="flex items-center space-x-2">
+          {/* Context / Module dropdown */}
+          <div className="flex items-center space-x-1 bg-[var(--bg-surface)] px-2 py-1 border border-[var(--border-subtle)]">
+            <Filter className="w-3 h-3 text-[var(--accent-primary)] flex-shrink-0" />
+            <select
+              value={filterContext}
+              onChange={(e) => setFilterContext(e.target.value)}
+              className="bg-transparent text-white text-[11px] font-mono outline-none cursor-pointer pr-1"
+            >
+              <option value="ALL">Svi moduli ({logs.length})</option>
+              {availableContexts.map((ctx) => (
+                <option key={ctx} value={ctx}>Modul: {ctx}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Search input */}
+          <div className="relative w-44 sm:w-60">
+            <Search className="w-3.5 h-3.5 text-[var(--text-muted)] absolute left-2.5 top-2" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Pretraži tekst i payload..."
+              className="w-full bg-[var(--bg-surface)] text-white text-xs pl-8 pr-2 py-1 border border-[var(--border-subtle)] outline-none focus:border-[var(--accent-primary)] placeholder:text-[var(--text-muted)]"
+            />
+          </div>
         </div>
       </div>
 
-      {/* Main Log Console Stream */}
-      <div className="flex-1 overflow-y-auto p-3 space-y-1 font-mono text-xs select-text bg-[var(--bg-canvas)]">
+      {/* 3. Main Log Console Stream */}
+      <div className="flex-1 overflow-y-auto p-3 space-y-1 select-text bg-[var(--bg-canvas)]">
         {filteredLogs.length === 0 ? (
           <div className="h-full flex items-center justify-center text-[var(--text-muted)] text-xs">
-            Nema zapisa koji odgovaraju odabranom filteru.
+            Nema zapisa koji odgovaraju odabranim filterima.
           </div>
         ) : (
           filteredLogs.map((entry) => {
@@ -255,11 +329,11 @@ export function SystemLogDrawer({ isOpen, onClose }: SystemLogDrawerProps) {
             const isVerbose = entry.level === 'VERBOSE';
 
             const levelBadgeColor = isError
-              ? 'bg-[#EF4444] text-white'
+              ? 'bg-[#EF4444] text-white font-bold'
               : isWarn
               ? 'bg-[#F59E0B] text-black font-bold'
               : isDebug
-              ? 'bg-[#3B82F6] text-white'
+              ? 'bg-[#3B82F6] text-white font-bold'
               : isVerbose
               ? 'bg-slate-600 text-slate-200'
               : 'bg-[#10B981] text-black font-bold';
@@ -271,6 +345,10 @@ export function SystemLogDrawer({ isOpen, onClose }: SystemLogDrawerProps) {
               : 'border-l border-[var(--border-subtle)] hover:bg-[var(--bg-surface)]/60';
 
             const hasDetails = entry.data !== undefined || entry.error !== undefined;
+            const frames = entry.error?.frames || [];
+            const appFrames = frames.filter((f) => f.isAppCode);
+            const vendorFrames = frames.filter((f) => !f.isAppCode);
+            const isShowingVendor = showVendorFrames[entry.id] ?? false;
 
             return (
               <div 
@@ -284,8 +362,9 @@ export function SystemLogDrawer({ isOpen, onClose }: SystemLogDrawerProps) {
                         type="button"
                         onClick={() => setExpandedId(isExpanded ? null : entry.id)}
                         className="text-[var(--text-muted)] hover:text-white p-0.5 cursor-pointer"
+                        title={isExpanded ? 'Sažmi detalje' : 'Prikaži detalje i Call Stack'}
                       >
-                        {isExpanded ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
+                        {isExpanded ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
                       </button>
                     ) : (
                       <div className="w-4" />
@@ -303,12 +382,17 @@ export function SystemLogDrawer({ isOpen, onClose }: SystemLogDrawerProps) {
                       [{entry.context}]
                     </span>
 
-                    <span className={`text-xs ${isError ? 'text-[#EF4444]' : isWarn ? 'text-[#F59E0B]' : 'text-slate-200'}`}>
+                    <span className={`text-xs ${isError ? 'text-[#EF4444] font-semibold' : isWarn ? 'text-[#F59E0B]' : 'text-slate-200'}`}>
                       {entry.message}
                     </span>
                   </div>
 
                   <div className="flex items-center space-x-1 shrink-0">
+                    {entry.error?.stack && (
+                      <span className="px-1.5 py-0.2 bg-[#EF4444]/20 border border-[#EF4444]/40 text-[#EF4444] text-[10px] flex items-center gap-1 font-bold">
+                        <Bug className="w-2.5 h-2.5" /> STACK
+                      </span>
+                    )}
                     <button
                       type="button"
                       onClick={() => copyEntryToClipboard(entry)}
@@ -320,31 +404,103 @@ export function SystemLogDrawer({ isOpen, onClose }: SystemLogDrawerProps) {
                   </div>
                 </div>
 
-                {/* Sklopivi detalji (data / error stack) */}
+                {/* Sklopivi detalji (Data Payload + Call Stack Inspector) */}
                 {isExpanded && hasDetails && (
-                  <div className="mt-2 ml-6 p-2.5 bg-[var(--bg-surface)] border border-[var(--border-subtle)] text-[11px] space-y-2 overflow-x-auto">
-                    {entry.data !== undefined && (
-                      <div>
-                        <span className="text-[10px] uppercase text-[var(--text-muted)] block mb-1">
-                          Podaci (Data Payload):
-                        </span>
-                        <pre className="text-slate-300 font-mono text-[11px] leading-relaxed">
-                          {JSON.stringify(entry.data, null, 2)}
-                        </pre>
+                  <div className="mt-2 ml-6 p-3 bg-[var(--bg-surface)] border border-[var(--border-subtle)] text-[11px] space-y-3 overflow-x-auto">
+                    {/* Error & Call Stack Inspector */}
+                    {entry.error && (
+                      <div className="space-y-2">
+                        <div className="p-2 bg-[#EF4444]/15 border border-[#EF4444]/40 text-[#EF4444] flex items-center justify-between gap-2">
+                          <div className="font-bold flex items-center gap-1.5 truncate">
+                            <Bug className="w-3.5 h-3.5 flex-shrink-0" />
+                            <span>{entry.error.name}: {entry.error.message}</span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => copyStackToClipboard(entry)}
+                            className="px-2 py-0.5 bg-[var(--bg-canvas)] hover:bg-[var(--bg-elevated)] border border-[#EF4444]/40 text-[#EF4444] text-[10px] font-bold flex items-center gap-1 cursor-pointer flex-shrink-0"
+                            title="Kopiraj cjeloviti Call Stack"
+                          >
+                            {copiedId === `stack_${entry.id}` ? <Check className="w-2.5 h-2.5 text-[#10B981]" /> : <Copy className="w-2.5 h-2.5" />}
+                            Kopiraj Stack
+                          </button>
+                        </div>
+
+                        {/* Strukturirani Call Stack frames */}
+                        {frames.length > 0 ? (
+                          <div className="space-y-1.5 pt-1">
+                            <div className="text-[10px] font-bold uppercase text-[var(--text-secondary)] flex items-center gap-1">
+                              <Code className="w-3 h-3 text-[var(--accent-primary)]" />
+                              <span>Strukturirani Call Stack ({frames.length} okvira):</span>
+                            </div>
+
+                            {/* Aplikacijski okviri (istaknuti) */}
+                            {appFrames.length > 0 ? (
+                              <div className="space-y-1">
+                                {appFrames.map((frame, idx) => (
+                                  <div 
+                                    key={idx}
+                                    className="p-1.5 bg-[#1E293B] border-l-2 border-cyan-400 text-xs flex items-center justify-between gap-2"
+                                  >
+                                    <div className="truncate">
+                                      <span className="text-[10px] bg-cyan-950 text-cyan-400 px-1 py-0.2 border border-cyan-500/40 font-bold mr-1.5">
+                                        APP CODE
+                                      </span>
+                                      <span className="text-white font-bold">{frame.functionName}()</span>
+                                      <span className="text-[var(--text-muted)] text-[11px] ml-1.5">
+                                        u <span className="text-cyan-300 underline">{frame.relativePath}</span>:{frame.lineNumber}:{frame.columnNumber}
+                                      </span>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            ) : (
+                              <div className="text-[11px] text-[var(--text-muted)] italic">
+                                Greška je potekla izvan aplikacijskog koda (nativni preglednik ili biblioteka).
+                              </div>
+                            )}
+
+                            {/* Vanjski vendor okviri (sklopivi) */}
+                            {vendorFrames.length > 0 && (
+                              <div className="pt-1">
+                                <button
+                                  type="button"
+                                  onClick={() => toggleVendorFrames(entry.id)}
+                                  className="text-[10px] text-[var(--text-muted)] hover:text-white flex items-center gap-1 cursor-pointer font-bold"
+                                >
+                                  {isShowingVendor ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+                                  {isShowingVendor ? 'Sakrij' : 'Prikaži'} sistemske / node_modules okvire ({vendorFrames.length})
+                                </button>
+
+                                {isShowingVendor && (
+                                  <div className="mt-1 space-y-0.5 max-h-36 overflow-y-auto pl-2 border-l border-slate-700">
+                                    {vendorFrames.map((frame, idx) => (
+                                      <div key={idx} className="text-[10px] text-slate-500 truncate font-mono">
+                                        at {frame.functionName} ({frame.relativePath}:{frame.lineNumber}:{frame.columnNumber})
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        ) : entry.error.stack ? (
+                          <pre className="text-[10px] text-slate-400 whitespace-pre-wrap leading-relaxed max-h-40 overflow-y-auto bg-[var(--bg-canvas)] p-2 border border-[var(--border-subtle)]">
+                            {entry.error.stack}
+                          </pre>
+                        ) : null}
                       </div>
                     )}
 
-                    {entry.error && (
-                      <div className="border-t border-[var(--border-subtle)] pt-1.5">
-                        <span className="text-[10px] uppercase text-[#EF4444] font-bold block mb-1">
-                          Greška (Error Stack Trace):
+                    {/* Data Payload */}
+                    {entry.data !== undefined && (
+                      <div className={entry.error ? 'border-t border-[var(--border-subtle)] pt-2' : ''}>
+                        <span className="text-[10px] uppercase font-bold text-[var(--text-secondary)] block mb-1">
+                          Podaci (Data Payload):
                         </span>
-                        <div className="text-[#EF4444] font-semibold">{entry.error.name}: {entry.error.message}</div>
-                        {entry.error.stack && (
-                          <pre className="text-[10px] text-slate-400 mt-1 whitespace-pre-wrap">
-                            {entry.error.stack}
-                          </pre>
-                        )}
+                        <pre className="text-slate-300 font-mono text-[11px] leading-relaxed bg-[var(--bg-canvas)] p-2 border border-[var(--border-subtle)] max-h-48 overflow-y-auto">
+                          {JSON.stringify(entry.data, null, 2)}
+                        </pre>
                       </div>
                     )}
                   </div>
@@ -355,13 +511,17 @@ export function SystemLogDrawer({ isOpen, onClose }: SystemLogDrawerProps) {
         )}
       </div>
 
-      {/* Console Bottom Info Bar */}
+      {/* 4. Console Bottom Status Bar */}
       <div className="px-4 py-1.5 bg-[var(--bg-surface)] border-t border-[var(--border-subtle)] flex items-center justify-between text-[10px] font-mono text-[var(--text-muted)]">
-        <div>
-          Cirkularni spremnik: 500 zapisa (FIFO) &bull; Zero-server privatnost (100% lokalno u memoriji)
-        </div>
         <div className="flex items-center space-x-2">
-          <span>ObrtnIQ Engine v3.0</span>
+          <span>Prstenasti spremnik: 500 zapisa (FIFO)</span>
+          <span>&bull;</span>
+          <span className="text-cyan-400">Call Stack Inspector aktivan</span>
+        </div>
+        <div className="flex items-center space-x-3">
+          <span>Prikazano: <b className="text-white">{filteredLogs.length}</b>/{logs.length}</span>
+          <span>&bull;</span>
+          <span className="text-[#10B981]">Zero-Server Telemetrija</span>
         </div>
       </div>
     </div>

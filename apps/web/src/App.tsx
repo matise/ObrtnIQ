@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import type { Partner, Artikl } from '@obrtniq/core';
 import type { FormItem } from './engine/types';
 import { AppHeader } from './components/layout/AppHeader';
@@ -22,6 +22,7 @@ import { useArticles } from './hooks/useArticles';
 import { useGoogleAuth } from './hooks/useGoogleAuth';
 import { useGoogleDriveSync } from './hooks/useGoogleDriveSync';
 import { useGeminiAssistant } from './hooks/useGeminiAssistant';
+import { onAutoOpenTriggered } from './services/global-error-trap';
 
 export default function App() {
   // 1. Aplikacijski engine, profili i hooks
@@ -35,6 +36,13 @@ export default function App() {
   const googleAuthHook = useGoogleAuth();
   const driveSyncHook = useGoogleDriveSync(googleAuthHook.identity, googleAuthHook.getAccessToken);
   const geminiHook = useGeminiAssistant();
+
+  // Automatsko otvaranje dnevnika grešaka na pojavu ERROR razine (Faza 10.5)
+  useEffect(() => {
+    return onAutoOpenTriggered(() => {
+      drawers.setIsLogDrawerOpen(true);
+    });
+  }, [drawers.setIsLogDrawerOpen]);
 
   const workflow = useInvoiceWorkflow({
     form,

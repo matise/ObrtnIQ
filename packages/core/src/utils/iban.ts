@@ -1,3 +1,5 @@
+import { coreLogger } from '../logger';
+
 /**
  * ISO 13616 / MOD 97-10 Validacija IBAN-a i prepoznavanje domaćih banaka (RH)
  */
@@ -117,7 +119,14 @@ export function validateIban(iban: string | null | undefined): boolean {
     remainder = parseInt(chunk, 10) % 97;
   }
 
-  return remainder === 1;
+  const isValid = remainder === 1;
+  if (!isValid) {
+    coreLogger.scope('VALIDATION:IBAN').warn('IBAN ne prolazi MOD 97-10 matematičku provjeru.');
+  } else {
+    coreLogger.scope('VALIDATION:IBAN').verbose('IBAN uspješno validiran prema MOD 97-10.');
+  }
+
+  return isValid;
 }
 
 /**
@@ -134,5 +143,9 @@ export function getBankNameFromIban(iban: string): string | undefined {
 
   // VBDI se nalazi od pozicije 4 do 11 (7 znamenki)
   const vbdi = clean.slice(4, 11);
-  return HR_BANKE_VBDI[vbdi];
+  const bank = HR_BANKE_VBDI[vbdi];
+  if (bank) {
+    coreLogger.scope('VALIDATION:IBAN').debug(`Prepoznata banka za VBDI ${vbdi}: ${bank}`);
+  }
+  return bank;
 }

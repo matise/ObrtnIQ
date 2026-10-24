@@ -12,10 +12,14 @@ export const LOG_LEVEL_PRIORITY: Record<LogLevel, number> = {
   VERBOSE: 4,
 };
 
+export { type StackFrame } from './stack-parser';
+import type { StackFrame } from './stack-parser';
+
 export interface LogEntryError {
   name: string;
   message: string;
   stack?: string;
+  frames?: StackFrame[];
 }
 
 export interface LogEntry {

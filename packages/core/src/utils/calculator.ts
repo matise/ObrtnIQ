@@ -1,3 +1,5 @@
+import { coreLogger } from '../logger';
+
 /**
  * Precizni financijski kalkulator za ObrtnIQ
  * Uklanja IEEE 754 float greške korištenjem integer-in-cents aritmetike i definiranog zaokruživanja na 2 decimale.
@@ -91,6 +93,12 @@ export function calculateStavka(input: KalkulacijaStavkeInput): KalkulacijaStavk
   // Ukupan iznos sa PDV-om
   const ukupno = round2(osnovica + iznosPdv);
 
+  if (input.popustPostotak !== undefined && (input.popustPostotak < 0 || input.popustPostotak > 100)) {
+    coreLogger.scope('CALC:STAVKA').warn(`Neispravan postotak popusta (${input.popustPostotak}%), normalizirano na 0-100.`);
+  }
+
+  coreLogger.scope('CALC:STAVKA').verbose(`Izračunata stavka: ${kolicina} kom * ${jedinicnaCijena} EUR - ${popustPostotak}% popusta = ${ukupno} EUR`);
+
   return {
     kolicina,
     jedinicnaCijena,
@@ -147,12 +155,16 @@ export function calculateDocumentTotals(
     }))
     .sort((a, b) => a.stopaPdv - b.stopaPdv);
 
-  return {
+  const totals = {
     ukupnoOsnovica: fromCents(ukupnoOsnovicaCents),
     ukupnoPdv: fromCents(ukupnoPdvCents),
     ukupnoIznos: fromCents(ukupnoIznosCents),
     rekapitulacijaPoreza,
   };
+
+  coreLogger.scope('CALC:TOTALS').debug(`Izračunat ukupni iznos dokumenta: ${totals.ukupnoIznos} EUR (${stavke.length} stavki).`);
+
+  return totals;
 }
 
 /**

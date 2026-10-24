@@ -8,6 +8,7 @@ import {
   LogEntryError 
 } from './types';
 import { RingBuffer } from './ring-buffer';
+import { parseStackTrace } from './stack-parser';
 
 /**
  * Pomoćna funkcija za sigurno sanitiziranje osjetljivih podataka
@@ -39,7 +40,7 @@ function sanitizeData(data: unknown): unknown {
 }
 
 /**
- * Pomoćna funkcija za ekstrahiranje greške
+ * Pomoćna funkcija za ekstrahiranje greške i strukturiranih stack okvira
  */
 function parseError(err: unknown): LogEntryError | undefined {
   if (!err) return undefined;
@@ -48,12 +49,14 @@ function parseError(err: unknown): LogEntryError | undefined {
       name: err.name,
       message: err.message,
       stack: err.stack,
+      frames: parseStackTrace(err.stack),
     };
   }
   if (typeof err === 'string') {
     return {
       name: 'Error',
       message: err,
+      frames: parseStackTrace(err),
     };
   }
   return {

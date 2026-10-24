@@ -1,5 +1,6 @@
 import bwipjs from 'bwip-js';
 import QRCode from 'qrcode';
+import { appLogger } from '../services/logger';
 
 export interface BarcodeRenderOptions {
   scale?: number;
@@ -31,9 +32,10 @@ export async function renderHub3Barcode(
         columns: options?.columns ?? 9,
         eclevel: options?.eclevel ?? 4, // HUB-3 standard specificira error correction level 4
       } as any);
+      appLogger.scope('BARCODE:HUB3').debug('HUB-3 PDF417 barkod uspješno renderiran na canvas.');
     }
   } catch (err) {
-    console.error('Greška pri renderiranju HUB-3 PDF417 barkoda:', err);
+    appLogger.scope('BARCODE:HUB3').error('Greška pri renderiranju HUB-3 PDF417 barkoda:', err);
     throw err;
   }
 }

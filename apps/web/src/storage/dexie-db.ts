@@ -1,4 +1,5 @@
 import Dexie, { type Table } from 'dexie';
+import { appLogger } from '../services/logger';
 import type { 
   ObrtProfil, 
   Partner, 
@@ -29,6 +30,10 @@ export class ObrtnIQDexieDatabase extends Dexie {
       artikli: 'id, sifra, kpdSifra, naziv, aktivan',
       dokumenti: 'id, brojDokumenta, godina, brojSekvenca, [godina+poslovniProstorOznaka+naplatniUredjajOznaka], partnerId, status, vrstaDokumenta, datumIzdavanja',
       naplatePromet: 'id, dokumentId, godina, kvartal, datumNaplate, brojKprStavke',
+    });
+
+    this.on('ready', () => {
+      appLogger.scope('STORAGE:DEXIE').info('Dexie.js IndexedDB baza uspješno otvorena (ObrtnIQ_DB).');
     });
   }
 }

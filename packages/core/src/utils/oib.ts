@@ -3,6 +3,8 @@
  * Zakon o osobnom identifikacijskom broju (NN 60/08, 125/19)
  */
 
+import { coreLogger } from '../logger';
+
 /**
  * Validira OIB prema međunarodnoj normi ISO 7064, MOD 11, 10.
  * OIB mora imati točno 11 znamenki, pri čemu je 11. znamenka kontrolna.
@@ -32,7 +34,14 @@ export function validateOib(oib: string | null | undefined): boolean {
   let kontrolna = 11 - a;
   if (kontrolna === 10) kontrolna = 0;
 
-  return kontrolna === parseInt(cleanOib.charAt(10), 10);
+  const isValid = kontrolna === parseInt(cleanOib.charAt(10), 10);
+  if (!isValid) {
+    coreLogger.scope('VALIDATION:OIB').warn('OIB ne prolazi ISO 7064 MOD 11,10 provjeru kontrolne znamenke.');
+  } else {
+    coreLogger.scope('VALIDATION:OIB').verbose('OIB uspješno validiran prema ISO 7064.');
+  }
+
+  return isValid;
 }
 
 /**
