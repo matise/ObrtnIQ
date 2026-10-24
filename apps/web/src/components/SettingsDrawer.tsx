@@ -1179,7 +1179,7 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({
                         </button>
                       </div>
 
-                      <div className="pt-2 border-t border-[var(--border-subtle)] space-y-1 text-[11px] text-[var(--text-secondary)]">
+                      <div className="pt-2 border-t border-[var(--border-subtle)] space-y-1.5 text-[11px] text-[var(--text-secondary)]">
                         <div>
                           Google Kripto Sidro (sub):{' '}
                           <code className="text-[var(--accent-primary)] font-bold">
@@ -1193,6 +1193,29 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({
                               ? new Date(googleAuth.identity.connectedAt).toLocaleString('hr-HR')
                               : 'Aktivno'}
                           </span>
+                        </div>
+                        <div className="flex items-center justify-between pt-1 border-t border-[var(--border-subtle)]">
+                          <div>
+                            Aktivnost tokena:{' '}
+                            {googleAuth.tokenRemainingMinutes > 0 ? (
+                              <span className="text-[#10B981] font-bold">
+                                Vrijedi još {googleAuth.tokenRemainingMinutes} min (auto-refresh aktivan)
+                              </span>
+                            ) : (
+                              <span className="text-amber-400 font-bold">
+                                Token istekao (obnavlja se tiho pri sinkronizaciji)
+                              </span>
+                            )}
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => googleAuth.refreshAccessToken()}
+                            className="text-[10px] text-[var(--accent-primary)] hover:underline flex items-center gap-1 cursor-pointer"
+                            title="Prisilno obnovi Google pristupni token"
+                          >
+                            <RefreshCw className="w-3 h-3" />
+                            Obnovi token
+                          </button>
                         </div>
                       </div>
                     </div>

@@ -23,7 +23,7 @@ declare global {
             scope: string;
             callback: (response: { access_token?: string; error?: string; expires_in?: number }) => void;
           }) => {
-            requestAccessToken: () => void;
+            requestAccessToken: (overrideConfig?: { prompt?: string }) => void;
           };
         };
       };
@@ -154,6 +154,18 @@ class GoogleAuthService {
     }
   }
 
+  public getTokenRemainingMinutes(): number {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY_TOKENS);
+      if (!raw) return 0;
+      const tokens = JSON.parse(raw) as GoogleAuthTokens;
+      const diffMs = tokens.expiresAt - Date.now();
+      return Math.max(0, Math.floor(diffMs / 60000));
+    } catch {
+      return 0;
+    }
+  }
+
   public saveSession(identity: GoogleAuthIdentity, tokens?: GoogleAuthTokens): void {
     localStorage.setItem(STORAGE_KEY_IDENTITY, JSON.stringify(identity));
     if (tokens) {
@@ -170,6 +182,68 @@ class GoogleAuthService {
     localStorage.removeItem(STORAGE_KEY_IDENTITY);
     localStorage.removeItem(STORAGE_KEY_TOKENS);
     appLogger.scope('AUTH:GOOGLE').info('Google sesija odjavljena.');
+  }
+
+  /**
+   * Tiho (silent) obnavlja Google OAuth access token bez otvaranja popup prozora (prompt: '')
+   */
+  public async requestSilentToken(): Promise<string | null> {
+    const identity = this.getStoredIdentity();
+    if (!identity) return null;
+
+    // Ako je demo korisnik, produži demo sesiju
+    if (identity.provider === 'GOOGLE' && identity.googleSub === '108392174981273981273') {
+      const demoTokens: GoogleAuthTokens = {
+        accessToken: 'demo-google-access-token-obrtniq',
+        expiresAt: Date.now() + 24 * 3600 * 1000,
+      };
+      this.saveSession(identity, demoTokens);
+      return demoTokens.accessToken;
+    }
+
+    try {
+      await this.loadGisScript();
+      if (!window.google?.accounts?.oauth2) return null;
+      if (!this.hasCustomClientId()) return null;
+
+      const clientId = this.getEffectiveClientId();
+      const scopes = [
+        'openid',
+        'email',
+        'profile',
+        'https://www.googleapis.com/auth/drive.appdata'
+      ].join(' ');
+
+      return await new Promise<string | null>((resolve) => {
+        try {
+          const client = window.google!.accounts.oauth2.initTokenClient({
+            client_id: clientId,
+            scope: scopes,
+            callback: (response) => {
+              if (response.access_token) {
+                const expiresIn = response.expires_in || 3600;
+                const tokens: GoogleAuthTokens = {
+                  accessToken: response.access_token,
+                  expiresAt: Date.now() + expiresIn * 1000 - 60000,
+                };
+                this.saveSession(identity, tokens);
+                appLogger.scope('AUTH:GOOGLE').info('Google token uspješno tiho obnovljen u pozadini.');
+                resolve(response.access_token);
+              } else {
+                resolve(null);
+              }
+            },
+          });
+
+          // prompt: '' traži token u pozadini bez ponovnog ometanja korisnika ako je suglasnost već dana
+          client.requestAccessToken({ prompt: '' });
+        } catch {
+          resolve(null);
+        }
+      });
+    } catch {
+      return null;
+    }
   }
 
   /**
