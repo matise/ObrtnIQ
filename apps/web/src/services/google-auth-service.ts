@@ -50,6 +50,72 @@ class GoogleAuthService {
     return Boolean(this.getCustomClientId() || (import.meta as any).env?.VITE_GOOGLE_CLIENT_ID);
   }
 
+  /**
+   * Provjerava ispravnost formata korisnikovog Google Cloud Client ID-a
+   */
+  public validateClientIdFormat(clientId: string): { valid: boolean; message?: string } {
+    const trimmed = (clientId || '').trim();
+    if (!trimmed) {
+      return { valid: false, message: 'Client ID nije unesen.' };
+    }
+    if (!trimmed.endsWith('.apps.googleusercontent.com')) {
+      return { 
+        valid: false, 
+        message: 'Google Client ID mora završavati sa ".apps.googleusercontent.com".' 
+      };
+    }
+    return { valid: true };
+  }
+
+  /**
+   * Dohvaća detaljne informacije o tokenu i odobrenim scope-ovima s Google tokeninfo endpointa
+   */
+  public async inspectToken(accessToken: string): Promise<{
+    ok: boolean;
+    scopes: string[];
+    email?: string;
+    clientId?: string;
+    error?: string;
+  }> {
+    if (accessToken.startsWith('demo-')) {
+      return {
+        ok: true,
+        scopes: ['openid', 'email', 'profile', 'https://www.googleapis.com/auth/drive.appdata'],
+        email: 'obrtnik.demo@gmail.com',
+        clientId: 'demo-client-id',
+      };
+    }
+
+    try {
+      const res = await fetch(`https://www.googleapis.com/oauth2/v3/tokeninfo?access_token=${accessToken}`);
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        return {
+          ok: false,
+          scopes: [],
+          error: err.error_description || `Greška tokeninfo endpointa (${res.status})`,
+        };
+      }
+
+      const data = await res.json();
+      const scopeStr: string = data.scope || '';
+      const scopes = scopeStr.split(' ').filter(Boolean);
+
+      return {
+        ok: true,
+        scopes,
+        email: data.email,
+        clientId: data.azp || data.aud,
+      };
+    } catch (err: any) {
+      return {
+        ok: false,
+        scopes: [],
+        error: err?.message || 'Neuspjelo dohvaćanje informacija o tokenu.',
+      };
+    }
+  }
+
   public getEffectiveClientId(): string {
     const custom = this.getCustomClientId();
     if (custom) return custom;

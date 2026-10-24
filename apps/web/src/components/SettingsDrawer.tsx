@@ -25,7 +25,8 @@ import {
   ExternalLink,
   Flame,
   Eye,
-  EyeOff
+  EyeOff,
+  Activity
 } from 'lucide-react';
 import type { ObrtProfil } from '@obrtniq/core';
 import { OibInput, IbanInput } from './controls';
@@ -34,6 +35,8 @@ import { useBackupRestore, type RestoreSummary } from '../hooks/useBackupRestore
 import { useGoogleAuth, type UseGoogleAuthReturn } from '../hooks/useGoogleAuth';
 import { useGoogleDriveSync, type UseGoogleDriveSyncReturn } from '../hooks/useGoogleDriveSync';
 import { useGeminiAssistant, type UseGeminiAssistantReturn } from '../hooks/useGeminiAssistant';
+import { googleAuthService } from '../services/google-auth-service';
+import { googleDriveService } from '../services/google-drive-service';
 
 export interface SettingsDrawerProps {
   isOpen: boolean;
@@ -82,6 +85,16 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({
   const [showGeminiKey, setShowGeminiKey] = useState(false);
   const [geminiTestStatus, setGeminiTestStatus] = useState<string | null>(null);
   const [drivePinInput, setDrivePinInput] = useState('');
+
+  // Dijagnostika API-ja i dozvola
+  const [isDiagnosing, setIsDiagnosing] = useState(false);
+  const [diagResult, setDiagResult] = useState<{
+    clientIdValid: boolean;
+    clientIdMsg?: string;
+    tokenInfo?: { ok: boolean; scopes: string[]; email?: string; error?: string };
+    driveApi?: { ok: boolean; statusText: string; enableUrl?: string };
+    geminiApi?: { ok: boolean; msg: string };
+  } | null>(null);
 
   useEffect(() => {
     setFormData(profil);
@@ -262,6 +275,54 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({
     } else {
       setGeminiTestStatus('ERROR');
     }
+  };
+
+  // Dijagnostika Google i Gemini API-ja
+  const handleRunDiagnostics = async () => {
+    setIsDiagnosing(true);
+    setDiagResult(null);
+
+    const formatCheck = googleAuthService.validateClientIdFormat(googleAuth.clientId);
+    let tokenRes: { ok: boolean; scopes: string[]; email?: string; error?: string } | undefined;
+    let driveRes: { ok: boolean; statusText: string; enableUrl?: string } | undefined;
+    let geminiRes: { ok: boolean; msg: string } | undefined;
+
+    const token = await googleAuth.getAccessToken();
+    if (token) {
+      const inspected = await googleAuthService.inspectToken(token);
+      tokenRes = {
+        ok: inspected.ok,
+        scopes: inspected.scopes,
+        email: inspected.email,
+        error: inspected.error,
+      };
+
+      const driveCheck = await googleDriveService.testDriveApiAccess(token);
+      driveRes = {
+        ok: driveCheck.ok,
+        statusText: driveCheck.statusText,
+        enableUrl: driveCheck.enableUrl,
+      };
+    }
+
+    if (gemini.apiKey) {
+      const ok = await gemini.testKey(gemini.apiKey);
+      geminiRes = {
+        ok,
+        msg: ok
+          ? 'Gemini API ključ je valjan i model uspješno odgovara.'
+          : 'Gemini API poziv nije uspio (provjerite ključ ili kvotu na AI Studio).',
+      };
+    }
+
+    setDiagResult({
+      clientIdValid: formatCheck.valid,
+      clientIdMsg: formatCheck.message,
+      tokenInfo: tokenRes,
+      driveApi: driveRes,
+      geminiApi: geminiRes,
+    });
+    setIsDiagnosing(false);
   };
 
   return (
@@ -881,6 +942,189 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({
             {/* TAB 5: Google Račun, Drive & Gemini AI (Faza 10) */}
             {activeTab === 'cloud' && (
               <div className="space-y-6">
+                {/* 0. Dijagnostika API-ja i dozvola (Automatska provjera servisa) */}
+                <div className="p-4 bg-[var(--bg-canvas)] border border-cyan-500/30 space-y-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-start gap-3">
+                      <div className="w-9 h-9 rounded bg-cyan-500/20 border border-cyan-500/40 flex items-center justify-center text-cyan-400 flex-shrink-0">
+                        <Activity className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <h3 className="text-xs font-mono font-bold uppercase text-white flex items-center gap-2">
+                          <span>Dijagnostika API-ja &amp; Dozvola</span>
+                          <span className="text-[10px] bg-cyan-950 text-cyan-400 px-1.5 py-0.2 border border-cyan-500/30">
+                            Health Check
+                          </span>
+                        </h3>
+                        <p className="text-[11px] text-[var(--text-muted)] font-mono mt-0.5">
+                          Automatska provjera valjanosti Google Client ID-a, tokena, Google Drive API-ja i Gemini AI ključa.
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleRunDiagnostics}
+                      disabled={isDiagnosing}
+                      className="px-3 py-1.5 bg-cyan-500 hover:bg-cyan-600 disabled:opacity-50 text-black font-mono font-bold text-xs flex items-center gap-1.5 transition-all shadow-md active:scale-95 cursor-pointer flex-shrink-0"
+                    >
+                      {isDiagnosing ? (
+                        <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                      ) : (
+                        <Activity className="w-3.5 h-3.5" />
+                      )}
+                      Pokreni Dijagnostiku
+                    </button>
+                  </div>
+
+                  {/* Informacije: Koje API-je omogućiti */}
+                  <details className="text-[11px] font-mono bg-[var(--bg-surface)] p-3 border border-[var(--border-subtle)]">
+                    <summary className="cursor-pointer font-bold text-cyan-300 hover:text-cyan-200 flex items-center gap-1.5">
+                      ℹ Koje Google API-je trebate omogućiti u konzoli?
+                    </summary>
+                    <div className="mt-2 space-y-2 text-[var(--text-secondary)] leading-relaxed">
+                      <p>
+                        U <a href="https://console.cloud.google.com/apis/library" target="_blank" rel="noreferrer" className="text-[var(--accent-primary)] underline">Google Cloud Console &gt; APIs &amp; Services &gt; Library</a> omogućite:
+                      </p>
+                      <ul className="list-disc pl-5 space-y-1">
+                        <li>
+                          <b className="text-white">Google Drive API</b> (<code className="text-xs text-amber-300">drive.googleapis.com</code>) — <b className="text-white">Obavezno</b> za oblak sinkronizaciju baze u skrivenu <code className="text-xs">appDataFolder</code> mapu.
+                        </li>
+                        <li>
+                          <b className="text-white">Google Identity / User Profile</b> — Uključeno automatski samom konfiguracijom OAuth zaslona suglasnosti (OAuth consent screen - scopes: <i>openid, email, profile</i>).
+                        </li>
+                        <li>
+                          <b className="text-white">Gemini AI Asistent</b> — <b className="text-emerald-400">NE zahtijeva</b> Google Cloud Console API! Koristi besplatni BYOK ključ s <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noreferrer" className="text-[var(--accent-primary)] underline">Google AI Studio</a> (bez potrebe za platnom karticom ili billing računom).
+                        </li>
+                      </ul>
+                    </div>
+                  </details>
+
+                  {/* Rezultati dijagnostike */}
+                  {diagResult && (
+                    <div className="space-y-2.5 pt-2 border-t border-[var(--border-subtle)] text-xs font-mono">
+                      {/* 1. Client ID format */}
+                      <div className="p-2.5 bg-[var(--bg-surface)] border border-[var(--border-subtle)] flex items-start justify-between gap-2">
+                        <div>
+                          <div className="font-bold text-white flex items-center gap-1.5">
+                            {diagResult.clientIdValid ? (
+                              <CheckCircle2 className="w-3.5 h-3.5 text-[#10B981]" />
+                            ) : (
+                              <AlertTriangle className="w-3.5 h-3.5 text-amber-400" />
+                            )}
+                            <span>1. Google Client ID Format</span>
+                          </div>
+                          <div className="text-[11px] text-[var(--text-muted)] mt-0.5">
+                            {diagResult.clientIdMsg || (diagResult.clientIdValid ? 'Format Client ID-a je ispravan.' : 'Nevažeći format.')}
+                          </div>
+                        </div>
+                        <span className={`px-2 py-0.5 text-[10px] font-bold border ${diagResult.clientIdValid ? 'bg-[#064E3B] text-[#10B981] border-[#10B981]/40' : 'bg-amber-950 text-amber-400 border-amber-500/40'}`}>
+                          {diagResult.clientIdValid ? 'ISPRAVAN' : 'UPOZORENJE'}
+                        </span>
+                      </div>
+
+                      {/* 2. Token & Scopes */}
+                      <div className="p-2.5 bg-[var(--bg-surface)] border border-[var(--border-subtle)] space-y-1.5">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="font-bold text-white flex items-center gap-1.5">
+                            {diagResult.tokenInfo?.ok ? (
+                              <CheckCircle2 className="w-3.5 h-3.5 text-[#10B981]" />
+                            ) : (
+                              <AlertTriangle className="w-3.5 h-3.5 text-[var(--text-muted)]" />
+                            )}
+                            <span>2. OAuth Token &amp; Dozvole (Scopes)</span>
+                          </div>
+                          <span className={`px-2 py-0.5 text-[10px] font-bold border ${diagResult.tokenInfo?.ok ? 'bg-[#064E3B] text-[#10B981] border-[#10B981]/40' : 'bg-slate-800 text-slate-400 border-slate-700'}`}>
+                            {diagResult.tokenInfo?.ok ? 'AKTIVAN TOKEN' : 'NIJE PRIJAVLJEN'}
+                          </span>
+                        </div>
+                        {diagResult.tokenInfo ? (
+                          diagResult.tokenInfo.ok ? (
+                            <div className="text-[11px] text-[var(--text-secondary)] space-y-1">
+                              <div>Korisnik: <span className="text-white">{diagResult.tokenInfo.email || googleAuth.identity?.email}</span></div>
+                              <div className="flex flex-wrap gap-1 mt-1">
+                                {diagResult.tokenInfo.scopes.map((sc) => (
+                                  <span key={sc} className="px-1.5 py-0.5 bg-[var(--bg-canvas)] border border-[var(--border-subtle)] text-[10px] text-cyan-300">
+                                    {sc.split('/').pop()}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="text-[11px] text-[#EF4444]">{diagResult.tokenInfo.error}</div>
+                          )
+                        ) : (
+                          <div className="text-[11px] text-[var(--text-muted)]">
+                            Za inspekciju OAuth tokena prijavite se pravim ili demo Google računom.
+                          </div>
+                        )}
+                      </div>
+
+                      {/* 3. Google Drive API */}
+                      <div className="p-2.5 bg-[var(--bg-surface)] border border-[var(--border-subtle)] space-y-1.5">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="font-bold text-white flex items-center gap-1.5">
+                            {diagResult.driveApi?.ok ? (
+                              <CheckCircle2 className="w-3.5 h-3.5 text-[#10B981]" />
+                            ) : diagResult.driveApi ? (
+                              <AlertTriangle className="w-3.5 h-3.5 text-[#EF4444]" />
+                            ) : (
+                              <Cloud className="w-3.5 h-3.5 text-[var(--text-muted)]" />
+                            )}
+                            <span>3. Google Drive API (appDataFolder)</span>
+                          </div>
+                          <span className={`px-2 py-0.5 text-[10px] font-bold border ${diagResult.driveApi?.ok ? 'bg-[#064E3B] text-[#10B981] border-[#10B981]/40' : diagResult.driveApi ? 'bg-red-950 text-[#EF4444] border-[#EF4444]/40' : 'bg-slate-800 text-slate-400 border-slate-700'}`}>
+                            {diagResult.driveApi?.ok ? 'DOSTUPAN' : diagResult.driveApi ? 'NIJE OMOGUĆEN' : 'ČEKA PRIJAVU'}
+                          </span>
+                        </div>
+                        {diagResult.driveApi ? (
+                          <div className="text-[11px] space-y-1">
+                            <div className={diagResult.driveApi.ok ? 'text-[#10B981]' : 'text-amber-300'}>
+                              {diagResult.driveApi.statusText}
+                            </div>
+                            {diagResult.driveApi.enableUrl && (
+                              <a
+                                href={diagResult.driveApi.enableUrl}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="inline-flex items-center gap-1 text-[11px] font-bold text-[var(--accent-primary)] hover:underline mt-1 bg-[var(--bg-canvas)] px-2.5 py-1 border border-[var(--accent-primary)]/40"
+                              >
+                                <ExternalLink className="w-3 h-3" />
+                                Kliknite ovdje za uključivanje Google Drive API-ja u Google Cloud Console
+                              </a>
+                            )}
+                          </div>
+                        ) : (
+                          <div className="text-[11px] text-[var(--text-muted)]">
+                            Testira se automatski kada se prijavite Google računom.
+                          </div>
+                        )}
+                      </div>
+
+                      {/* 4. Gemini AI Studio */}
+                      <div className="p-2.5 bg-[var(--bg-surface)] border border-[var(--border-subtle)] flex items-start justify-between gap-2">
+                        <div>
+                          <div className="font-bold text-white flex items-center gap-1.5">
+                            {diagResult.geminiApi?.ok ? (
+                              <CheckCircle2 className="w-3.5 h-3.5 text-[#10B981]" />
+                            ) : diagResult.geminiApi ? (
+                              <AlertTriangle className="w-3.5 h-3.5 text-[#EF4444]" />
+                            ) : (
+                              <Sparkles className="w-3.5 h-3.5 text-[var(--text-muted)]" />
+                            )}
+                            <span>4. Google AI Studio (Gemini)</span>
+                          </div>
+                          <div className="text-[11px] text-[var(--text-muted)] mt-0.5">
+                            {diagResult.geminiApi?.msg || (gemini.apiKey ? 'Spreman za test' : 'Ključ nije unesen')}
+                          </div>
+                        </div>
+                        <span className={`px-2 py-0.5 text-[10px] font-bold border ${diagResult.geminiApi?.ok ? 'bg-[#064E3B] text-[#10B981] border-[#10B981]/40' : diagResult.geminiApi ? 'bg-red-950 text-[#EF4444] border-[#EF4444]/40' : 'bg-slate-800 text-slate-400 border-slate-700'}`}>
+                          {diagResult.geminiApi?.ok ? 'POVEZANO' : diagResult.geminiApi ? 'GREŠKA' : 'NIJE POSTAVLJENO'}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
                 {/* 1. Google Identity & Kripto Sidro (Zero-Server Auth) */}
                 <div className="p-4 bg-[var(--bg-canvas)] border border-[var(--border-subtle)] space-y-4">
                   <div className="flex items-start gap-3">

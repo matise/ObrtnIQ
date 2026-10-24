@@ -171,6 +171,55 @@ class GoogleDriveService {
     }
     return item.content;
   }
+
+  /**
+   * Provjerava je li Google Drive API omogućen u korisničkom Google Cloud projektu
+   * i ima li aplikacija dozvolu za pristup appDataFolder mapi.
+   */
+  public async testDriveApiAccess(accessToken: string): Promise<{
+    ok: boolean;
+    statusText: string;
+    enableUrl?: string;
+  }> {
+    if (accessToken.startsWith('demo-')) {
+      return {
+        ok: true,
+        statusText: 'Demo način rada: Google Drive simulacija je aktivna i spremna.',
+      };
+    }
+
+    try {
+      const url = 'https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&pageSize=1';
+      const res = await fetch(url, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+
+      if (res.ok) {
+        return {
+          ok: true,
+          statusText: 'Google Drive API je omogućen i skrivena mapa appDataFolder je dostupna.',
+        };
+      }
+
+      const errData = await res.json().catch(() => ({}));
+      const errMsg: string = errData.error?.message || res.statusText;
+
+      // Pokušaj izvući URL za aktivaciju API-ja ako ga Google vrati u grešci
+      const matchUrl = errMsg.match(/https:\/\/[^\s]+/);
+      const enableUrl = matchUrl ? matchUrl[0] : undefined;
+
+      return {
+        ok: false,
+        statusText: errMsg,
+        enableUrl,
+      };
+    } catch (err: any) {
+      return {
+        ok: false,
+        statusText: err?.message || 'Neuspjelo povezivanje s Google Drive poslužiteljem.',
+      };
+    }
+  }
 }
 
 export const googleDriveService = new GoogleDriveService();
