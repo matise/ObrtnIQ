@@ -205,6 +205,12 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({
 
   // Google Auth Handlers
   const handleGoogleLogin = async () => {
+    if (!googleAuth.hasCustomClientId) {
+      alert(
+        'Za prijavu stvarnim Google računom potrebno je unijeti vaš besplatni Google Cloud Client ID u "Naprednim postavkama" ispod.\n\nZa trenutno testiranje svih mogućnosti (kripto-sidro, AES-256 enkripcija, Drive sync) bez konfiguracije kliknite "Isprobaj Demo Prijavu"!'
+      );
+      return;
+    }
     try {
       await googleAuth.login();
     } catch {
@@ -954,6 +960,18 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({
                         </div>
                       )}
 
+                      {!googleAuth.hasCustomClientId && (
+                        <div className="p-3 bg-amber-500/10 border border-amber-500/30 text-xs font-mono space-y-1.5">
+                          <div className="text-amber-400 font-bold flex items-center gap-1.5">
+                            <AlertTriangle className="w-3.5 h-3.5" />
+                            <span>Za prijavu vlastitim Google računom potreban je Client ID</span>
+                          </div>
+                          <p className="text-[11px] text-[var(--text-secondary)] leading-relaxed">
+                            Za trenutno testiranje svih mogućnosti (kripto-sidro, AES-256 enkripcija i Drive sync) bez konfiguracije kliknite <b>"Isprobaj Demo Prijavu"</b>.
+                          </p>
+                        </div>
+                      )}
+
                       <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
                         <button
                           type="button"
@@ -968,36 +986,49 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({
                         <button
                           type="button"
                           onClick={googleAuth.loginDemo}
-                          className="px-3 py-2 bg-[var(--bg-elevated)] hover:bg-[var(--bg-subtle)] text-white border border-[var(--border-strong)] font-mono text-xs flex items-center justify-center gap-1.5 cursor-pointer transition-all"
+                          className="px-3 py-2 bg-[#064E3B] hover:bg-[#047857] text-[#10B981] border border-[#10B981]/40 font-mono text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer transition-all shadow-sm"
                           title="Simulira Google prijavu za testiranje bez unosa Google Client ID-a"
                         >
+                          <CheckCircle2 className="w-3.5 h-3.5" />
                           Isprobaj Demo Prijavu
                         </button>
                       </div>
 
-                      <details className="text-[11px] font-mono text-[var(--text-muted)] pt-1">
-                        <summary className="cursor-pointer hover:text-white">
-                          Napredne postavke: Vlastiti Google OAuth Client ID
+                      <details className="text-[11px] font-mono text-[var(--text-muted)] pt-1" open={!googleAuth.hasCustomClientId}>
+                        <summary className="cursor-pointer hover:text-white font-bold text-[var(--text-secondary)]">
+                          ▶ Napredne postavke: Vlastiti Google OAuth Client ID
                         </summary>
-                        <div className="mt-2 space-y-2 p-3 bg-[var(--bg-surface)] border border-[var(--border-subtle)]">
-                          <label className="block text-[10px] uppercase font-bold text-[var(--text-secondary)]">
-                            Google Cloud Client ID:
-                          </label>
-                          <div className="flex gap-2">
-                            <input
-                              type="text"
-                              value={customClientIdInput}
-                              onChange={(e) => setCustomClientIdInput(e.target.value)}
-                              placeholder="npr. 123456789-xyz.apps.googleusercontent.com"
-                              className="flex-1 bg-[var(--bg-canvas)] text-white px-2.5 py-1.5 text-xs font-mono border border-[var(--border-strong)] outline-none"
-                            />
-                            <button
-                              type="button"
-                              onClick={handleSaveClientId}
-                              className="px-3 py-1.5 bg-[var(--bg-elevated)] text-white border border-[var(--border-strong)] text-xs font-mono cursor-pointer"
-                            >
-                              Spremi
-                            </button>
+                        <div className="mt-2 space-y-3 p-3 bg-[var(--bg-surface)] border border-[var(--border-subtle)]">
+                          <div>
+                            <label className="block text-[10px] uppercase font-bold text-[var(--text-secondary)]">
+                              Google Cloud Client ID:
+                            </label>
+                            <div className="flex gap-2 mt-1">
+                              <input
+                                type="text"
+                                value={customClientIdInput}
+                                onChange={(e) => setCustomClientIdInput(e.target.value)}
+                                placeholder="123456789-xyz.apps.googleusercontent.com"
+                                className="flex-1 bg-[var(--bg-canvas)] text-white px-2.5 py-1.5 text-xs font-mono border border-[var(--border-strong)] outline-none"
+                              />
+                              <button
+                                type="button"
+                                onClick={handleSaveClientId}
+                                className="px-3 py-1.5 bg-[#3B82F6] hover:bg-[#2563EB] text-white text-xs font-mono font-bold cursor-pointer transition-all"
+                              >
+                                Spremi
+                              </button>
+                            </div>
+                          </div>
+
+                          <div className="p-2.5 bg-[var(--bg-canvas)] border border-[var(--border-subtle)] space-y-1 text-[10px] text-[var(--text-muted)]">
+                            <b className="text-white">Kako dobiti besplatni Google Client ID (2 min):</b>
+                            <ol className="list-decimal pl-4 space-y-0.5">
+                              <li>Otvorite <a href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noreferrer" className="text-[var(--accent-primary)] underline">Google Cloud Console</a>.</li>
+                              <li>Kliknite <b>Create Credentials &gt; OAuth client ID</b> (Tip: <i>Web application</i>).</li>
+                              <li>U <b>Authorized JavaScript origins</b> dodajte: <code className="text-white">http://localhost:5173</code></li>
+                              <li>Kopirajte Client ID, zalijepite ga gore i kliknite <b>Spremi</b>.</li>
+                            </ol>
                           </div>
                         </div>
                       </details>

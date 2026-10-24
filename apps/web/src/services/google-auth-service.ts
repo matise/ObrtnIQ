@@ -46,6 +46,10 @@ class GoogleAuthService {
     }
   }
 
+  public hasCustomClientId(): boolean {
+    return Boolean(this.getCustomClientId() || (import.meta as any).env?.VITE_GOOGLE_CLIENT_ID);
+  }
+
   public getEffectiveClientId(): string {
     const custom = this.getCustomClientId();
     if (custom) return custom;
@@ -131,6 +135,12 @@ class GoogleAuthService {
 
     if (!window.google?.accounts?.oauth2) {
       throw new Error('Google Identity SDK nije inicijaliziran.');
+    }
+
+    if (!this.hasCustomClientId()) {
+      throw new Error(
+        'Nije postavljen Google Cloud Client ID. Za trenutno testiranje kliknite "Isprobaj Demo Prijavu", ili unesite svoj Client ID u Naprednim postavkama.'
+      );
     }
 
     const clientId = this.getEffectiveClientId();

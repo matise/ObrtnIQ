@@ -8,6 +8,7 @@ export interface UseGoogleAuthReturn {
   isLoading: boolean;
   error: string | null;
   clientId: string;
+  hasCustomClientId: boolean;
   setClientId: (id: string) => void;
   login: () => Promise<void>;
   logout: () => void;
@@ -88,6 +89,7 @@ export function useGoogleAuth(): UseGoogleAuthReturn {
     isLoading,
     error,
     clientId,
+    hasCustomClientId: Boolean(clientId || googleAuthService.hasCustomClientId()),
     setClientId,
     login,
     logout,
