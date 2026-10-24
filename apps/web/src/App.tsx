@@ -22,6 +22,9 @@ import { useArticles } from './hooks/useArticles';
 import { useGoogleAuth } from './hooks/useGoogleAuth';
 import { useGoogleDriveSync } from './hooks/useGoogleDriveSync';
 import { useGeminiAssistant } from './hooks/useGeminiAssistant';
+import { useZigoAgent } from './hooks/useZigoAgent';
+import { FloatingZigoWidget } from './components/FloatingZigoWidget';
+import { ZigoChatDrawer } from './components/ZigoChatDrawer';
 import { onAutoOpenTriggered } from './services/global-error-trap';
 
 export default function App() {
@@ -37,18 +40,57 @@ export default function App() {
   const driveSyncHook = useGoogleDriveSync(googleAuthHook.identity, googleAuthHook.getAccessToken);
   const geminiHook = useGeminiAssistant();
 
+  const workflow = useInvoiceWorkflow({
+    form,
+    items,
+    onStatsUpdate: stats.refreshAll,
+  });
+
+  // Autonomni klijentski agent: Žigo (Digitalni Orlando)
+  const zigoAgent = useZigoAgent({
+    toolsContext: {
+      form: {
+        partnerNaziv: form.partnerNaziv,
+        setPartnerNaziv: form.setPartnerNaziv,
+        oib: form.oib,
+        setOib: form.setOib,
+        setIsOibValid: form.setIsOibValid,
+        taxZone: form.taxZone,
+        setTaxZone: form.setTaxZone,
+        iban: form.iban,
+        setIban: form.setIban,
+        setIsIbanValid: form.setIsIbanValid,
+      },
+      items: {
+        items: items.items,
+        setItems: items.setItems,
+        addItem: items.addItem,
+        resetItems: items.resetItems,
+        ukupniIznos: items.ukupniIznos,
+      },
+      workflow: {
+        docType: workflow.docType,
+        docStatus: workflow.docStatus,
+        isLocked: workflow.isLocked,
+        isFormSubmittable: workflow.isFormSubmittable,
+        handleIssueDocument: workflow.handleIssueDocument,
+        handleStorno: workflow.handleStorno,
+      },
+      drawers: {
+        setIsKprDrawerOpen: drawers.setIsKprDrawerOpen,
+        setIsDocDrawerOpen: drawers.setIsDocDrawerOpen,
+        setIsArticleDrawerOpen: drawers.setIsArticleDrawerOpen,
+      },
+      refreshStats: stats.refreshAll,
+    },
+  });
+
   // Automatsko otvaranje dnevnika grešaka na pojavu ERROR razine (Faza 10.5)
   useEffect(() => {
     return onAutoOpenTriggered(() => {
       drawers.setIsLogDrawerOpen(true);
     });
   }, [drawers.setIsLogDrawerOpen]);
-
-  const workflow = useInvoiceWorkflow({
-    form,
-    items,
-    onStatsUpdate: stats.refreshAll,
-  });
 
   const [mobileTab, setMobileTab] = useState<'desk' | 'preview'>('desk');
 
@@ -105,6 +147,7 @@ export default function App() {
         onOpenSettings={() => drawers.setIsSettingsDrawerOpen(true)}
         onOpenPartners={() => drawers.setIsPartnerDrawerOpen(true)}
         onOpenArticles={() => drawers.setIsArticleDrawerOpen(true)}
+        onOpenZigo={zigoAgent.toggleDrawer}
         googleIdentity={googleAuthHook.identity}
         cloudSyncStatus={driveSyncHook.syncStatus}
         lastSyncTime={driveSyncHook.lastSyncTime}
@@ -208,6 +251,16 @@ export default function App() {
         onSelectPartner={handleSelectPartner}
         onSelectArticle={handleSelectArticle}
       />
+
+      {/* Plutajući amblem: Digitalni Orlando (Žigo) i ladica za razgovor */}
+      <FloatingZigoWidget
+        isThinking={zigoAgent.isThinking}
+        isOpen={zigoAgent.isDrawerOpen}
+        onClick={zigoAgent.toggleDrawer}
+        onQuickRez={zigoAgent.aktivirajRez}
+      />
+
+      <ZigoChatDrawer agent={zigoAgent} />
     </div>
   );
 }

@@ -225,3 +225,42 @@ export interface PosdIzvjestaj {
   zakonskiPrag: number; // 40.000,00 EUR
   prekoracenPrag: boolean;
 }
+
+export interface ZigoAttachment {
+  naziv: string;
+  mimeType: string;
+  base64Data: string; // Base64 data string (slika ili PDF)
+  velicinaBajtova: number;
+}
+
+export interface ZigoToolCall {
+  imeFunkcije: string;
+  argumenti: Record<string, any>;
+}
+
+export interface ZigoToolResult {
+  uspjeh: boolean;
+  podaci?: any;
+  poruka?: string;
+}
+
+export interface ZigoChatSesija {
+  id: string;               // UUID
+  naslov: string;           // npr. "Priprema ponude za klijenta"
+  kreirano: string;         // ISO datum
+  azurirano: string;        // ISO datum
+  arhivirano: boolean;
+  zadnjiKpdContext?: string;
+}
+
+export interface ZigoChatPoruka {
+  id: string;               // UUID
+  sesijaId: string;         // FK na ZigoChatSesija
+  uloga: 'user' | 'assistant' | 'tool';
+  tekst: string;
+  privitci?: ZigoAttachment[];
+  toolPoziv?: ZigoToolCall;
+  toolRezultat?: ZigoToolResult;
+  kreirano: string;         // ISO datum
+}
+

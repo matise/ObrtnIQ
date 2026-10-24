@@ -297,10 +297,64 @@ export interface LogEntry {
 
 ---
 
-## 8. Plan Implementacije: MEĐU-FAZA 10.5 – Sveobuhvatni Dijagnostički & Telemetrijski Sustav
+## 8. Dnevnik Implementacije: MEĐU-FAZA 10.5 – Sveobuhvatni Dijagnostički & Telemetrijski Sustav
 * **Dokument:** [`docs/plan_implementacije_faza_10_5.md`](file:///d:/Documents/Robot%20Hand%20Made/ObrtnIQ/docs/plan_implementacije_faza_10_5.md)
-* **Status:** 🟡 Spremno za implementaciju
-* **Opseg:** Core & Web instrumentacija kroz 5 razina (VERBOSE, DEBUG, INFO, WARN, ERROR), raščlanjivač Call Stacka s isticanjem aplikacijskog koda, Global Error Trap (`window.onerror`, `unhandledrejection`), React `ErrorBoundary`, kontekstualno filtriranje u `SystemLogDrawer` i mehanika automatskog otvaranja na grešku (`Auto-Open on Error`).
+* **Status:** 🟢 ZAVRŠENO
+* **Postignuća:**
+  - `stack-parser.ts`: Parser Call Stacka koji razdvaja aplikacijski kod (`isAppCode: true`) od vendor okvira (`node_modules`) i normalizira staze.
+  - Global Error Trap (`window.onerror`, `window.onunhandledrejection`) i `<AppErrorBoundary>` u Reactu s mogućnošću trenutnog oporavka i ponovnog pokušaja.
+  - Auto-Open na grešku (`obrtniq_auto_open_log_on_error`) koji trenutno otvara `SystemLogDrawer` uz automatsko proširenje najnovijeg stack tracea i 1-klik kopiranje.
+  - Instrumentacija domenskih modula (`calculator`, `oib`, `iban`, `barcode`, `dexie-db`) s razinama `VERBOSE`, `DEBUG`, `INFO`, `WARN`, `ERROR`.
+  - 6/6 novih testova u `logging-system.test.ts` i 5/5 testova u `stack-parser.test.ts` (131/131 prolaznih testova).
+
+---
+
+## 9. Dnevnik Implementacije: FAZA 11 – Žigo Autonomni Klijentski Agent (Gemini 2.0 Function Calling, Multimodal, Perzistentni Chat & Žigin Rez)
+* **Dokument:** [`docs/plan_implementacije_faza_11.md`](file:///d:/Documents/Robot%20Hand%20Made/ObrtnIQ/docs/plan_implementacije_faza_11.md)
+* **Status:** 🟢 ZAVRŠENO (100% Prolaznost Gate-Check Protokola V11-1 do V11-8)
+
+### 9.1. Pregled Implementiranih Komponenti
+1. **Baza Podataka i Domena (Dexie.js v2 & IChatRepository)**:
+   - Proširena shema IndexedDB baze na verziju 2 s novim tablicama `chatSesije` i `chatPoruke`.
+   - Definirana domenska sučelja `ZigoChatSesija`, `ZigoChatPoruka`, `ZigoAttachment`, `ZigoToolCall` i `ZigoToolResult` u `@obrtniq/core`.
+   - Implementiran `DexieChatRepository` i `MemoryChatRepository` s podrškom za sesije, poruke i kaskadno brisanje.
+   - Uključen puni chat kontekst u `.obrtniq` enkriptirani paket (AES-256-GCM) u `crypto-backup.ts`.
+
+2. **Gemini 2.0 Tool Engine & Orlandov Kodeks (`gemini-service.ts`)**:
+   - Ugrađena kompletna persona viteza Orlanda i diplomacije Dubrovačke Republike prema `zigo_info.md` (dubrovački lakat, mir na 60 otkucaja, stoički humor).
+   - Nativne deklaracije alata (`ZIGO_FUNCTION_DECLARATIONS`) za 12 operacija sustava.
+   - Multimodalna obrada slika i PDF e-Računa putem `inlineData` / Base64.
+   - 100% Offline / Local Heuristic fallback: inteligentno prepoznavanje namjera, priprema računa, trijaža, provjera praga i porezni filtar čak i bez API ključa ili interneta.
+   - **Porezni filtar za opravdanost troškova (Ćevapi Test)**: Zaštita obrtnika od poreznog nadzora - duhovito odbijanje knjiženja privatnih troškova (roštilj, parfem, odjeća).
+
+3. **Autonomni Dispečer Alata (`zigo-tools-dispatcher.ts`)**:
+   - Povezuje 12 alata s radnom plohom unosa, katalogom cjenika, adresarom partnera, Knjigom prometa (KPR) i obrascem PO-SD.
+   - Izvršava operacije u realnom vremenu: `postavi_kupca`, `dodaj_stavku_racuna`, `ocisti_stavke_racuna`, `izdaj_aktivni_racun`, `storniraj_racun`, `pretrazi_cjenik`, `dodaj_u_cjenik`, `pretrazi_partnere`, `dohvati_financijski_status`, `izvezi_kpr_csv`, `izvezi_posd_xml`, `aktiviraj_zigin_rez`.
+
+4. **Reaktivno Upravljanje Stanjem (`useZigoAgent.ts`)**:
+   - Kuka za upravljanje aktivnim sesijama, slanjem poruka, učitavanjem privitaka, izvršavanjem alata i statusom razmišljanja (`isThinking`).
+
+5. **Korisničko Sučelje (Sharp UI & Dubrovački amblem)**:
+   - `FloatingZigoWidget.tsx`: Plutajući brončano-kameni amblem sa štitom i animiranim Q-prstenom koji se pri obradi vrti brzinom centrifuge. Uključuje brzi gumb *"Žigo, presijeci"*.
+   - `ZigoChatDrawer.tsx`: Puna ladica za razgovor s poviješću sesija, drag-and-drop podrškom za slike/PDF račune, mjehurićima razgovora i brzim akcijama.
+   - `ZigoActionCard.tsx`: Sharp UI akcijske kartice u chatu (trijaža Žiginog reza u tri točke, potvrda unosa kupca, dodane stavke, vizualna traka praga 40k € i dodavanje u cjenik).
+   - `AppHeader.tsx`: Gumb *"Žigo AI"* u navigacijskoj traci.
+   - `PhaseOverviewGrid.tsx`: Dodana kartica **FAZA 11** ("Žigo Agent", status GOTOVO).
+
+### 9.2. Verifikacija i Testna Pokrivenost
+* **Testni scenariji (`apps/web/tests/zigo-agent.test.ts`)**:
+  - `V11-1`: Baza podataka (stvaranje sesije, poruke s privitcima, kaskadno brisanje).
+  - `V11-2`: Function calling za pripremu računa (dispečiranje `postavi_kupca` i `dodaj_stavku_racuna`).
+  - `V11-3`: Function calling za cjenik (automatska KPD 2025 klasifikacija `74.10.11` i unos).
+  - `V11-4`: Financijski status i paušalni prag od 40.000 € (izračun naplaćenog i preostalog iznosa).
+  - `V11-5`: Žigin Rez (trijaža u 3 točke: 1. Što gori, 2. Što čeka, 3. Akcija sad).
+  - `V11-6`: Porezni filtar / Ćevapi test (odbijanje pravdanja privatnog roštilja).
+  - `V11-7`: Multimodalni sken (prepoznavanje opravdanog poslovnog računa za uredski materijal).
+  - `V11-8`: Zero-Server Kripto Backup (kriptiranje i uspješna restauracija chat povijesti).
+* **Ukupno automatskih testova**: **25 testnih datoteka, 140/140 testova prolazi** (100% prolaznost na cijelom monorepou).
+* **TypeScript & Vite build**: `npm run build` završava s kodom 0.
+* **Lokalni dev server**: Radi stabilno na `http://localhost:5173/` (HTTP 200).
+
 
 
 

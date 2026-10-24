@@ -4,7 +4,9 @@ import type {
   Artikl, 
   Dokument, 
   NaplataPromet,
-  VrstaDokumenta
+  VrstaDokumenta,
+  ZigoChatSesija,
+  ZigoChatPoruka
 } from '../domain/types';
 
 export interface IObrtRepository {
@@ -48,11 +50,24 @@ export interface IKprRepository {
   getZadnjiBrojKprStavke(godina: number): Promise<number>;
 }
 
+export interface IChatRepository {
+  getAllSesije(filterArhivirano?: boolean): Promise<ZigoChatSesija[]>;
+  getSesijaById(id: string): Promise<ZigoChatSesija | null>;
+  saveSesija(sesija: ZigoChatSesija): Promise<void>;
+  updateSesija(id: string, partial: Partial<ZigoChatSesija>): Promise<void>;
+  deleteSesija(id: string): Promise<void>;
+
+  getPorukeBySesijaId(sesijaId: string): Promise<ZigoChatPoruka[]>;
+  savePoruka(poruka: ZigoChatPoruka): Promise<void>;
+  deletePorukeBySesijaId(sesijaId: string): Promise<void>;
+}
+
 export interface IObrtnIQStorage {
   obrt: IObrtRepository;
   partneri: IPartnerRepository;
   artikli: IArtiklRepository;
   dokumenti: IDokumentRepository;
   kpr: IKprRepository;
+  chat?: IChatRepository;
   clearAll(): Promise<void>;
 }

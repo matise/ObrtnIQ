@@ -4,7 +4,8 @@ import type {
   IPartnerRepository, 
   IArtiklRepository, 
   IDokumentRepository, 
-  IKprRepository 
+  IKprRepository,
+  IChatRepository
 } from './interfaces';
 import type { 
   ObrtProfil, 
@@ -12,7 +13,9 @@ import type {
   Artikl, 
   Dokument, 
   NaplataPromet, 
-  VrstaDokumenta 
+  VrstaDokumenta,
+  ZigoChatSesija,
+  ZigoChatPoruka
 } from '../domain/types';
 
 export class MemoryObrtRepository implements IObrtRepository {
@@ -211,12 +214,72 @@ export class MemoryKprRepository implements IKprRepository {
   }
 }
 
+export class MemoryChatRepository implements IChatRepository {
+  private sesije: Map<string, ZigoChatSesija> = new Map();
+  private poruke: Map<string, ZigoChatPoruka> = new Map();
+
+  async getAllSesije(filterArhivirano?: boolean): Promise<ZigoChatSesija[]> {
+    const list = Array.from(this.sesije.values());
+    if (filterArhivirano !== undefined) {
+      return list.filter(s => s.arhivirano === filterArhivirano);
+    }
+    return list.sort((a, b) => new Date(b.azurirano).getTime() - new Date(a.azurirano).getTime());
+  }
+
+  async getSesijaById(id: string): Promise<ZigoChatSesija | null> {
+    const s = this.sesije.get(id);
+    return s ? { ...s } : null;
+  }
+
+  async saveSesija(sesija: ZigoChatSesija): Promise<void> {
+    this.sesije.set(sesija.id, { ...sesija });
+  }
+
+  async updateSesija(id: string, partial: Partial<ZigoChatSesija>): Promise<void> {
+    const s = this.sesije.get(id);
+    if (!s) return;
+    this.sesije.set(id, { ...s, ...partial, azurirano: new Date().toISOString() });
+  }
+
+  async deleteSesija(id: string): Promise<void> {
+    this.sesije.delete(id);
+    await this.deletePorukeBySesijaId(id);
+  }
+
+  async getPorukeBySesijaId(sesijaId: string): Promise<ZigoChatPoruka[]> {
+    const list = Array.from(this.poruke.values()).filter(p => p.sesijaId === sesijaId);
+    return list.sort((a, b) => new Date(a.kreirano).getTime() - new Date(b.kreirano).getTime());
+  }
+
+  async savePoruka(poruka: ZigoChatPoruka): Promise<void> {
+    this.poruke.set(poruka.id, { ...poruka });
+    const s = this.sesije.get(poruka.sesijaId);
+    if (s) {
+      this.sesije.set(s.id, { ...s, azurirano: poruka.kreirano || new Date().toISOString() });
+    }
+  }
+
+  async deletePorukeBySesijaId(sesijaId: string): Promise<void> {
+    for (const [id, p] of this.poruke.entries()) {
+      if (p.sesijaId === sesijaId) {
+        this.poruke.delete(id);
+      }
+    }
+  }
+
+  clear(): void {
+    this.sesije.clear();
+    this.poruke.clear();
+  }
+}
+
 export class InMemoryObrtnIQStorage implements IObrtnIQStorage {
   public obrt = new MemoryObrtRepository();
   public partneri = new MemoryPartnerRepository();
   public artikli = new MemoryArtiklRepository();
   public dokumenti = new MemoryDokumentRepository();
   public kpr = new MemoryKprRepository();
+  public chat = new MemoryChatRepository();
 
   async clearAll(): Promise<void> {
     this.obrt = new MemoryObrtRepository();
@@ -224,6 +287,7 @@ export class InMemoryObrtnIQStorage implements IObrtnIQStorage {
     this.artikli.clear();
     this.dokumenti.clear();
     this.kpr.clear();
+    this.chat.clear();
   }
 }
 

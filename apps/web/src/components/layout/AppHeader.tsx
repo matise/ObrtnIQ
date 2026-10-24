@@ -8,7 +8,8 @@ import {
   BookMarked,
   Cloud,
   CloudOff,
-  RefreshCw
+  RefreshCw,
+  Shield
 } from 'lucide-react';
 import { ThemeSelector } from '../ThemeSelector';
 import { formatHrvatskiIznos, type GoogleAuthIdentity } from '@obrtniq/core';
@@ -22,6 +23,7 @@ export interface AppHeaderProps {
   onOpenSettings: () => void;
   onOpenPartners: () => void;
   onOpenArticles?: () => void;
+  onOpenZigo?: () => void;
   googleIdentity?: GoogleAuthIdentity | null;
   cloudSyncStatus?: 'IDLE' | 'SYNCING' | 'SUCCESS' | 'ERROR';
   lastSyncTime?: string | null;
@@ -37,6 +39,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
   onOpenSettings,
   onOpenPartners,
   onOpenArticles,
+  onOpenZigo,
   googleIdentity,
   cloudSyncStatus = 'IDLE',
   lastSyncTime,
@@ -123,6 +126,19 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
           <Settings className="w-3.5 h-3.5 text-[var(--accent-primary)]" />
           <span>Postavke</span>
         </button>
+
+        {/* Gumb za Žigo Agenta */}
+        {onOpenZigo && (
+          <button
+            type="button"
+            onClick={onOpenZigo}
+            className="flex items-center space-x-1.5 px-2.5 py-1 bg-[#1e2025] hover:bg-[#252830] text-xs font-mono text-[#ffd700] border border-[#b89758]/60 hover:border-[#ffd700] transition-all cursor-pointer shadow-sm"
+            title="Otvori Žiga (Digitalni Orlando) - Autonomni agent sustava"
+          >
+            <Shield className="w-3.5 h-3.5 text-[#ffd700]" />
+            <span className="font-bold">Žigo AI</span>
+          </button>
+        )}
       </div>
 
       {/* Header Right Tools: Theme Selector + Prag Widget + Cloud Identity */}

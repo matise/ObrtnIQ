@@ -1,9 +1,9 @@
 import React from 'react';
-import { Cpu, Layers, Printer, Terminal, ShieldCheck, BookOpen, Settings, BookMarked, Sparkles } from 'lucide-react';
+import { Cpu, Layers, Printer, Terminal, ShieldCheck, BookOpen, Settings, BookMarked, Sparkles, Shield } from 'lucide-react';
 
 export const PhaseOverviewGrid: React.FC = () => {
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 xl:grid-cols-10 gap-3 no-print">
+    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-11 gap-3 no-print">
       <div className="border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-3.5 space-y-1.5 transition-colors">
         <div className="flex items-center justify-between">
           <span className="text-[10px] font-mono text-[var(--text-muted)]">FAZA 0-2</span>
@@ -157,10 +157,26 @@ export const PhaseOverviewGrid: React.FC = () => {
         </div>
         <div className="flex items-center space-x-2">
           <Sparkles className="w-4 h-4 text-amber-400" />
-          <h3 className="font-semibold text-xs text-white">Google &amp; AI</h3>
+          <h3 className="font-semibold text-xs text-white">Google &amp; Cloud</h3>
         </div>
         <p className="text-[11px] text-[var(--text-secondary)] leading-relaxed">
           Google kripto-sidro, Drive AppData sinkronizacija i Gemini KPD.
+        </p>
+      </div>
+
+      <div className="border border-[#b89758]/60 bg-[#1a1b20] p-3.5 space-y-1.5 transition-colors shadow-lg">
+        <div className="flex items-center justify-between">
+          <span className="text-[10px] font-mono text-[#ffd700] font-bold">FAZA 11</span>
+          <span className="text-[9px] font-mono px-1.5 py-0.2 bg-[#064E3B] text-[#10B981] border border-[#10B981]/30 font-bold">
+            GOTOVO
+          </span>
+        </div>
+        <div className="flex items-center space-x-2">
+          <Shield className="w-4 h-4 text-[#ffd700]" />
+          <h3 className="font-semibold text-xs text-[#ffd700]">Žigo Agent</h3>
+        </div>
+        <p className="text-[11px] text-[var(--text-secondary)] leading-relaxed">
+          Autonomni Gemini agent, function calling, multimodal, Žigin rez.
         </p>
       </div>
     </div>

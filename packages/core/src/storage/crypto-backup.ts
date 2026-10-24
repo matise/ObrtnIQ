@@ -1,5 +1,13 @@
 import type { IObrtnIQStorage } from './interfaces';
-import type { ObrtProfil, Partner, Artikl, Dokument, NaplataPromet } from '../domain/types';
+import type { 
+  ObrtProfil, 
+  Partner, 
+  Artikl, 
+  Dokument, 
+  NaplataPromet,
+  ZigoChatSesija,
+  ZigoChatPoruka
+} from '../domain/types';
 
 export interface ObrtnIQBackupData {
   shemaVerzija: '3.0';
@@ -10,6 +18,8 @@ export interface ObrtnIQBackupData {
   artikli: Artikl[];
   dokumenti: Dokument[];
   kpr: NaplataPromet[];
+  chatSesije?: ZigoChatSesija[];
+  chatPoruke?: ZigoChatPoruka[];
 }
 
 export interface EncryptedPayloadEnvelope {
@@ -59,6 +69,19 @@ export async function createBackupSnapshot(storage: IObrtnIQStorage): Promise<Ob
   const dokumenti = await storage.dokumenti.getAll();
   const kpr = await storage.kpr.getAll();
 
+  let chatSesije: ZigoChatSesija[] | undefined;
+  let chatPoruke: ZigoChatPoruka[] | undefined;
+
+  if (storage.chat) {
+    chatSesije = await storage.chat.getAllSesije();
+    const allPoruke: ZigoChatPoruka[] = [];
+    for (const sesija of chatSesije) {
+      const msgs = await storage.chat.getPorukeBySesijaId(sesija.id);
+      allPoruke.push(...msgs);
+    }
+    chatPoruke = allPoruke;
+  }
+
   return {
     shemaVerzija: '3.0',
     sustav: 'ObrtnIQ',
@@ -68,6 +91,8 @@ export async function createBackupSnapshot(storage: IObrtnIQStorage): Promise<Ob
     artikli,
     dokumenti,
     kpr,
+    chatSesije,
+    chatPoruke,
   };
 }
 
@@ -105,6 +130,19 @@ export async function restoreBackupSnapshot(
 
   for (const kprStavka of backup.kpr) {
     await storage.kpr.save(kprStavka);
+  }
+
+  if (storage.chat) {
+    if (backup.chatSesije && backup.chatSesije.length > 0) {
+      for (const sesija of backup.chatSesije) {
+        await storage.chat.saveSesija(sesija);
+      }
+    }
+    if (backup.chatPoruke && backup.chatPoruke.length > 0) {
+      for (const poruka of backup.chatPoruke) {
+        await storage.chat.savePoruka(poruka);
+      }
+    }
   }
 }
 

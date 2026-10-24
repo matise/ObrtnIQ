@@ -7,12 +7,15 @@ import type {
   Dokument, 
   NaplataPromet, 
   VrstaDokumenta,
+  ZigoChatSesija,
+  ZigoChatPoruka,
   IObrtnIQStorage,
   IObrtRepository,
   IPartnerRepository,
   IArtiklRepository,
   IDokumentRepository,
-  IKprRepository
+  IKprRepository,
+  IChatRepository
 } from '@obrtniq/core';
 
 export class ObrtnIQDexieDatabase extends Dexie {
@@ -21,6 +24,8 @@ export class ObrtnIQDexieDatabase extends Dexie {
   artikli!: Table<Artikl, string>;
   dokumenti!: Table<Dokument, string>;
   naplatePromet!: Table<NaplataPromet, string>;
+  chatSesije!: Table<ZigoChatSesija, string>;
+  chatPoruke!: Table<ZigoChatPoruka, string>;
 
   constructor() {
     super('ObrtnIQ_DB');
@@ -32,8 +37,13 @@ export class ObrtnIQDexieDatabase extends Dexie {
       naplatePromet: 'id, dokumentId, godina, kvartal, datumNaplate, brojKprStavke',
     });
 
+    this.version(2).stores({
+      chatSesije: 'id, kreirano, azurirano, arhivirano',
+      chatPoruke: 'id, sesijaId, uloga, kreirano',
+    });
+
     this.on('ready', () => {
-      appLogger.scope('STORAGE:DEXIE').info('Dexie.js IndexedDB baza uspješno otvorena (ObrtnIQ_DB).');
+      appLogger.scope('STORAGE:DEXIE').info('Dexie.js IndexedDB baza uspješno otvorena (ObrtnIQ_DB v2).');
     });
   }
 }
@@ -198,20 +208,73 @@ class DexieKprRepository implements IKprRepository {
   }
 }
 
+class DexieChatRepository implements IChatRepository {
+  async getAllSesije(filterArhivirano?: boolean): Promise<ZigoChatSesija[]> {
+    if (filterArhivirano !== undefined) {
+      const filtered = await db.chatSesije.filter(s => s.arhivirano === filterArhivirano).toArray();
+      return filtered.sort((a, b) => new Date(b.azurirano).getTime() - new Date(a.azurirano).getTime());
+    }
+    const all = await db.chatSesije.toArray();
+    return all.sort((a, b) => new Date(b.azurirano).getTime() - new Date(a.azurirano).getTime());
+  }
+
+  async getSesijaById(id: string): Promise<ZigoChatSesija | null> {
+    const s = await db.chatSesije.get(id);
+    return s || null;
+  }
+
+  async saveSesija(sesija: ZigoChatSesija): Promise<void> {
+    await db.chatSesije.put(sesija);
+  }
+
+  async updateSesija(id: string, partial: Partial<ZigoChatSesija>): Promise<void> {
+    await db.chatSesije.update(id, { ...partial, azurirano: new Date().toISOString() });
+  }
+
+  async deleteSesija(id: string): Promise<void> {
+    await db.transaction('rw', [db.chatSesije, db.chatPoruke], async () => {
+      await db.chatSesije.delete(id);
+      await db.chatPoruke.where('sesijaId').equals(id).delete();
+    });
+  }
+
+  async getPorukeBySesijaId(sesijaId: string): Promise<ZigoChatPoruka[]> {
+    const msgs = await db.chatPoruke.where('sesijaId').equals(sesijaId).toArray();
+    return msgs.sort((a, b) => new Date(a.kreirano).getTime() - new Date(b.kreirano).getTime());
+  }
+
+  async savePoruka(poruka: ZigoChatPoruka): Promise<void> {
+    await db.transaction('rw', [db.chatSesije, db.chatPoruke], async () => {
+      await db.chatPoruke.put(poruka);
+      const sesija = await db.chatSesije.get(poruka.sesijaId);
+      if (sesija) {
+        await db.chatSesije.update(sesija.id, { azurirano: poruka.kreirano || new Date().toISOString() });
+      }
+    });
+  }
+
+  async deletePorukeBySesijaId(sesijaId: string): Promise<void> {
+    await db.chatPoruke.where('sesijaId').equals(sesijaId).delete();
+  }
+}
+
 export class DexieObrtnIQStorage implements IObrtnIQStorage {
   public obrt = new DexieObrtRepository();
   public partneri = new DexiePartnerRepository();
   public artikli = new DexieArtiklRepository();
   public dokumenti = new DexieDokumentRepository();
   public kpr = new DexieKprRepository();
+  public chat = new DexieChatRepository();
 
   async clearAll(): Promise<void> {
-    await db.transaction('rw', [db.obrtProfil, db.partneri, db.artikli, db.dokumenti, db.naplatePromet], async () => {
+    await db.transaction('rw', [db.obrtProfil, db.partneri, db.artikli, db.dokumenti, db.naplatePromet, db.chatSesije, db.chatPoruke], async () => {
       await db.obrtProfil.clear();
       await db.partneri.clear();
       await db.artikli.clear();
       await db.dokumenti.clear();
       await db.naplatePromet.clear();
+      await db.chatSesije.clear();
+      await db.chatPoruke.clear();
     });
   }
 
