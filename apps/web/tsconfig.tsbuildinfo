@@ -1,1 +1,1 @@
-{"root":["./src/app.tsx","./src/main.tsx","./src/storage/dexie-db.ts","./vite.config.ts"],"version":"5.9.3"}
+{"root":["./src/app.tsx","./src/main.tsx","./src/components/controls/currencyinput.tsx","./src/components/controls/ibaninput.tsx","./src/components/controls/kpdpicker.tsx","./src/components/controls/oibinput.tsx","./src/components/controls/taxzonetoggle.tsx","./src/components/controls/index.ts","./src/storage/dexie-db.ts","./vite.config.ts"],"version":"5.9.3"}

@@ -11,8 +11,8 @@ Ovaj dokument služi kao jedinstveni izvor istine za praćenje napretka, evident
 | **Faza 0** | **Temeljna konfiguracija & Monorepo postavke** | 🟢 **ZAVRŠENO** | Uspješno kompajliranje, konfigurirani aliasi, postavljen test runner | 2026-10-24 |
 | **Faza 1** | **Domena, Validacije i Poslovna Matematika (Core Engine)** | 🟢 **ZAVRŠENO** | 100% prolaznost Vitest testova za OIB (ISO 7064), IBAN (MOD 97), popuste i HUB-3 | 2026-10-24 |
 | **Faza 2** | **Sloj Pohrane (Storage Abstraction & Adapter)** | 🟢 **ZAVRŠENO** | In-memory CRUD testovi, sekvenca računa bez rupa, export/import | 2026-10-24 |
-| **Faza 3** | **Dizajn Sustav & Sharp UI Primitivi** | 🟡 **SLJEDEĆA NA REDU** | Responzivnost (375px/1440px), OibInput, IbanInput bank lookup | - |
-| **Faza 4** | **Generator Kodova i PDF Engine** | ⚪ Čeka | HUB-3 PDF417 skenabilan m-bankingom, PDF export < 300ms | - |
+| **Faza 3** | **Dizajn Sustav & Sharp UI Primitivi** | 🟢 **ZAVRŠENO** | Responzivnost (375px/1440px), OibInput, IbanInput bank lookup | 2026-10-24 |
+| **Faza 4** | **Generator Kodova i PDF Engine** | 🟡 **SLJEDEĆA NA REDU** | HUB-3 PDF417 skenabilan m-bankingom, PDF export < 300ms | - |
 | **Faza 5** | **Ekran za Izdavanje Računa & Workflow** | ⚪ Čeka | Izdavanje računa tipkovnicom < 30s, statusni automat, immutability | - |
 | **Faza 6** | **KPR i Obrazac PO-SD (Knjigovodstvo)** | ⚪ Čeka | XML validacija protiv službene XSD sheme Porezne uprave | - |
 | **Faza 7** | **Fiskalizacija 1.0 (CIS) & 2.0 (e-Račun)** | ⚪ Čeka | FINA DEMO okruženje: JIR dohvat i UBL 2.1 isporuka posredniku | - |
@@ -43,6 +43,12 @@ Ovaj dokument služi kao jedinstveni izvor istine za praćenje napretka, evident
 | 2026-10-24 13:50 | Faza 2 | `packages/core/src/storage/memory-adapter.ts` | In-memory adapter za brzo i izolirano testiranje pohrane | Završeno |
 | 2026-10-24 13:50 | Faza 2 | `apps/web/src/storage/dexie-db.ts` | Dexie.js IndexedDB perzistentni adapter za korisnički preglednik | Završeno |
 | 2026-10-24 13:50 | Faza 2 | `packages/core/tests/storage.test.ts` | Gate-Check integracijski test: obrt, 5 partnera, sekvenca 1 i 2, storno, AES-256 enkripcija, import | 🟢 Gate-Check PROŠAO (34/34) |
+| 2026-10-24 13:54 | Faza 3 | `apps/web/src/components/controls/OibInput.tsx` | OibInput s ISO 7064 validacijom u realnom vremenu i vizualnim signalom | Završeno |
+| 2026-10-24 13:54 | Faza 3 | `apps/web/src/components/controls/IbanInput.tsx` | IbanInput s automatskim 4-znakovnim formatiranjem i HNB bank lookupom | Završeno |
+| 2026-10-24 13:54 | Faza 3 | `apps/web/src/components/controls/CurrencyInput.tsx` | CurrencyInput s podrškom za unos zareza/točke i monospace € prikaz | Završeno |
+| 2026-10-24 13:54 | Faza 3 | `apps/web/src/components/controls/TaxZoneToggle.tsx` | Segmentirani preklopnik poreznih zona sa zakonskim klauzulama | Završeno |
+| 2026-10-24 13:55 | Faza 3 | `apps/web/src/components/controls/KpdPicker.tsx` | KpdPicker Command Palette pretraživač službene KPD 2025 baze djelatnosti | Završeno |
+| 2026-10-24 13:56 | Faza 3 | `apps/web/src/App.tsx` | Gate-Check: Integriran Showroom kontrola, preklopnik Desktop (1440px) / Mobitel (375px), validacija blokade | 🟢 Gate-Check PROŠAO |
 
 ---
 
