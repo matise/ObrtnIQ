@@ -26,9 +26,10 @@
 │                                  KORISNIKOV PREGLEDNIK                                  │
 ├─────────────────────────────────────────────────────────────────────────────────────────┤
 │  KORISNIČKO SUČELJE (React 19 + Tailwind CSS + Lucide Icons)                           │
-│  ├── Sharp Theme Engine (Midnight Amethyst & Signal Accents)                           │
-│  ├── Split-Screen Desktop / Bottom-Sheet Mobile radna ploha                             │
-│  └── Set specijaliziranih HR/EU kontrola (OIB, IBAN, KPD 2025, CurrencyInput)           │
+│  ├── Parametrizirani HSL Theme Engine (5 Preseta + 0°-360° Hue rotacija s localStorage)│
+│  ├── Full-Width Split-Screen radna ploha (58% unos / 42% živi A4 račun)                 │
+│  ├── Set specijaliziranih HR/EU kontrola (OIB, IBAN, KPD 2025, CurrencyInput, TaxZone) │
+│  └── Sustavni Dnevnik & Terminalski Drawer (SystemLogDrawer) s prikazom statusa         │
 ├─────────────────────────────────────────────────────────────────────────────────────────┤
 │  APSTRAKTNO REPOZITORIJSKO SUČELJE (Domain Storage Abstraction Layer)                    │
 │  ├── IObrtRepository (profil, certifikati, postavke)                                    │
@@ -39,13 +40,15 @@
 ├─────────────────────────────────────────────────────────────────────────────────────────┤
 │  PLUG-IN POHRANA (Storage Adapter):                                                     │
 │  ├── Primarni: SQLite Wasm (OPFS - Origin Private File System)                          │
-│  ├── Reaktivni: RxDB / Dexie.js (IndexedDB fallback)                                    │
+│  ├── Reaktivni: Dexie.js (IndexedDB perzistencija u pregledniku)                        │
 │  └── Kriptirani Export / Import (AES-256-GCM Backup JSON/SQLite)                        │
 ├─────────────────────────────────────────────────────────────────────────────────────────┤
 │  LOKALNI ENGINEI I GENERATORI (Client-Side Workers):                                    │
 │  ├── HUB-3 Barkod Generator (PDF417 standard HRVHUB30)                                  │
 │  ├── EPC QR / Fiskalni QR Generator (SVG/Canvas rendering)                             │
-│  ├── PDF Engine (@react-pdf/renderer ili jsPDF)                                         │
+│  ├── Dvostruki PDF Engine (html2canvas-pro DOM Flow + jsPDF Vektorski s prelamanjem)   │
+│  ├── ISO 32000-1 PDF Validator & Hrvatska Pravopisna Tipografija (ČĆŽŠĐ, zarez)         │
+│  ├── Višerazinski Logging Engine (RingBuffer 500 zapisa, 5 razina, sanitizacija)       │
 │  ├── e-Račun CIUS-HR UBL 2.1 XML Generator                                              │
 │  └── Web Crypto Trezor (AES-GCM enkripcija FINA certifikata, ZKI izračun)               │
 └───────────────────────────────────────────┬─────────────────────────────────────────────┘
@@ -403,33 +406,32 @@ Sustav koristi parametrizirani **HSL (Hue, Saturation, Lightness)** mehanizam u 
 ### 5.2 Struktura Ekran-Editora (Desktop Split-Screen)
 ```
 ┌───────────────────────────────────────────────────────────────────────────────────┐
-│ HEADER: [ObrtnIQ Logo]  [Novi Račun #14/POSL1/1]  [Prag: 28.450/40.000 € (71%)]    │
+│ HEADER: [ObrtnIQ Logo]  [Novi Račun #1/POSL1/1]  [Prag: 28.450/40.000 €] [Theme]  │
 ├─────────────────────────────────────────┬─────────────────────────────────────────┤
-│ LIJEVI PANEL (55%): UNOS I RAD          │ DESNI PANEL (45%): A4 REAL-TIME PREVIEW │
-│ 1. Klijent (OIB lookup / Select)        │ [Zaglavlje obrta s logotipom]           │
-│ 2. Datumi (Izdavanje, Valuta, Isporuka) │ Podaci o kupcu (OIB, Adresa)            │
-│ 3. Porezna Zona: [HR B2B] [B2C] [EU RC] │ Broj: 14/POSL1/1                        │
-│ 4. Stavke Tablica (Data-dense grid):    │                                         │
-│    - KPD šifra                          │ Stavke s cijenama i KPD šiframa         │
-│    - Naziv, Kol, Cijena, Popust         │                                         │
-│    [ + Dodaj stavku (Alt+N) ]           │ Ukupno za platiti: 1.250,00 €           │
-│ 5. Način plaćanja: [Transakcijski]      │ Zakonska napomena (čl. 90 st. 2)        │
-│ 6. Akcije: [Spremi] [Fiskaliziraj (F2)] │ [PDF417 Barkod]    [Fiskalni/EPC QR]    │
-└─────────────────────────────────────────┴─────────────────────────────────────────┘
+│ RADNA PLOHA UNOSA (58% Desk):           │ ŽIVI A4 FLOW PREVIEW (42% Panel):       │
+│ 1. Porezna Zona Toggle (B2B/B2C/EU)     │ - Toolbar: Fluid / A4 / POS 80mm        │
+│ 2. Kupac (Naziv, OIB s ISO 7064 signal) │ - Preklopnik: Tema / Bijeli papir       │
+│ 3. IBAN s detekcijom domaće banke       │ - Tipografija: UTF-8 ČĆŽŠĐ, zarez dec.  │
+│ 4. KPD 2025 Klasifikacija djelatnosti   │ - Akcije: [Ispiši (Ctrl+P)] [Preuzmi PDF│
+│ 5. Stavke (Količina, Cijena, Popust)    │ - Stavke tablica s dinamičkim wrapom    │
+│ 6. Akcija: [Fiskaliziraj / Izdaj (F2)]  │ - [HUB-3 PDF417]      [EPC SEPA QR]     │
+├─────────────────────────────────────────┴─────────────────────────────────────────┤
+│ FOOTER: © 2026 ObrtnIQ • [🟢 Sustav stabilan • 0 grešaka (Terminal Drawer)] • Faza│
+└───────────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## 6. Plan Fazne Izgradnje (7-Step Phased Implementation Roadmap)
+## 6. Plan Fazne Izgradnje (8-Step Phased Implementation Roadmap)
 
-Implementacija se provodi striktno u 7 faza. Svaka faza ima definiran radni opseg, datoteke koje se kreiraju i **Gate-Check kriterij** (eliminacijski test). Prijelaz na sljedeću fazu dopušten je isključivo kada su svi testovi prethodne faze zeleni.
+Implementacija se provodi inkrementalno uz stroge **Gate-Check kriterije** (eliminacijske testove). Prijelaz na sljedeću fazu dopušten je isključivo kada su svi testovi prethodne faze zeleni.
 
 ```
-┌─────────┐     ┌─────────┐     ┌─────────┐     ┌─────────┐     ┌─────────┐     ┌─────────┐     ┌─────────┐
-│ FAZA 1  │ ──► │ FAZA 2  │ ──► │ FAZA 3  │ ──► │ FAZA 4  │ ──► │ FAZA 5  │ ──► │ FAZA 6  │ ──► │ FAZA 7  │
-│ Domena  │     │ Storage │     │ Editor  │     │ Kodovi  │     │ Dokument│     │ KPR i   │     │ Fiskal. │
-│ & Mat.  │     │ Adapter │     │ Kontrole│     │ & PDF   │     │ & Tijek │     │ PO-SD   │     │ Proxy   │
-└─────────┘     └─────────┘     └─────────┘     └─────────┘     └─────────┘     └─────────┘     └─────────┘
+┌─────────┐     ┌─────────┐     ┌─────────┐     ┌─────────┐     ┌───────────┐     ┌─────────┐     ┌─────────┐     ┌─────────┐
+│ FAZA 1  │ ──► │ FAZA 2  │ ──► │ FAZA 3  │ ──► │ FAZA 4  │ ──► │ FAZA 4.5  │ ──► │ FAZA 5  │ ──► │ FAZA 6  │ ──► │ FAZA 7  │
+│ Domena  │     │ Storage │     │ Editor  │     │ Kodovi  │     │ Logging   │     │ Dokument│     │ KPR i   │     │ Fiskal. │
+│ & Mat.  │     │ Adapter │     │ Kontrole│     │ & PDF   │     │ & Dnevnik │     │ & Tijek │     │ PO-SD   │     │ Proxy   │
+└─────────┘     └─────────┘     └─────────┘     └─────────┘     └───────────┘     └─────────┘     └─────────┘     └─────────┘
 ```
 
 ---
@@ -451,38 +453,59 @@ Implementacija se provodi striktno u 7 faza. Svaka faza ima definiran radni opse
 * **Cilj:** Implementirati Repository Pattern i funkcionalni in-browser storage (SQLite Wasm / IndexedDB).
 * **Radni zadaci:**
   1. Definiranje sučelja: `IObrtRepository`, `IPartnerRepository`, `IArtiklRepository`, `IDokumentRepository`, `IKprRepository`.
-  2. Implementacija `LocalSqliteRepository` (korištenjem `@sqlite.org/sqlite-wasm` ili Dexie.js za IndexedDB).
-  3. Kreiranje migracijskih skripti za kreiranje tablica.
-  4. Implementacija sekvencijalnog generatora broja računa (`broj_sekvenca` + 1 po godini, prostoru i uređaju).
-  5. Implementacija `ExportImportService` za sigurnosnu kopiju (JSON snapshot i AES-256 kriptirana arhiva).
+  2. Implementacija `LocalSqliteRepository` / Dexie.js za IndexedDB perzistenciju.
+  3. Kreiranje migracijskih shema tablica i sekvencijalnog generatora računa bez rupa (`1/POSL1/1`, `2/POSL1/1`).
+  4. Implementacija storno servisa i immutability pravila.
+  5. Implementacija `ExportImportService` za sigurnosnu kopiju (JSON snapshot i AES-256-GCM kriptirana arhiva).
 * **Gate-Check Kriterij (Faza 2):**
   * Integracijski test u memoriji: Kreiranje novog obrta, unos 5 partnera, kreiranje računa sa sekvencom `1/POSL1/1`, storniranje i provjera da sekvenca `2/POSL1/1` nema rupa. Uspješan export i import baze.
 
 ---
 
-### FAZA 3: Dizajn Sustav i Specijalizirani Set Editor Kontrola (UI Primitives)
-* **Cilj:** Izgraditi oštre, responzivne UI komponente u tamno-ljubičastoj temi prema UI specifikaciji.
+### FAZA 3: Dizajn Sustav, UI Primitivi i Dinamički Theme Engine
+* **Cilj:** Izgraditi oštre, responzivne UI komponente i dinamički sustav tema prilagođen visokoj gustoći informacija.
 * **Radni zadaci:**
-  1. Postavljanje Tailwind konfiguracije s oštrim rubovima (`rounded-none`, `rounded-xs`) i paletom boja.
-  2. Izrada `OibInput`: Maskiranje 11 znamenki, vizualna zelena/crvena indikacija valjanosti u realnom vremenu.
-  3. Izrada `IbanInput`: Automatsko formatiranje u blokove po 4 znaka i auto-detekcija domaće banke.
+  1. Postavljanje Tailwind v4 konfiguracije s oštrim rubovima (`rounded-none`, `rounded-xs`) i CSS varijablama.
+  2. Izrada `OibInput`: Maskiranje 11 znamenki, vizualna zelena/crvena indikacija valjanosti u realnom vremenu (ISO 7064).
+  3. Izrada `IbanInput`: Automatsko formatiranje u blokove po 4 znaka i auto-detekcija domaće banke putem HNB registra.
   4. Izrada `CurrencyInput`: Podrška za unos eura s točkom/zarezom i tabularnim monospace prikazom.
-  5. Izrada `KpdPicker`: Command Palette pretraživač KPD 2025 šifri s hijerarhijom djelatnosti.
+  5. Izrada `KpdPicker`: Command Palette pretraživač službene KPD 2025 baze s hijerarhijom djelatnosti.
   6. Izrada `TaxZoneToggle`: Segmentirana kontrola za prebacivanje zona (HR B2B, B2C, EU RC, Izvoz).
+  7. **Parametrizirani HSL Theme Engine**: Izrada `useTheme` hooka i `ThemeSelector` komponente s 5 kuriranih preseta i 0°-360° Hue rotacijom.
+  8. **Puna širina ekrana**: Desktop sučelje koristi punu širinu (Split-Screen 58/42) uz eliminaciju suvišnih showroom switcha.
 * **Gate-Check Kriterij (Faza 3):**
-  * Komponente se renderiraju na mobitelu (375px) i desktopu (1440px) bez prelamanja ili pomaka piksela. Unos neispravnog OIB-a odmah blokira formu, unos ispravnog IBAN-a automatski ispisuje naziv banke.
+  * Komponente se renderiraju na mobitelu i desktopu bez prelamanja ili pomaka piksela. Unos neispravnog OIB-a odmah blokira formu, unos ispravnog IBAN-a automatski ispisuje naziv banke. Tema se trenutačno mijenja u realnom vremenu i perzistira u `localStorage`.
 
 ---
 
-### FAZA 4: Generator Kodova i PDF Engine (Payment & Print Engine)
-* **Cilj:** Omogućiti renderiranje barkodova i generiranje pixel-perfect A4 PDF računa u browseru.
+### FAZA 4: Generator Kodova, PDF Engine, Tipografija i Izolirani Ispis
+* **Cilj:** Omogućiti renderiranje barkodova i generiranje pixel-perfect A4 PDF računa u browseru uz strogo poštovanje pravopisa.
 * **Radni zadaci:**
-  1. Implementacija klijentskog PDF417 generatora za HUB-3 barkod (Canvas/SVG).
-  2. Implementacija QR generatora za EPC SEPA transfer i Fiskalni QR Porezne uprave.
-  3. Izrada A4 PDF predloška računa s ugrađenim logotipom, tabularnim stavkama, zakonskom klauzulom za paušaliste (čl. 90 st. 2) i barkodovima na dnu.
-  4. Izrada preglednika računa uživo (Live Preview komponenta s desne strane split-screena).
+  1. Implementacija klijentskog PDF417 generatora za HUB-3 barkod (m-banking standard HRVHUB30 s error correction level 4).
+  2. Implementacija QR generatora za EPC SEPA kreditni transfer (EPC069-12 v002) i Fiskalni QR Porezne uprave.
+  3. **Pravopisna hrvatska tipografija**: Implementacija `validateHrvatskaTipografija` (UTF-8 provjera Č, Ć, Ž, Š, Đ), formatiranje iznosa s decimalnim zarezom (`1.250,00 €`), završna točka na datumima (`24.10.2026.`) i nedjeljivi razmaci (`\u00A0`) za uklanjanje siročića.
+  4. **Responsive Flow Print Engine**: Izolacija ispisa putem `@media print` (`body * { visibility: hidden !important; }`), automatsko skrivanje navigacije i alata, te sprječavanje lomljenja tablica (`break-inside: avoid`).
+  5. **Dvostruki klijentski PDF Engine**:
+     * DOM Flow screenshot putem `html2canvas-pro` s nativnom podrškom za moderne `oklab` i `oklch` prostore boja iz Tailwind CSS v4.
+     * Čisti vektorski jsPDF generator s dinamičkim prelamanjem dugačkih naziva stavki (`doc.splitTextToSize`) kao fail-safe fallback.
+  6. **ISO 32000-1 PDF Validator**: Implementacija `validatePdfStructure` koji automatski provjerava `%PDF-1.x` zaglavlje, `%%EOF` trailer, `/Catalog` i `/Pages` hijerarhiju svakog generiranog dokumenta.
 * **Gate-Check Kriterij (Faza 4):**
-  * Skeniranje generiranog HUB-3 barkoda kamerom m-banking aplikacije točno prepoznaje IBAN, model, poziv na broj i iznos u centima. PDF se generira u manje od 300 ms unutar preglednika bez servera.
+  * Skeniranje HUB-3 barkoda točno prepoznaje IBAN, model, poziv na broj i iznos. Generirani PDF prolazi ISO 32000-1 validaciju u manje od 150 ms. Opisi stavki teku prirodno bez rezanja teksta (`slice` eliminiran). Ispis je 100% čist bez UI kontrola.
+
+---
+
+### FAZA 4.5: Sustav Logiranja, Dijagnostički Dnevnik i UI Konzola (Logging Engine)
+* **Cilj:** Uvesti transparentan, višerazinski lokalni sustav bilježenja događaja i grešaka bez slanja podataka na cloud.
+* **Radni zadaci:**
+  1. Implementacija `CoreLogger` i `ScopedLogger` enginea s 5 razina prioriteta (`ERROR`, `WARN`, `INFO`, `DEBUG`, `VERBOSE`).
+  2. Implementacija memorijski sigurnog cirkularnog spremnika (`RingBuffer` s 500 zapisa) koji sprječava memory leak.
+  3. Automatska sanitizacija privatnih podataka (lozinke i ključevi se maskiraju u `***REDACTED***`).
+  4. Izrada web cjevovoda s obojanim ispisom u konzolu preglednika (`Console Pipe`) i perzistencijom praga u `localStorage`.
+  5. Izrada reaktivnog React hooka `useSystemLogs` i terminalskog UI panela `SystemLogDrawer` s pretragom, tabovima filtera i sklopivim JSON detaljima.
+  6. Izrada statusnog widgeta u podnožju ekrana (Footer) s prikazom broja grešaka/upozorenja.
+  7. Jednoklikni izvoz sanitiziranog dijagnostičkog JSON paketa (`obrtniq-diagnostic-log.json`).
+* **Gate-Check Kriterij (Faza 4.5):**
+  * Pokretanje 7 testova loggera s 100% prolaznošću. Ring buffer zadržava točno zadnjih 500 zapisa. Greške u kodu automatski aktiviraju crveni pulsirajući signal u footeru, a klik na widget otvara konzolu s detaljima greške.
 
 ---
 
