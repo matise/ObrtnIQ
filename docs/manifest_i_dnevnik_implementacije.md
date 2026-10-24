@@ -81,6 +81,7 @@ Ovaj dokument služi kao jedinstveni izvor istine za praćenje napretka, evident
 | 2026-10-24 16:52 | Faza 7 | `packages/core/tests/*.test.ts` | 17 novih jediničnih testova (fiskalizacija, ubl-eracun, certificate-vault) • Ukupno 16 datoteka i 89/89 prolaznih testova | 🟢 Gate-Check PROŠAO (89/89) |
 | 2026-10-24 16:55 | Faza 7 | `apps/web/src/services/fiscal-service.ts`, `FiscalDrawer.tsx` | Izrađen klijentski fiskalni servis i ladica s 3 taba (FINA trezor, CIS gotovina s offline redom, e-Račun UBL 2.1) | Završeno |
 | 2026-10-24 16:58 | Faza 7 | `apps/web/src/App.tsx`, `InvoiceLivePreview.tsx` | Integrirana automatska fiskalizacija pri izdavanju gotovinskog računa (F2), prikaz ZKI/JIR-a, fiskalni QR Porezne uprave, A4 ispis i e-Račun preuzimanje | 🟢 Gate-Check PROŠAO |
+| 2026-10-24 17:15 | Refaktoring | `App.tsx`, `engine/*`, `hooks/*`, `components/*` | Dekompozicija monolitnog App.tsx (sa 1.273 na ~115 linija): izdvajanje engine sloja (types, obrt-profile, invoice-mapper), 5 custom hookova i 8 UI podkomponenti | 🟢 Gate-Check PROŠAO (89/89 testova, 0 grešaka) |
 
 ---
 
@@ -106,6 +107,11 @@ Ovaj dokument služi kao jedinstveni izvor istine za praćenje napretka, evident
   3. **Offline Fallback mehanizam (rok 48h)**: Ako CIS Porezne uprave nije dostupan ili je veza u prekidu, račun se trenutno izdaje s generiranim ZKI-jem i dobiva status `OFFLINE_ZKI_IZDAN`. Sustav u pozadini prati zakonski rok od 48 sati te omogućuje jednoklikno naknadno slanje čim se internetska veza uspostavi (`<f73:NakDost>true</f73:NakDost>`).
   4. **Fiskalizacija 2.0 (UBL 2.1 CIUS-HR s KPD 2025)**: B2B računi automatski generiraju e-Račun u formatu UBL 2.1 sukladno normi EN 16931 i nacionalnoj specifikaciji CIUS-HR. Svaka stavka obavezno nosi propisanu KPD 2025 šifru (`<cbc:ItemClassificationCode listID="KPD2025">`), a iznos je mapiran na poreznu kategoriju E (oslobođeno prema čl. 90 st. 2).
   5. **Bezstanjski Cloudflare Worker Proxy**: Rješava CORS prepreke web preglednika prema CIS poslužitelju Porezne uprave i API-jima posrednika, bez baze podataka i bez spremanja poslovnih podataka korisnika (Zero-Knowledge Architecture).
+* **ADR-012 (Modularizacija App.tsx i Troslojna Arhitektura Web Aplikacije):** Kako je aplikacija rasla kroz Faze 1 do 7, datoteka `App.tsx` narasla je na 1.273 linije, miješajući orkestraciju sučelja, kalkulaciju stavaka, statusni automat i mapiranje podataka za ladice. Sustav je dekomponiran u tri strogo odvojena sloja:
+  1. **Engine & Domain sloj (`apps/web/src/engine/`)**: Izolirani tipovi (`types.ts`), statički profil obrta (`obrt-profile.ts`) i čiste funkcije za mapiranje (`invoice-mapper.ts`) koje pripremaju nacrte i rekvizite za ladice bez JSX ovisnosti.
+  2. **Custom Hooks sloj (`apps/web/src/hooks/`)**: Samostalni hookovi za upravljanje stanjem stavaka (`useInvoiceItems`), formom kupca (`useInvoiceForm`), životnim ciklusom i fiskalizacijom (`useInvoiceWorkflow`), tipkovničkim prečacima (`useKeyboardShortcuts` za F2 i Alt+N) i agregiranim brojačima (`useAppStats`).
+  3. **UI Prezentacijski sloj (`apps/web/src/components/`)**: Podijeljen na `layout/` (`AppHeader`, `HeroBanner`, `PhaseOverviewGrid`, `ManifestReferenceCard`, `AppFooter`, `MobileTabSwitcher`), `desk/` (`InvoiceDesk`, `DocumentStatusBar`, `CustomerSection`, `InvoiceItemsEditor`, `InvoiceDeskActions`) i `drawers/` (`AppDrawers`).
+  Ovim refaktoringom `App.tsx` je smanjen na ~115 linija čistog deklarativnog sastavljanja, uz zadržavanje 100% postojećeg ponašanja, tipkovničkih prečaca, responzivnosti i nulte regresije na 89/89 testova.
 
 ---
 
