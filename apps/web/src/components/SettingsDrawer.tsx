@@ -17,28 +17,55 @@ import {
   AlertTriangle,
   FileJson,
   RefreshCw,
-  FolderOpen
+  FolderOpen,
+  Cloud,
+  Sparkles,
+  LogIn,
+  LogOut,
+  ExternalLink,
+  Flame,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 import type { ObrtProfil } from '@obrtniq/core';
 import { OibInput, IbanInput } from './controls';
 import type { UseObrtProfileReturn } from '../hooks/useObrtProfile';
 import { useBackupRestore, type RestoreSummary } from '../hooks/useBackupRestore';
+import { useGoogleAuth, type UseGoogleAuthReturn } from '../hooks/useGoogleAuth';
+import { useGoogleDriveSync, type UseGoogleDriveSyncReturn } from '../hooks/useGoogleDriveSync';
+import { useGeminiAssistant, type UseGeminiAssistantReturn } from '../hooks/useGeminiAssistant';
 
 export interface SettingsDrawerProps {
   isOpen: boolean;
   onClose: () => void;
   obrtProfileHook: UseObrtProfileReturn;
+  googleAuthHook?: UseGoogleAuthReturn;
+  driveSyncHook?: UseGoogleDriveSyncReturn;
+  geminiHook?: UseGeminiAssistantReturn;
 }
 
 export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({
   isOpen,
   onClose,
   obrtProfileHook,
+  googleAuthHook,
+  driveSyncHook,
+  geminiHook,
 }) => {
   const { profil, saveProfil, resetToDefault } = obrtProfileHook;
-  const [activeTab, setActiveTab] = useState<'osnovno' | 'poslovanje' | 'memorandum' | 'backup'>('osnovno');
+  const [activeTab, setActiveTab] = useState<'osnovno' | 'poslovanje' | 'memorandum' | 'backup' | 'cloud'>('osnovno');
   const [formData, setFormData] = useState<ObrtProfil>(profil);
   const [savedSuccess, setSavedSuccess] = useState(false);
+
+  // Google, Drive & Gemini Hooks (koriste proslijeđene ili fallback instance)
+  const internalGoogleAuth = useGoogleAuth();
+  const googleAuth = googleAuthHook || internalGoogleAuth;
+
+  const internalDriveSync = useGoogleDriveSync(googleAuth.identity, googleAuth.getAccessToken);
+  const driveSync = driveSyncHook || internalDriveSync;
+
+  const internalGemini = useGeminiAssistant();
+  const gemini = geminiHook || internalGemini;
 
   // Backup & Restore hook i stanja
   const backupHook = useBackupRestore();
@@ -48,6 +75,13 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({
   const [isEncryptedFile, setIsEncryptedFile] = useState<boolean | null>(null);
   const [restoreSummary, setRestoreSummary] = useState<RestoreSummary | null>(null);
   const [resetConfirmInput, setResetConfirmInput] = useState('');
+
+  // Cloud & AI stanja
+  const [customClientIdInput, setCustomClientIdInput] = useState(googleAuth.clientId);
+  const [geminiApiKeyInput, setGeminiApiKeyInput] = useState(gemini.apiKey);
+  const [showGeminiKey, setShowGeminiKey] = useState(false);
+  const [geminiTestStatus, setGeminiTestStatus] = useState<string | null>(null);
+  const [drivePinInput, setDrivePinInput] = useState('');
 
   useEffect(() => {
     setFormData(profil);
@@ -169,6 +203,61 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({
     window.location.reload();
   };
 
+  // Google Auth Handlers
+  const handleGoogleLogin = async () => {
+    try {
+      await googleAuth.login();
+    } catch {
+      // Greška je zabilježena u hooku
+    }
+  };
+
+  const handleSaveClientId = () => {
+    googleAuth.setClientId(customClientIdInput);
+    alert('Google Client ID spremljen.');
+  };
+
+  // Google Drive Sync Handlers
+  const handleSyncToDrive = async () => {
+    try {
+      await driveSync.syncToDrive(drivePinInput || undefined);
+      alert('Baza podataka uspješno je sinkronizirana na Google Drive!');
+    } catch {
+      // Greška je zabilježena u hooku
+    }
+  };
+
+  const handleRestoreFromDrive = async (fileId: string) => {
+    const confirmed = confirm(
+      'POZOR: Vraćanje baze s Google Drivea zamijenit će trenutne lokalne podatke. Želite li nastaviti?'
+    );
+    if (!confirmed) return;
+    try {
+      await driveSync.restoreFromDrive(fileId, drivePinInput || undefined);
+      alert('Baza podataka uspješno je vraćena s Google Drivea!');
+      window.location.reload();
+    } catch {
+      // Greška je zabilježena u hooku
+    }
+  };
+
+  // Gemini AI Handlers
+  const handleSaveGeminiKey = () => {
+    gemini.setApiKey(geminiApiKeyInput);
+    alert('Gemini API ključ spremljen lokalno u preglednik.');
+  };
+
+  const handleTestGeminiKey = async () => {
+    setGeminiTestStatus('TESTING');
+    const ok = await gemini.testKey(geminiApiKeyInput);
+    if (ok) {
+      setGeminiTestStatus('SUCCESS');
+      setTimeout(() => setGeminiTestStatus(null), 4000);
+    } else {
+      setGeminiTestStatus('ERROR');
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-50 overflow-hidden no-print">
       {/* Backdrop */}
@@ -246,14 +335,26 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({
             <button
               type="button"
               onClick={() => setActiveTab('backup')}
-              className={`flex-1 py-3 px-3 flex items-center justify-center gap-1.5 border-b-2 font-semibold transition-all ${
+              className={`flex-1 py-3 px-2 flex items-center justify-center gap-1 border-b-2 font-semibold transition-all ${
                 activeTab === 'backup'
                   ? 'border-[var(--accent-primary)] text-[var(--accent-primary)] bg-[var(--bg-surface)]'
                   : 'border-transparent text-[var(--text-muted)] hover:text-white'
               }`}
             >
               <Shield className="w-4 h-4 text-[#10B981]" />
-              4. Backup &amp; Trezor
+              4. Trezor
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('cloud')}
+              className={`flex-1 py-3 px-2 flex items-center justify-center gap-1 border-b-2 font-semibold transition-all ${
+                activeTab === 'cloud'
+                  ? 'border-[var(--accent-primary)] text-[var(--accent-primary)] bg-[var(--bg-surface)]'
+                  : 'border-transparent text-[var(--text-muted)] hover:text-white'
+              }`}
+            >
+              <Cloud className="w-4 h-4 text-[#4285F4]" />
+              5. Google &amp; AI
             </button>
           </div>
 
@@ -771,8 +872,380 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({
               </div>
             )}
 
+            {/* TAB 5: Google Račun, Drive & Gemini AI (Faza 10) */}
+            {activeTab === 'cloud' && (
+              <div className="space-y-6">
+                {/* 1. Google Identity & Kripto Sidro (Zero-Server Auth) */}
+                <div className="p-4 bg-[var(--bg-canvas)] border border-[var(--border-subtle)] space-y-4">
+                  <div className="flex items-start gap-3">
+                    <div className="w-9 h-9 rounded bg-[#4285F4]/20 border border-[#4285F4]/40 flex items-center justify-center text-[#4285F4] flex-shrink-0">
+                      <LogIn className="w-5 h-5" />
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="text-xs font-mono font-bold uppercase text-white flex items-center gap-2">
+                        <span>Google Identity &amp; Kriptografsko Sidro</span>
+                        <span className="text-[10px] bg-[#1E3A8A] text-[#60A5FA] px-1.5 py-0.2 border border-[#60A5FA]/30">
+                          Zero-Server Auth
+                        </span>
+                      </h3>
+                      <p className="text-[11px] text-[var(--text-muted)] font-mono mt-0.5">
+                        Povezuje vaš jedinstveni Google ID (sub) s lokalnom bazom za izvođenje AES-256-GCM ključa i besplatnu Drive sinkronizaciju.
+                      </p>
+                    </div>
+                  </div>
+
+                  {googleAuth.identity ? (
+                    <div className="p-3 bg-[var(--bg-surface)] border border-[var(--border-strong)] space-y-3 font-mono text-xs">
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-3">
+                          {googleAuth.identity.pictureUrl ? (
+                            <img
+                              src={googleAuth.identity.pictureUrl}
+                              alt="Avatar"
+                              className="w-10 h-10 rounded-full object-cover border border-[var(--border-subtle)]"
+                            />
+                          ) : (
+                            <div className="w-10 h-10 rounded-full bg-[#4285F4] text-white flex items-center justify-center font-bold">
+                              {googleAuth.identity.name ? googleAuth.identity.name.charAt(0) : 'G'}
+                            </div>
+                          )}
+                          <div>
+                            <div className="font-bold text-white text-sm">
+                              {googleAuth.identity.name}
+                            </div>
+                            <div className="text-[var(--text-muted)] text-[11px]">
+                              {googleAuth.identity.email}
+                            </div>
+                          </div>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={googleAuth.logout}
+                          className="px-3 py-1.5 bg-[var(--bg-canvas)] hover:bg-[var(--bg-elevated)] text-[#EF4444] border border-[#EF4444]/40 text-xs font-mono flex items-center gap-1.5 cursor-pointer transition-all"
+                        >
+                          <LogOut className="w-3.5 h-3.5" />
+                          Odjavi se
+                        </button>
+                      </div>
+
+                      <div className="pt-2 border-t border-[var(--border-subtle)] space-y-1 text-[11px] text-[var(--text-secondary)]">
+                        <div>
+                          Google Kripto Sidro (sub):{' '}
+                          <code className="text-[var(--accent-primary)] font-bold">
+                            {googleAuth.identity.googleSub}
+                          </code>
+                        </div>
+                        <div>
+                          Povezano:{' '}
+                          <span className="text-white">
+                            {googleAuth.identity.connectedAt
+                              ? new Date(googleAuth.identity.connectedAt).toLocaleString('hr-HR')
+                              : 'Aktivno'}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-3 pt-2 border-t border-[var(--border-subtle)]">
+                      {googleAuth.error && (
+                        <div className="p-2.5 bg-[#7F1D1D]/40 border border-[#EF4444] text-[#EF4444] text-xs font-mono">
+                          {googleAuth.error}
+                        </div>
+                      )}
+
+                      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={handleGoogleLogin}
+                          disabled={googleAuth.isLoading}
+                          className="flex-1 px-4 py-2 bg-[#4285F4] hover:bg-[#3367D6] disabled:opacity-50 text-white font-mono font-bold text-xs flex items-center justify-center gap-2 transition-all shadow-md active:scale-95 cursor-pointer"
+                        >
+                          <LogIn className="w-4 h-4" />
+                          Prijavi se putem Google računa
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={googleAuth.loginDemo}
+                          className="px-3 py-2 bg-[var(--bg-elevated)] hover:bg-[var(--bg-subtle)] text-white border border-[var(--border-strong)] font-mono text-xs flex items-center justify-center gap-1.5 cursor-pointer transition-all"
+                          title="Simulira Google prijavu za testiranje bez unosa Google Client ID-a"
+                        >
+                          Isprobaj Demo Prijavu
+                        </button>
+                      </div>
+
+                      <details className="text-[11px] font-mono text-[var(--text-muted)] pt-1">
+                        <summary className="cursor-pointer hover:text-white">
+                          Napredne postavke: Vlastiti Google OAuth Client ID
+                        </summary>
+                        <div className="mt-2 space-y-2 p-3 bg-[var(--bg-surface)] border border-[var(--border-subtle)]">
+                          <label className="block text-[10px] uppercase font-bold text-[var(--text-secondary)]">
+                            Google Cloud Client ID:
+                          </label>
+                          <div className="flex gap-2">
+                            <input
+                              type="text"
+                              value={customClientIdInput}
+                              onChange={(e) => setCustomClientIdInput(e.target.value)}
+                              placeholder="npr. 123456789-xyz.apps.googleusercontent.com"
+                              className="flex-1 bg-[var(--bg-canvas)] text-white px-2.5 py-1.5 text-xs font-mono border border-[var(--border-strong)] outline-none"
+                            />
+                            <button
+                              type="button"
+                              onClick={handleSaveClientId}
+                              className="px-3 py-1.5 bg-[var(--bg-elevated)] text-white border border-[var(--border-strong)] text-xs font-mono cursor-pointer"
+                            >
+                              Spremi
+                            </button>
+                          </div>
+                        </div>
+                      </details>
+                    </div>
+                  )}
+                </div>
+
+                {/* 2. Google Drive AppData Trezor (Besplatna Skrivena Pohrana) */}
+                <div className="p-4 bg-[var(--bg-canvas)] border border-[var(--border-subtle)] space-y-4">
+                  <div className="flex items-start gap-3">
+                    <div className="w-9 h-9 rounded bg-[#10B981]/20 border border-[#10B981]/40 flex items-center justify-center text-[#10B981] flex-shrink-0">
+                      <Cloud className="w-5 h-5" />
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="text-xs font-mono font-bold uppercase text-white flex items-center gap-2">
+                        <span>Google Drive AppData Trezor</span>
+                        <span className="text-[10px] bg-[#064E3B] text-[#10B981] px-1.5 py-0.2 border border-[#10B981]/30">
+                          15 GB Besplatno
+                        </span>
+                      </h3>
+                      <p className="text-[11px] text-[var(--text-muted)] font-mono mt-0.5">
+                        Pohranjuje se u skrivenu mapu appDataFolder vašeg Google Drivea, nevidljivu u regularnom sučelju i zaštićenu AES-256-GCM enkripcijom.
+                      </p>
+                    </div>
+                  </div>
+
+                  {driveSync.error && (
+                    <div className="p-2.5 bg-[#7F1D1D]/40 border border-[#EF4444] text-[#EF4444] text-xs font-mono flex items-center gap-2">
+                      <AlertTriangle className="w-4 h-4 flex-shrink-0" />
+                      <span>{driveSync.error}</span>
+                    </div>
+                  )}
+
+                  <div className="space-y-3 pt-2 border-t border-[var(--border-subtle)]">
+                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                      <div className="flex-1 flex gap-2">
+                        <input
+                          type="password"
+                          value={drivePinInput}
+                          onChange={(e) => setDrivePinInput(e.target.value)}
+                          placeholder="Opcionalni PIN za dodatno šifriranje..."
+                          className="w-full bg-[var(--bg-surface)] text-white px-3 py-2 font-mono text-xs border border-[var(--border-strong)] focus:border-[var(--border-focus)] outline-none"
+                        />
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={handleSyncToDrive}
+                        disabled={!googleAuth.identity || driveSync.isSyncing}
+                        className="px-4 py-2 bg-[#10B981] hover:bg-[#059669] disabled:opacity-50 text-black font-mono font-bold text-xs flex items-center justify-center gap-2 transition-all shadow-md active:scale-95 cursor-pointer flex-shrink-0"
+                      >
+                        {driveSync.isSyncing ? (
+                          <RefreshCw className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <Cloud className="w-4 h-4" />
+                        )}
+                        Sinkroniziraj na Google Drive
+                      </button>
+                    </div>
+
+                    {driveSync.lastSyncTime && (
+                      <div className="text-[11px] font-mono text-[#10B981] flex items-center gap-1.5">
+                        <CheckCircle2 className="w-3.5 h-3.5" />
+                        <span>
+                          Zadnja uspješna sinkronizacija: {new Date(driveSync.lastSyncTime).toLocaleString('hr-HR')}
+                        </span>
+                      </div>
+                    )}
+
+                    {/* Popis sigurnosnih kopija na Driveu */}
+                    <div className="pt-2">
+                      <div className="flex items-center justify-between text-xs font-mono text-[var(--text-secondary)] font-semibold mb-2">
+                        <span>Spremljene verzije u AppData mapi ({driveSync.driveBackups.length}):</span>
+                        <button
+                          type="button"
+                          onClick={driveSync.refreshDriveBackups}
+                          className="text-[11px] text-[var(--accent-primary)] hover:underline flex items-center gap-1 cursor-pointer"
+                        >
+                          <RefreshCw className="w-3 h-3" />
+                          Osvježi
+                        </button>
+                      </div>
+
+                      {driveSync.driveBackups.length === 0 ? (
+                        <div className="p-3 bg-[var(--bg-surface)] border border-[var(--border-subtle)] text-[11px] font-mono text-[var(--text-muted)] text-center">
+                          Nema pronađenih sigurnosnih kopija u appDataFolder mapi. Prijavite se i kliknite &quot;Sinkroniziraj&quot; za izradu prve kopije.
+                        </div>
+                      ) : (
+                        <div className="space-y-1.5 max-h-48 overflow-y-auto">
+                          {driveSync.driveBackups.map((f) => (
+                            <div
+                              key={f.id}
+                              className="p-2.5 bg-[var(--bg-surface)] border border-[var(--border-subtle)] flex items-center justify-between gap-2 font-mono text-xs"
+                            >
+                              <div className="truncate">
+                                <div className="text-white font-semibold truncate">{f.name}</div>
+                                <div className="text-[10px] text-[var(--text-muted)] flex items-center gap-2">
+                                  <span>{new Date(f.createdTime).toLocaleString('hr-HR')}</span>
+                                  {f.size && <span>&bull; {f.size}</span>}
+                                </div>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => handleRestoreFromDrive(f.id)}
+                                disabled={driveSync.isSyncing}
+                                className="px-2.5 py-1 bg-[var(--bg-elevated)] hover:bg-[var(--bg-subtle)] text-white border border-[var(--border-strong)] text-[11px] font-mono flex items-center gap-1 cursor-pointer transition-all flex-shrink-0"
+                              >
+                                <RefreshCw className="w-3 h-3 text-[var(--accent-primary)]" />
+                                Vrati ovu verziju
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* 3. Google AI Studio (Gemini Asistent BYOK) */}
+                <div className="p-4 bg-[var(--bg-canvas)] border border-[var(--border-subtle)] space-y-4">
+                  <div className="flex items-start gap-3">
+                    <div className="w-9 h-9 rounded bg-[#8B5CF6]/20 border border-[#8B5CF6]/40 flex items-center justify-center text-[#8B5CF6] flex-shrink-0">
+                      <Sparkles className="w-5 h-5" />
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="text-xs font-mono font-bold uppercase text-white flex items-center gap-2">
+                        <span>Google AI Studio &bull; Gemini Asistent</span>
+                        <span className="text-[10px] bg-[#4C1D95] text-[#C4B5FD] px-1.5 py-0.2 border border-[#C4B5FD]/30">
+                          BYOK Model
+                        </span>
+                      </h3>
+                      <p className="text-[11px] text-[var(--text-muted)] font-mono mt-0.5">
+                        Bring-Your-Own-Key model: Koristite besplatni Gemini API ključ za automatsku preporuku KPD 2025 šifri i analizu uplatnica. Ključ ostaje isključivo na vašem računalu.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-3 pt-2 border-t border-[var(--border-subtle)]">
+                    <div>
+                      <div className="flex justify-between items-center text-xs font-mono text-[var(--text-secondary)] font-semibold mb-1">
+                        <label>Gemini API Ključ (Google AI Studio)</label>
+                        <a
+                          href="https://aistudio.google.com/app/apikey"
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-[10px] text-[var(--accent-primary)] hover:underline flex items-center gap-1"
+                        >
+                          Preuzmite besplatan ključ <ExternalLink className="w-3 h-3" />
+                        </a>
+                      </div>
+                      <div className="flex gap-2">
+                        <div className="relative flex-1">
+                          <input
+                            type={showGeminiKey ? 'text' : 'password'}
+                            value={geminiApiKeyInput}
+                            onChange={(e) => setGeminiApiKeyInput(e.target.value)}
+                            placeholder="AIzaSy..."
+                            className="w-full bg-[var(--bg-surface)] text-white px-3 py-2 pr-9 font-mono text-xs border border-[var(--border-strong)] focus:border-[var(--border-focus)] outline-none"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowGeminiKey(!showGeminiKey)}
+                            className="absolute right-2.5 top-2.5 text-[var(--text-muted)] hover:text-white"
+                          >
+                            {showGeminiKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                          </button>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={handleSaveGeminiKey}
+                          className="px-3.5 py-2 bg-[var(--bg-elevated)] hover:bg-[var(--bg-subtle)] text-white border border-[var(--border-strong)] text-xs font-mono font-bold cursor-pointer"
+                        >
+                          Spremi
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleTestGeminiKey}
+                          disabled={gemini.isAnalyzing || !geminiApiKeyInput}
+                          className="px-3.5 py-2 bg-[#8B5CF6] hover:bg-[#7C3AED] disabled:opacity-50 text-white text-xs font-mono font-bold flex items-center gap-1.5 cursor-pointer"
+                        >
+                          {gemini.isAnalyzing ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
+                          Testiraj
+                        </button>
+                      </div>
+
+                      {geminiTestStatus === 'SUCCESS' && (
+                        <div className="mt-2 text-xs font-mono text-[#10B981] flex items-center gap-1.5">
+                          <CheckCircle2 className="w-4 h-4" />
+                          <span>Povezivanje s Gemini modelom uspješno! Asistent je spreman.</span>
+                        </div>
+                      )}
+                      {geminiTestStatus === 'ERROR' && gemini.error && (
+                        <div className="mt-2 text-xs font-mono text-[#EF4444] flex items-center gap-1.5">
+                          <AlertTriangle className="w-4 h-4" />
+                          <span>{gemini.error}</span>
+                        </div>
+                      )}
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-mono text-[var(--text-secondary)] font-semibold mb-1">
+                        Odabir Gemini AI Modela
+                      </label>
+                      <select
+                        value={gemini.model}
+                        onChange={(e) => gemini.setModel(e.target.value)}
+                        className="w-full bg-[var(--bg-surface)] text-white px-3 py-2 font-mono text-xs border border-[var(--border-strong)] outline-none"
+                      >
+                        <option value="gemini-2.0-flash">gemini-2.0-flash (Najbrži, najprecizniji, besplatna kvota)</option>
+                        <option value="gemini-1.5-flash">gemini-1.5-flash (Stabilan, standardni kontekst)</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 4. Firebase / Firestore (Opcionalna Priprema) */}
+                <details className="p-4 bg-[var(--bg-canvas)] border border-[var(--border-subtle)] font-mono text-xs">
+                  <summary className="font-bold uppercase text-[var(--text-secondary)] cursor-pointer flex items-center gap-2">
+                    <Flame className="w-4 h-4 text-[#F59E0B]" />
+                    <span>Opcionalno: Firebase Cloud Firestore Postavke</span>
+                  </summary>
+                  <p className="text-[11px] text-[var(--text-muted)] mt-2">
+                    Predviđeno za napredne korisnike koji žele uspostaviti vlastiti besplatni Firebase projekt za real-time replikaciju.
+                  </p>
+                  <div className="space-y-2 mt-3 pt-2 border-t border-[var(--border-subtle)]">
+                    <div>
+                      <label className="text-[10px] text-[var(--text-muted)] block">Firebase API Key:</label>
+                      <input
+                        type="text"
+                        placeholder="AIzaSy..."
+                        className="w-full bg-[var(--bg-surface)] text-white px-2.5 py-1.5 text-xs font-mono border border-[var(--border-strong)] outline-none mt-0.5"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[10px] text-[var(--text-muted)] block">Project ID:</label>
+                      <input
+                        type="text"
+                        placeholder="moj-obrt-firebase"
+                        className="w-full bg-[var(--bg-surface)] text-white px-2.5 py-1.5 text-xs font-mono border border-[var(--border-strong)] outline-none mt-0.5"
+                      />
+                    </div>
+                  </div>
+                </details>
+              </div>
+            )}
+
             {/* Bottom Actions - only for profile editing tabs */}
-            {activeTab !== 'backup' && (
+            {activeTab !== 'backup' && activeTab !== 'cloud' && (
               <div className="border-t border-[var(--border-subtle)] pt-4 flex items-center justify-between gap-3">
                 <button
                   type="button"

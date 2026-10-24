@@ -1,7 +1,17 @@
 import React from 'react';
-import { FolderOpen, BookOpen, ShieldCheck, Users, Settings, BookMarked } from 'lucide-react';
+import { 
+  FolderOpen, 
+  BookOpen, 
+  ShieldCheck, 
+  Users, 
+  Settings, 
+  BookMarked,
+  Cloud,
+  CloudOff,
+  RefreshCw
+} from 'lucide-react';
 import { ThemeSelector } from '../ThemeSelector';
-import { formatHrvatskiIznos } from '@obrtniq/core';
+import { formatHrvatskiIznos, type GoogleAuthIdentity } from '@obrtniq/core';
 
 export interface AppHeaderProps {
   totalSavedDocs: number;
@@ -12,6 +22,10 @@ export interface AppHeaderProps {
   onOpenSettings: () => void;
   onOpenPartners: () => void;
   onOpenArticles?: () => void;
+  googleIdentity?: GoogleAuthIdentity | null;
+  cloudSyncStatus?: 'IDLE' | 'SYNCING' | 'SUCCESS' | 'ERROR';
+  lastSyncTime?: string | null;
+  onSyncClick?: () => void;
 }
 
 export const AppHeader: React.FC<AppHeaderProps> = ({
@@ -23,6 +37,10 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
   onOpenSettings,
   onOpenPartners,
   onOpenArticles,
+  googleIdentity,
+  cloudSyncStatus = 'IDLE',
+  lastSyncTime,
+  onSyncClick,
 }) => {
   return (
     <header className="border-b border-[var(--border-subtle)] bg-[var(--bg-surface)]/95 backdrop-blur px-4 sm:px-6 py-2.5 flex items-center justify-between sticky top-0 z-50 no-print">
@@ -107,8 +125,68 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
         </button>
       </div>
 
-      {/* Header Right Tools: Theme Selector + Prag Widget */}
-      <div className="flex items-center space-x-4 sm:space-x-6">
+      {/* Header Right Tools: Theme Selector + Prag Widget + Cloud Identity */}
+      <div className="flex items-center space-x-3 sm:space-x-5">
+        {/* Google Identity & Cloud Sync Badge */}
+        <div className="flex items-center">
+          {googleIdentity ? (
+            <div 
+              onClick={onOpenSettings}
+              className="flex items-center space-x-2 px-2.5 py-1 bg-[var(--bg-canvas)] border border-[var(--border-subtle)] hover:border-[#4285F4] cursor-pointer transition-all"
+              title={`Prijavljen: ${googleIdentity.email} (Google Sub: ${googleIdentity.googleSub})`}
+            >
+              {googleIdentity.pictureUrl ? (
+                <img 
+                  src={googleIdentity.pictureUrl} 
+                  alt={googleIdentity.name || 'Google Avatar'} 
+                  className="w-5 h-5 rounded-full object-cover" 
+                />
+              ) : (
+                <div className="w-5 h-5 rounded-full bg-[#4285F4] text-white font-bold text-[10px] flex items-center justify-center font-mono">
+                  {googleIdentity.name ? googleIdentity.name.charAt(0) : 'G'}
+                </div>
+              )}
+              <span className="text-xs font-mono text-white hidden md:inline truncate max-w-[110px]">
+                {googleIdentity.name || googleIdentity.email}
+              </span>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (onSyncClick) onSyncClick();
+                  else onOpenSettings();
+                }}
+                className="hover:scale-110 transition-transform cursor-pointer pl-1"
+                title={
+                  cloudSyncStatus === 'SYNCING'
+                    ? 'Sinkronizacija na Google Drive u tijeku...'
+                    : lastSyncTime
+                    ? `Zadnja sinkronizacija: ${new Date(lastSyncTime).toLocaleTimeString('hr-HR')}`
+                    : 'Sinkroniziraj na Google Drive'
+                }
+              >
+                {cloudSyncStatus === 'SYNCING' ? (
+                  <RefreshCw className="w-3.5 h-3.5 text-[var(--accent-primary)] animate-spin" />
+                ) : cloudSyncStatus === 'ERROR' ? (
+                  <CloudOff className="w-3.5 h-3.5 text-[#EF4444]" />
+                ) : (
+                  <Cloud className="w-3.5 h-3.5 text-[#10B981]" />
+                )}
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={onOpenSettings}
+              className="flex items-center space-x-1.5 px-2.5 py-1 bg-[var(--bg-canvas)] hover:bg-[var(--bg-elevated)] border border-[var(--border-subtle)] hover:border-[#4285F4] text-xs font-mono text-[var(--text-muted)] hover:text-white transition-all cursor-pointer"
+              title="Povežite Google račun za besplatnu Drive sinkronizaciju"
+            >
+              <CloudOff className="w-3.5 h-3.5 text-[var(--text-muted)]" />
+              <span className="hidden xl:inline">Google Cloud</span>
+            </button>
+          )}
+        </div>
+
         {/* Dynamic Theme Selector */}
         <ThemeSelector />
 
@@ -143,7 +221,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
 
         <div className="text-right hidden sm:block">
           <span className="text-[11px] font-mono block text-[var(--text-muted)]">Status Sustava</span>
-          <span className="text-xs font-mono text-[#10B981] font-semibold">Faza 8 &bull; Postavke, Partneri &amp; Memorandum</span>
+          <span className="text-xs font-mono text-[#10B981] font-semibold">Faza 10 &bull; Google Identity &amp; Gemini AI</span>
         </div>
       </div>
     </header>

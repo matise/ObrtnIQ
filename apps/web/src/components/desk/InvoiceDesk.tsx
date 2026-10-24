@@ -7,6 +7,7 @@ import { CustomerSection } from './CustomerSection';
 import { InvoiceItemsEditor } from './InvoiceItemsEditor';
 import { InvoiceDeskActions } from './InvoiceDeskActions';
 
+import type { UseGeminiAssistantReturn } from '../../hooks/useGeminiAssistant';
 import type { FormItem } from '../../engine/types';
 
 export interface InvoiceDeskProps {
@@ -17,6 +18,7 @@ export interface InvoiceDeskProps {
   onOpenAddressBook?: () => void;
   onOpenArticleCatalog?: () => void;
   onSaveItemToCatalog?: (item: FormItem) => void;
+  geminiAssistant?: UseGeminiAssistantReturn;
 }
 
 export const InvoiceDesk: React.FC<InvoiceDeskProps> = ({
@@ -27,6 +29,7 @@ export const InvoiceDesk: React.FC<InvoiceDeskProps> = ({
   onOpenAddressBook,
   onOpenArticleCatalog,
   onSaveItemToCatalog,
+  geminiAssistant,
 }) => {
   return (
     <div
@@ -75,6 +78,7 @@ export const InvoiceDesk: React.FC<InvoiceDeskProps> = ({
         onUpdateItem={items.updateItem}
         onOpenArticleCatalog={onOpenArticleCatalog}
         onSaveItemToCatalog={onSaveItemToCatalog}
+        geminiAssistant={geminiAssistant}
       />
 
       {/* 4. Donja akcijska traka i gumb za izdavanje */}

@@ -251,3 +251,37 @@ export async function decryptBackup(
     : JSON.stringify(envelopeOrJson);
   return decryptBackupData(jsonString, lozinka);
 }
+
+/**
+ * Pomoćna funkcija za formiranje tajnog seeda iz Google sub identifikatora i opcionalnog korisničkog PIN-a
+ */
+export function buildIdentitySecret(googleSub: string, userPin?: string): string {
+  if (!googleSub || googleSub.trim().length < 5) {
+    throw new Error('Google Sub identifikator mora sadržavati valjan ID.');
+  }
+  return `OBRTNIQ:GOOGLE_SUB:${googleSub.trim()}${userPin ? `:${userPin.trim()}` : ''}`;
+}
+
+/**
+ * Kriptira sigurnosnu kopiju koristeći Google Sub identifikator korisnika kao kriptografsko sidro
+ */
+export async function encryptBackupWithGoogleSub(
+  data: ObrtnIQBackupData,
+  googleSub: string,
+  userPin?: string
+): Promise<EncryptedPayloadEnvelope> {
+  const secret = buildIdentitySecret(googleSub, userPin);
+  return encryptBackup(data, secret);
+}
+
+/**
+ * Dekriptira sigurnosnu kopiju koristeći Google Sub identifikator korisnika kao kriptografsko sidro
+ */
+export async function decryptBackupWithGoogleSub(
+  envelopeOrJson: EncryptedPayloadEnvelope | string,
+  googleSub: string,
+  userPin?: string
+): Promise<ObrtnIQBackupData> {
+  const secret = buildIdentitySecret(googleSub, userPin);
+  return decryptBackup(envelopeOrJson, secret);
+}

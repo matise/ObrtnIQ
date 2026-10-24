@@ -45,6 +45,28 @@ export type StatusERacun20 =
   | 'ODBIJENO' 
   | 'GRESKA';
 
+export interface GoogleAuthIdentity {
+  provider: 'GOOGLE' | 'LOCAL';
+  googleSub?: string;            // Jedinstveni 21-znamenkasti Google User ID (kripto sidro)
+  email?: string;
+  name?: string;
+  pictureUrl?: string;
+  connectedAt?: string;
+  scopes?: string[];
+}
+
+export interface ConnectedServicesConfig {
+  googleDriveEnabled: boolean;
+  googleDriveLastSync?: string;
+  geminiApiKey?: string;         // Korisnikov Google AI Studio API ključ (BYOK)
+  geminiModel?: string;          // Zadani model: 'gemini-2.0-flash'
+  firebaseConfig?: {
+    apiKey: string;
+    projectId: string;
+    appId: string;
+  };
+}
+
 export interface ObrtProfil {
   id: string;
   naziv: string;
@@ -71,6 +93,8 @@ export interface ObrtProfil {
   pecatPotpisImageData?: string; // Base64 data URL
   eracunPosrednik: 'FINA' | 'MOJ_ERACUN' | 'EDOKUMENT' | 'CUSTOM_API' | 'BEZ_POSREDNIKA';
   eracunApiKey?: string;
+  authIdentity?: GoogleAuthIdentity;
+  connectedServices?: ConnectedServicesConfig;
 }
 
 export interface Partner {

@@ -17,6 +17,10 @@ import type { UseObrtProfileReturn } from '../../hooks/useObrtProfile';
 import type { UsePartnersReturn } from '../../hooks/usePartners';
 import type { UseArticlesReturn } from '../../hooks/useArticles';
 
+import type { UseGoogleAuthReturn } from '../../hooks/useGoogleAuth';
+import type { UseGoogleDriveSyncReturn } from '../../hooks/useGoogleDriveSync';
+import type { UseGeminiAssistantReturn } from '../../hooks/useGeminiAssistant';
+
 export interface AppDrawersProps {
   drawers: UseAppDrawersReturn;
   workflow: UseInvoiceWorkflowReturn;
@@ -26,6 +30,9 @@ export interface AppDrawersProps {
   obrtProfileHook: UseObrtProfileReturn;
   partnersHook: UsePartnersReturn;
   articlesHook: UseArticlesReturn;
+  googleAuthHook?: UseGoogleAuthReturn;
+  driveSyncHook?: UseGoogleDriveSyncReturn;
+  geminiHook?: UseGeminiAssistantReturn;
   onSelectPartner: (partner: Partner) => void;
   onSelectArticle?: (artikl: Artikl) => void;
 }
@@ -39,6 +46,9 @@ export const AppDrawers: React.FC<AppDrawersProps> = ({
   obrtProfileHook,
   partnersHook,
   articlesHook,
+  googleAuthHook,
+  driveSyncHook,
+  geminiHook,
   onSelectPartner,
   onSelectArticle,
 }) => {
@@ -109,6 +119,9 @@ export const AppDrawers: React.FC<AppDrawersProps> = ({
         isOpen={drawers.isSettingsDrawerOpen}
         onClose={() => drawers.setIsSettingsDrawerOpen(false)}
         obrtProfileHook={obrtProfileHook}
+        googleAuthHook={googleAuthHook}
+        driveSyncHook={driveSyncHook}
+        geminiHook={geminiHook}
       />
 
       {/* 6. Adresar Partnera & Kupaca */}

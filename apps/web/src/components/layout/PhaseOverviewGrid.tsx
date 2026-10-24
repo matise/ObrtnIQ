@@ -1,9 +1,9 @@
 import React from 'react';
-import { Cpu, Layers, Printer, Terminal, ShieldCheck, BookOpen, Settings, BookMarked } from 'lucide-react';
+import { Cpu, Layers, Printer, Terminal, ShieldCheck, BookOpen, Settings, BookMarked, Sparkles } from 'lucide-react';
 
 export const PhaseOverviewGrid: React.FC = () => {
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 xl:grid-cols-9 gap-3 no-print">
+    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 xl:grid-cols-10 gap-3 no-print">
       <div className="border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-3.5 space-y-1.5 transition-colors">
         <div className="flex items-center justify-between">
           <span className="text-[10px] font-mono text-[var(--text-muted)]">FAZA 0-2</span>
@@ -147,6 +147,23 @@ export const PhaseOverviewGrid: React.FC = () => {
           Katalog s KPD 2025, KPR CSV izvoz i AES-256 kriptirani backup.
         </p>
       </div>
+
+      <div className="border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-3.5 space-y-1.5 transition-colors">
+        <div className="flex items-center justify-between">
+          <span className="text-[10px] font-mono text-[var(--accent-primary)] font-bold">FAZA 10</span>
+          <span className="text-[9px] font-mono px-1.5 py-0.2 bg-[#064E3B] text-[#10B981] border border-[#10B981]/30 font-bold">
+            GOTOVO
+          </span>
+        </div>
+        <div className="flex items-center space-x-2">
+          <Sparkles className="w-4 h-4 text-amber-400" />
+          <h3 className="font-semibold text-xs text-white">Google &amp; AI</h3>
+        </div>
+        <p className="text-[11px] text-[var(--text-secondary)] leading-relaxed">
+          Google kripto-sidro, Drive AppData sinkronizacija i Gemini KPD.
+        </p>
+      </div>
     </div>
   );
 };
+

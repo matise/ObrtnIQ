@@ -249,4 +249,51 @@ export interface LogEntry {
 * **TypeScript & Vite build**: `npm run build` na monorepou završava s kodom 0.
 * **Lokalni dev server**: Radi stabilno na `http://localhost:5173/` (HTTP 200).
 
+---
+
+## 7. Dnevnik Implementacije: FAZA 10 – Zero-Server Cloud & AI Arhitektura (Google Identity Crypto Anchor, Drive AppData Sync, Gemini Assistant BYOK)
+
+### 7.1. Pregled Implementiranih Komponenti
+1. **Google Identity kao Kripto-Sidro (Zero-Knowledge AES-256-GCM)**:
+   * **Invarijanta Google `sub`**: Trajni numerički 21-znamenkasti korisnički identifikator iz Google Identity Services SDK-a koristi se kao determinističko kriptografsko sidro.
+   * **Izvođenje Kripto Ključa**: `buildIdentitySecret(googleSub, userPin?)` stvara soljeni identifikator preko imenskog prostora `OBRTNIQ:GOOGLE_SUB:` te kroz PBKDF2 (100.000 iteracija, SHA-256) generira simetrični 256-bitni AES-GCM ključ bez potrebe za slanjem korisničkih podataka na bilo koji vanjski poslužitelj.
+   * **Automatska Enkripcija & Dekripcija**: Implementirane metode `encryptBackupWithGoogleSub` i `decryptBackupWithGoogleSub` u `@obrtniq/core`.
+   * **Demo Način Rada**: `loginDemoUser()` pruža deterministički offline identitet za testiranje i rad bez konfiguriranog Google Client ID-a.
+
+2. **Google Drive AppData Automatizirana Sinkronizacija (`drive.appdata`)**:
+   * **Izolirani AppDataFolder**: Korištenje skrivene mape Google Drivea (`appDataFolder`) koja je korisniku nevidljiva na drive.google.com, čime se eliminira mogućnost slučajnog brisanja ili narušavanja datoteka.
+   * **REST API v3 Multipart Upload**: Direktan klijentski REST API prijenos kriptiranih `.obrtniq` arhiva s metapodacima (`obrtniq_backup`, timestamp, verzija sheme).
+   * **Popis i Restauracija**: Kuka `useGoogleDriveSync` omogućuje dohvat popisa svih povijesnih točaka oporavka, 1-klik sigurnosnu kopiju i trenutnu restauraciju cijele baze podataka u slučaju promjene uređaja ili havarije.
+   * **Vizualni Indikator**: `AppHeader.tsx` prikazuje Google profilnu sliku, status oblaka (`Zeleni oblak` za sinkronizirano, `Rotirajući` tijekom sinkronizacije) i vrijeme zadnje sinkronizacije.
+
+3. **Gemini AI Asistent za e-Račun i KPD 2025 (Bring-Your-Own-Key & RH Heuristika)**:
+   * **BYOK Arhitektura**: Korisnik unosi svoj Google AI Studio API ključ koji se pohranjuje isključivo u lokalni preglednik (`localStorage`) i direktno komunicira s Google Gemini REST API-jem (`gemini-2.0-flash`).
+   * **Pametno Prepoznavanje KPD 2025**:
+     * Prompt inženjering prilagođen hrvatskim računovodstvenim propisima za e-Račun i Fiskalizaciju 2.0.
+     * Vraća strukturirani JSON: `kpdSifra`, `kpdNaziv`, `preporucenaJedinica`, `preporucenaCijena`, `objasnjenje`.
+   * **100% Offline RH Heuristički Fallback**: Čak i ako korisnik nema uneseni API ključ ili nema internetsku vezu, sustav primjenjuje ugrađeni algoritam koji analizira hrvatske ključne riječi (softver, web, programiranje, dizajn, logotip, brending, savjetovanje, IT održavanje, prevođenje, marketing) i predlaže točne službene KPD šifre.
+   * **Interaktivno Sučelje u Editoru Stavaka**:
+     * U `InvoiceItemsEditor.tsx`, svaki redak stavke sadrži gumb `AI KPD Asistent` sa zvjezdicom (`Sparkles`).
+     * Klikom se otvara kompaktni okvir za unos prirodnog opisa usluge s brzim primjerima ("Programiranje web aplikacija", "Dizajn logotipa", "Poslovno savjetovanje"...).
+     * Klik na gumb *"Primijeni na stavku"* automatski popunjava KPD šifru, službeni naziv, mjernu jedinicu i okvirnu tržišnu cijenu.
+
+4. **Povezivanje Postavki (Tab 5. Google & AI)**:
+   * `SettingsDrawer.tsx` proširen petim tabom s kontrolama za:
+     * Google prijavu, status sesije, prikaz Google računa i Demo prijavu.
+     * Google Drive AppData status, gumb za trenutnu sinkronizaciju, opcionalni PIN i listu točaka oporavka s Drivea.
+     * Gemini API konfiguraciju, odabir modela, unos API ključa uz skrivanje/prikaz lozinke i ping test veze.
+     * Opcionalnu Firebase konfiguraciju.
+
+5. **Ažuriranje Mreže Faza (`PhaseOverviewGrid.tsx`)**:
+   * Dodana kartica **FAZA 10** ("Google & AI", status GOTOVO) s ikonom `Sparkles`.
+
+### 7.2. Verifikacija i Testna Pokrivenost
+* **Novi testovi**:
+  * `packages/core/tests/crypto-anchor.test.ts`: 3/3 testa prolaze (V10-1: `buildIdentitySecret`, V10-2: `encrypt/decryptBackupWithGoogleSub`, V10-3: Google Sub + PIN).
+  * `apps/web/tests/gemini.test.ts`: 9/9 testova prolazi (V10-4: Inteligentna RH heuristika za 5 ključnih djelatnosti i opći fallback, V10-5: Google Identity demo invarijante, V10-6: Upravljanje API ključem i modelom).
+* **Ukupno automatskih testova**: **21 testna datoteka, 114/114 testova prolazi** (100% prolaznost na cijelom monorepou).
+* **TypeScript & Vite build**: `npm run build` na cijelom projektu završava s kodom 0 bez ikakvih grešaka.
+* **Lokalni dev server**: Radi stabilno na `http://localhost:5173/` (HTTP 200).
+
+
 

@@ -19,6 +19,9 @@ import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import { useObrtProfile } from './hooks/useObrtProfile';
 import { usePartners } from './hooks/usePartners';
 import { useArticles } from './hooks/useArticles';
+import { useGoogleAuth } from './hooks/useGoogleAuth';
+import { useGoogleDriveSync } from './hooks/useGoogleDriveSync';
+import { useGeminiAssistant } from './hooks/useGeminiAssistant';
 
 export default function App() {
   // 1. Aplikacijski engine, profili i hooks
@@ -29,6 +32,9 @@ export default function App() {
   const obrtProfileHook = useObrtProfile();
   const partnersHook = usePartners();
   const articlesHook = useArticles();
+  const googleAuthHook = useGoogleAuth();
+  const driveSyncHook = useGoogleDriveSync(googleAuthHook.identity, googleAuthHook.getAccessToken);
+  const geminiHook = useGeminiAssistant();
 
   const workflow = useInvoiceWorkflow({
     form,
@@ -91,6 +97,16 @@ export default function App() {
         onOpenSettings={() => drawers.setIsSettingsDrawerOpen(true)}
         onOpenPartners={() => drawers.setIsPartnerDrawerOpen(true)}
         onOpenArticles={() => drawers.setIsArticleDrawerOpen(true)}
+        googleIdentity={googleAuthHook.identity}
+        cloudSyncStatus={driveSyncHook.syncStatus}
+        lastSyncTime={driveSyncHook.lastSyncTime}
+        onSyncClick={() => {
+          if (!googleAuthHook.isAuthenticated) {
+            drawers.setIsSettingsDrawerOpen(true);
+          } else {
+            driveSyncHook.syncToDrive();
+          }
+        }}
       />
 
       {/* Main Content Area - Full Width Split-Screen Desk */}
@@ -123,6 +139,7 @@ export default function App() {
             onOpenAddressBook={() => drawers.setIsPartnerDrawerOpen(true)}
             onOpenArticleCatalog={() => drawers.setIsArticleDrawerOpen(true)}
             onSaveItemToCatalog={handleSaveItemToCatalog}
+            geminiAssistant={geminiHook}
           />
 
           {/* Živi A4 Real-Time Preview (42%) */}
@@ -177,6 +194,9 @@ export default function App() {
         obrtProfileHook={obrtProfileHook}
         partnersHook={partnersHook}
         articlesHook={articlesHook}
+        googleAuthHook={googleAuthHook}
+        driveSyncHook={driveSyncHook}
+        geminiHook={geminiHook}
         onSelectPartner={handleSelectPartner}
         onSelectArticle={handleSelectArticle}
       />
