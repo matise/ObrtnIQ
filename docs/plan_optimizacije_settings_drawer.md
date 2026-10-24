@@ -113,54 +113,46 @@ graph TD
 
 ---
 
-## 4. Faze Implementacije
+## 4. Faze Implementacije (STATUS: DOVRŠENO ✅)
 
-### Faza 1: Priprema strukture, tipova i navigacije
-- **Cilj:** Uspostaviti direktorij [`apps/web/src/components/settings/`](file:///d:/Documents/Robot%20Hand%20Made/ObrtnIQ/apps/web/src/components/settings) i definirati `types.ts`.
+### Faza 1: Priprema strukture, tipova i navigacije ✅
+- **Status:** Dovršeno.
 - **Komponente:**
-  - `types.ts`: Zajednički tipovi za tabove (`SettingsTabId = 'osnovno' | 'poslovanje' | 'memorandum' | 'backup' | 'cloud'`).
-  - `SettingsTabsNav.tsx`: Izdvajanje navigacijskih gumba sa statusnim točkicama i ikonama.
+  - [`apps/web/src/components/settings/types.ts`](file:///d:/Documents/Robot%20Hand%20Made/ObrtnIQ/apps/web/src/components/settings/types.ts): Definirani zajednički tipovi (`SettingsTabId`, prop sučelja za tabove i kartice).
+  - [`apps/web/src/components/settings/SettingsTabsNav.tsx`](file:///d:/Documents/Robot%20Hand%20Made/ObrtnIQ/apps/web/src/components/settings/SettingsTabsNav.tsx): Navigacijski tabovi s bedževima, indikatorom Google prijave i responzivnim ikonama.
 
-### Faza 2: Izdvajanje Tabova Profila Obrta (Tabovi 1, 2 i 3)
-- **Cilj:** Odvojiti unos podataka o obrtu i memorandum u samostalne komponente.
+### Faza 2: Izdvajanje Tabova Profila Obrta (Tabovi 1, 2 i 3) ✅
+- **Status:** Dovršeno.
 - **Komponente:**
-  - `OsnovniPodaciTab.tsx`: Prima `formData: ObrtProfil`, `onChange: (field, val) => void`. Koristi `OibInput`.
-  - `PoslovanjeTab.tsx`: Prima `formData`, `onChange`. Koristi `IbanInput`, kontrole za PDV, paušal i poreznu upravu.
-  - `MemorandumTab.tsx`: Sadrži logiku za upload slika (< 500 KB), preview i uklanjanje pečata i logotipa.
-- **Prednost:** Smanjuje glavni drawer za preko 300 linija koda; izolira rad s datotekama slika.
+  - [`apps/web/src/components/settings/tabs/OsnovniPodaciTab.tsx`](file:///d:/Documents/Robot%20Hand%20Made/ObrtnIQ/apps/web/src/components/settings/tabs/OsnovniPodaciTab.tsx): Podaci obrta s `OibInput` i validacijama.
+  - [`apps/web/src/components/settings/tabs/PoslovanjeTab.tsx`](file:///d:/Documents/Robot%20Hand%20Made/ObrtnIQ/apps/web/src/components/settings/tabs/PoslovanjeTab.tsx): Poslovanje i račun s `IbanInput`, oznakama prostora/uređaja i PDV/paušal postavkama.
+  - [`apps/web/src/components/settings/tabs/MemorandumTab.tsx`](file:///d:/Documents/Robot%20Hand%20Made/ObrtnIQ/apps/web/src/components/settings/tabs/MemorandumTab.tsx): Upload logotipa i digitalnog pečata s potpisom (<500 KB limit), pregled i brisanje.
 
-### Faza 3: Izdvajanje Sigurnosne Kopije i Trezora (Tab 4)
-- **Cilj:** Premjestiti logiku enkripcije, uvoza i tvorničkog brisanja.
+### Faza 3: Izdvajanje Sigurnosne Kopije i Trezora (Tab 4) ✅
+- **Status:** Dovršeno.
 - **Komponente:**
-  - `BackupRestoreTab.tsx`:
-    - Enkapsulira interna stanja: `backupPassword`, `restorePassword`, `restoreFile`, `isEncryptedFile`, `restoreSummary`, `resetConfirmInput`.
-    - Povezuje se izravno na `useBackupRestore()`.
-- **Prednost:** Uklanja 6 stanja i 5 handlera iz glavnog `SettingsDrawer`. Kriptografske operacije postaju lokalizirane.
+  - [`apps/web/src/components/settings/tabs/BackupRestoreTab.tsx`](file:///d:/Documents/Robot%20Hand%20Made/ObrtnIQ/apps/web/src/components/settings/tabs/BackupRestoreTab.tsx): AES-256 šifrirani izvoz, JSON snapshot, inspekcija datoteke, vraćanje podataka, tvornički reset s potvrdom "OBRISI" i osvježavanje profila.
 
-### Faza 4: Modularizacija Cloud & AI Taba (Tab 5)
-- **Cilj:** Rastaviti najveći dio koda (preko 710 linija) u 4 samostalne kartice:
-  1. `CloudDiagnosticsCard.tsx`: Prikazuje Health Check (Origin, Network, Session, Scopes, Drive, Gemini, Recommendations) i pokreće dijagnostiku.
-  2. `GoogleIdentityCard.tsx`: Prikazuje avatar, Google Sub, status tokena, demo prijavu i unos prilagođenog Client ID-a.
-  3. `GoogleDriveSyncCard.tsx`: Prikazuje status zadnje sinkronizacije, listu verzija u AppData mapi, PIN zaštitu i gumb za vraćanje.
-  4. `GeminiSettingsCard.tsx`: Unos API ključa, testiranje i izbor modela (`gemini-3.8-flash`, `gemini-4-argon`, itd.).
-  5. `FirebaseSettingsCard.tsx`: Sklopivi prozor za opcionalne postavke Firestore replikacije.
-  - `CloudAiTab.tsx`: Čisti kontejner koji okuplja gore navedene kartice.
-- **Prednost:** Drastično smanjenje re-rendera kod tipkanja PIN-a ili Client ID-a.
+### Faza 4: Modularizacija Cloud & AI Taba (Tab 5) ✅
+- **Status:** Dovršeno.
+- **Komponente:**
+  - [`apps/web/src/components/settings/cloud/CloudDiagnosticsCard.tsx`](file:///d:/Documents/Robot%20Hand%20Made/ObrtnIQ/apps/web/src/components/settings/cloud/CloudDiagnosticsCard.tsx): 8 točaka dijagnostike (Origin, Network ping, Session, Scopes, Drive API, Gemini AI Studio) s preporukama.
+  - [`apps/web/src/components/settings/cloud/GoogleIdentityCard.tsx`](file:///d:/Documents/Robot%20Hand%20Made/ObrtnIQ/apps/web/src/components/settings/cloud/GoogleIdentityCard.tsx): Google profil, Google Sub kripto-sidro, mjerač isteka tokena, Demo prijava i unos prilagođenog Client ID-a.
+  - [`apps/web/src/components/settings/cloud/GoogleDriveSyncCard.tsx`](file:///d:/Documents/Robot%20Hand%20Made/ObrtnIQ/apps/web/src/components/settings/cloud/GoogleDriveSyncCard.tsx): AppData mapa, PIN zaštita, verzije sigurnosnih kopija i vraćanje s Drivea.
+  - [`apps/web/src/components/settings/cloud/GeminiSettingsCard.tsx`](file:///d:/Documents/Robot%20Hand%20Made/ObrtnIQ/apps/web/src/components/settings/cloud/GeminiSettingsCard.tsx): BYOK API ključ, provjera pinga i ažurirani 2026 modeli (`gemini-3.8-flash`, `gemini-4-argon`, itd.).
+  - [`apps/web/src/components/settings/cloud/FirebaseSettingsCard.tsx`](file:///d:/Documents/Robot%20Hand%20Made/ObrtnIQ/apps/web/src/components/settings/cloud/FirebaseSettingsCard.tsx): Sklopivi prozor za opcionalnu Firestore sinkronizaciju.
+  - [`apps/web/src/components/settings/tabs/CloudAiTab.tsx`](file:///d:/Documents/Robot%20Hand%20Made/ObrtnIQ/apps/web/src/components/settings/tabs/CloudAiTab.tsx): Kontejner za sve Cloud & AI kartice.
 
-### Faza 5: Refaktoriranje `SettingsDrawer.tsx` u Čisti Orkestrator
-- **Cilj:** Svesti `SettingsDrawer.tsx` na preglednih ~150 linija koda:
-  - Upravljanje otvaranjem/zatvaranjem i odabirom taba (`activeTab`).
-  - Pozivanje `saveProfil` i `resetToDefault`.
-  - Prikaz zajedničkog Backdopa, Headera i Footera.
+### Faza 5: Refaktoriranje `SettingsDrawer.tsx` u Čisti Orkestrator ✅
+- **Status:** Dovršeno.
+- Sveden s 1.831 linije na samo 272 linije čistog koordinacijskog koda.
+- Glavna stanja svedena na 3 varijable: `activeTab`, `formData` i `savedSuccess`.
 
-### Faza 6: Verifikacija i Testiranje
-- Provjera svih 157 postojećih testova (`npx vitest run`).
-- Dodavanje jediničnih testova za modularne kartice:
-  - `apps/web/tests/settings-profile-tabs.test.tsx`
-  - `apps/web/tests/settings-backup-tab.test.tsx`
-  - `apps/web/tests/settings-cloud-tab.test.tsx`
-- Provjera rada u stvarnom pregledniku (otvaranje tabova, spremanje profila, promjena modela, pokretanje dijagnostike).
-- Produkcijski build (`npm run build`).
+### Faza 6: Verifikacija i Testiranje ✅
+- **Status:** Dovršeno.
+- Svi postojeći testovi prolaze: 162 testa kroz 27 testnih datoteka (100% prolaz).
+- Dodan jedinični test: [`apps/web/tests/settings-drawer.test.ts`](file:///d:/Documents/Robot%20Hand%20Made/ObrtnIQ/apps/web/tests/settings-drawer.test.ts).
+- Produkcijski Vite build (`npm run build`) prolazi bez ijednog upozorenja ili greške.
 
 ---
 
