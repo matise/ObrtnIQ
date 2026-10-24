@@ -1,5 +1,6 @@
 import { useState, useMemo, useCallback } from 'react';
 import type { FormItem, InvoicePreviewItem } from '../engine/types';
+import type { Artikl } from '@obrtniq/core';
 import { DEFAULT_INITIAL_ITEMS } from '../engine/obrt-profile';
 import { mapFormItemsToPreviewItems } from '../engine/invoice-mapper';
 import { appLogger } from '../services/logger';
@@ -8,6 +9,7 @@ export interface UseInvoiceItemsReturn {
   items: FormItem[];
   setItems: React.Dispatch<React.SetStateAction<FormItem[]>>;
   addItem: () => void;
+  addArticleItem: (artikl: Artikl) => void;
   removeItem: (id: string) => void;
   updateItem: (id: string, partial: Partial<FormItem>) => void;
   resetItems: () => void;
@@ -48,6 +50,28 @@ export function useInvoiceItems(isLocked = false): UseInvoiceItemsReturn {
     });
   }, [isLocked, items.length]);
 
+  const addArticleItem = useCallback(
+    (artikl: Artikl) => {
+      if (isLocked) return;
+      const newItem: FormItem = {
+        id: `item-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+        kpdSifra: artikl.kpdSifra,
+        kpdNaziv: artikl.naziv,
+        kolicina: 1,
+        jedinicaMjere: artikl.jedinicaMjere || 'kom',
+        cijena: artikl.cijenaOsnovica,
+      };
+      setItems((prev) => [...prev, newItem]);
+      appLogger.scope('INVOICE:ITEMS').info('Dodana stavka iz cjenika artikala/usluga', {
+        artiklId: artikl.id,
+        naziv: artikl.naziv,
+        kpd: artikl.kpdSifra,
+        cijena: artikl.cijenaOsnovica,
+      });
+    },
+    [isLocked]
+  );
+
   const removeItem = useCallback(
     (id: string) => {
       if (isLocked) return;
@@ -85,6 +109,7 @@ export function useInvoiceItems(isLocked = false): UseInvoiceItemsReturn {
     items,
     setItems,
     addItem,
+    addArticleItem,
     removeItem,
     updateItem,
     resetItems,

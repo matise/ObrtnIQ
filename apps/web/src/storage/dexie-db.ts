@@ -209,6 +209,10 @@ export class DexieObrtnIQStorage implements IObrtnIQStorage {
       await db.naplatePromet.clear();
     });
   }
+
+  async clearAllData(): Promise<void> {
+    return this.clearAll();
+  }
 }
 
 export const dexieStorage = new DexieObrtnIQStorage();

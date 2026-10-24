@@ -1,5 +1,5 @@
 import React from 'react';
-import { FolderOpen, BookOpen, ShieldCheck, Users, Settings } from 'lucide-react';
+import { FolderOpen, BookOpen, ShieldCheck, Users, Settings, BookMarked } from 'lucide-react';
 import { ThemeSelector } from '../ThemeSelector';
 import { formatHrvatskiIznos } from '@obrtniq/core';
 
@@ -11,6 +11,7 @@ export interface AppHeaderProps {
   onOpenFiscal: () => void;
   onOpenSettings: () => void;
   onOpenPartners: () => void;
+  onOpenArticles?: () => void;
 }
 
 export const AppHeader: React.FC<AppHeaderProps> = ({
@@ -21,6 +22,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
   onOpenFiscal,
   onOpenSettings,
   onOpenPartners,
+  onOpenArticles,
 }) => {
   return (
     <header className="border-b border-[var(--border-subtle)] bg-[var(--bg-surface)]/95 backdrop-blur px-4 sm:px-6 py-2.5 flex items-center justify-between sticky top-0 z-50 no-print">
@@ -72,6 +74,16 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
         >
           <ShieldCheck className="w-3.5 h-3.5 text-[#3B82F6]" />
           <span>Fiskalizacija</span>
+        </button>
+
+        {/* Gumb za Cjenik Artikala i Usluga */}
+        <button
+          type="button"
+          onClick={onOpenArticles}
+          className="hidden sm:flex items-center space-x-1.5 px-2.5 py-1 bg-[var(--bg-canvas)] hover:bg-[var(--bg-elevated)] text-xs font-mono text-white border border-[var(--border-subtle)] hover:border-[#F59E0B] transition-all cursor-pointer"
+        >
+          <BookMarked className="w-3.5 h-3.5 text-[#F59E0B]" />
+          <span>Cjenik</span>
         </button>
 
         {/* Gumb za Adresar Partnera */}

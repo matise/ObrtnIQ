@@ -227,3 +227,27 @@ export async function decryptBackupData(
     throw new Error('Dekripcija nije uspjela. Pogrešna lozinka ili oštećena datoteka.');
   }
 }
+
+/**
+ * Kriptira sigurnosnu kopiju i vraća strukturirani objekt kuverte (EncryptedPayloadEnvelope)
+ */
+export async function encryptBackup(
+  data: ObrtnIQBackupData,
+  lozinka: string
+): Promise<EncryptedPayloadEnvelope> {
+  const jsonString = await encryptBackupData(data, lozinka);
+  return JSON.parse(jsonString) as EncryptedPayloadEnvelope;
+}
+
+/**
+ * Dekriptira sigurnosnu kopiju iz objekta kuverte ili JSON stringa
+ */
+export async function decryptBackup(
+  envelopeOrJson: EncryptedPayloadEnvelope | string,
+  lozinka: string
+): Promise<ObrtnIQBackupData> {
+  const jsonString = typeof envelopeOrJson === 'string' 
+    ? envelopeOrJson 
+    : JSON.stringify(envelopeOrJson);
+  return decryptBackupData(jsonString, lozinka);
+}

@@ -7,12 +7,16 @@ import { CustomerSection } from './CustomerSection';
 import { InvoiceItemsEditor } from './InvoiceItemsEditor';
 import { InvoiceDeskActions } from './InvoiceDeskActions';
 
+import type { FormItem } from '../../engine/types';
+
 export interface InvoiceDeskProps {
   className?: string;
   form: UseInvoiceFormReturn;
   items: UseInvoiceItemsReturn;
   workflow: UseInvoiceWorkflowReturn;
   onOpenAddressBook?: () => void;
+  onOpenArticleCatalog?: () => void;
+  onSaveItemToCatalog?: (item: FormItem) => void;
 }
 
 export const InvoiceDesk: React.FC<InvoiceDeskProps> = ({
@@ -21,6 +25,8 @@ export const InvoiceDesk: React.FC<InvoiceDeskProps> = ({
   items,
   workflow,
   onOpenAddressBook,
+  onOpenArticleCatalog,
+  onSaveItemToCatalog,
 }) => {
   return (
     <div
@@ -67,6 +73,8 @@ export const InvoiceDesk: React.FC<InvoiceDeskProps> = ({
         onAddItem={items.addItem}
         onRemoveItem={items.removeItem}
         onUpdateItem={items.updateItem}
+        onOpenArticleCatalog={onOpenArticleCatalog}
+        onSaveItemToCatalog={onSaveItemToCatalog}
       />
 
       {/* 4. Donja akcijska traka i gumb za izdavanje */}

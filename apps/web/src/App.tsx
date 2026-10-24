@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import type { Partner } from '@obrtniq/core';
+import type { Partner, Artikl } from '@obrtniq/core';
+import type { FormItem } from './engine/types';
 import { AppHeader } from './components/layout/AppHeader';
 import { HeroBanner } from './components/layout/HeroBanner';
 import { PhaseOverviewGrid } from './components/layout/PhaseOverviewGrid';
@@ -17,6 +18,7 @@ import { useInvoiceWorkflow } from './hooks/useInvoiceWorkflow';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import { useObrtProfile } from './hooks/useObrtProfile';
 import { usePartners } from './hooks/usePartners';
+import { useArticles } from './hooks/useArticles';
 
 export default function App() {
   // 1. Aplikacijski engine, profili i hooks
@@ -26,6 +28,7 @@ export default function App() {
   const items = useInvoiceItems();
   const obrtProfileHook = useObrtProfile();
   const partnersHook = usePartners();
+  const articlesHook = useArticles();
 
   const workflow = useInvoiceWorkflow({
     form,
@@ -53,6 +56,27 @@ export default function App() {
     form.setTaxZone(partner.poreznaZona);
   };
 
+  // 4. Odabir artikla/usluge iz cjenika
+  const handleSelectArticle = (artikl: Artikl) => {
+    items.addArticleItem(artikl);
+    drawers.setIsArticleDrawerOpen(false);
+  };
+
+  // 5. Spremanje stavke s računa u cjenik
+  const handleSaveItemToCatalog = async (item: FormItem) => {
+    await articlesHook.addArtikl({
+      naziv: item.kpdNaziv || 'Nova usluga/artikl',
+      kpdSifra: item.kpdSifra || '62.01.11',
+      jedinicaMjere: item.jedinicaMjere || 'kom',
+      cijenaOsnovica: item.cijena,
+      stopaPdv: 0,
+      pdvKategorijaPoreza: 'E',
+      jeUsluga: true,
+      aktivan: true,
+    });
+    alert(`Stavka "${item.kpdNaziv}" uspješno je spremljena u cjenik!`);
+  };
+
   const currentObrt = obrtProfileHook.profil;
 
   return (
@@ -66,6 +90,7 @@ export default function App() {
         onOpenFiscal={() => drawers.setIsFiscalDrawerOpen(true)}
         onOpenSettings={() => drawers.setIsSettingsDrawerOpen(true)}
         onOpenPartners={() => drawers.setIsPartnerDrawerOpen(true)}
+        onOpenArticles={() => drawers.setIsArticleDrawerOpen(true)}
       />
 
       {/* Main Content Area - Full Width Split-Screen Desk */}
@@ -96,6 +121,8 @@ export default function App() {
             items={items}
             workflow={workflow}
             onOpenAddressBook={() => drawers.setIsPartnerDrawerOpen(true)}
+            onOpenArticleCatalog={() => drawers.setIsArticleDrawerOpen(true)}
+            onSaveItemToCatalog={handleSaveItemToCatalog}
           />
 
           {/* Živi A4 Real-Time Preview (42%) */}
@@ -140,7 +167,7 @@ export default function App() {
       {/* Precision Footer with Live System Log Trigger */}
       <AppFooter onToggleLogDrawer={drawers.toggleLogDrawer} />
 
-      {/* All Drawers (Log, Documents, KPR & PO-SD, Fiscalization, Settings, Partners) */}
+      {/* All Drawers (Log, Documents, KPR & PO-SD, Fiscalization, Settings, Partners, Articles) */}
       <AppDrawers
         drawers={drawers}
         workflow={workflow}
@@ -149,7 +176,9 @@ export default function App() {
         stats={stats}
         obrtProfileHook={obrtProfileHook}
         partnersHook={partnersHook}
+        articlesHook={articlesHook}
         onSelectPartner={handleSelectPartner}
+        onSelectArticle={handleSelectArticle}
       />
     </div>
   );

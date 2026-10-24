@@ -1,11 +1,12 @@
 import React from 'react';
-import type { Partner } from '@obrtniq/core';
+import type { Partner, Artikl } from '@obrtniq/core';
 import { SystemLogDrawer } from '../SystemLogDrawer';
 import { DocumentDrawer } from '../DocumentDrawer';
 import { KprDrawer } from '../KprDrawer';
 import { FiscalDrawer } from '../FiscalDrawer';
 import { SettingsDrawer } from '../SettingsDrawer';
 import { PartnerDrawer } from '../PartnerDrawer';
+import { ArticleDrawer } from '../ArticleDrawer';
 import { buildFiscalDrawerDocument, buildFiscalPartnerSnapshot } from '../../engine/invoice-mapper';
 import type { UseAppDrawersReturn } from '../../hooks/useAppDrawers';
 import type { UseInvoiceWorkflowReturn } from '../../hooks/useInvoiceWorkflow';
@@ -14,6 +15,7 @@ import type { UseInvoiceItemsReturn } from '../../hooks/useInvoiceItems';
 import type { UseAppStatsReturn } from '../../hooks/useAppStats';
 import type { UseObrtProfileReturn } from '../../hooks/useObrtProfile';
 import type { UsePartnersReturn } from '../../hooks/usePartners';
+import type { UseArticlesReturn } from '../../hooks/useArticles';
 
 export interface AppDrawersProps {
   drawers: UseAppDrawersReturn;
@@ -23,7 +25,9 @@ export interface AppDrawersProps {
   stats: UseAppStatsReturn;
   obrtProfileHook: UseObrtProfileReturn;
   partnersHook: UsePartnersReturn;
+  articlesHook: UseArticlesReturn;
   onSelectPartner: (partner: Partner) => void;
+  onSelectArticle?: (artikl: Artikl) => void;
 }
 
 export const AppDrawers: React.FC<AppDrawersProps> = ({
@@ -34,7 +38,9 @@ export const AppDrawers: React.FC<AppDrawersProps> = ({
   stats,
   obrtProfileHook,
   partnersHook,
+  articlesHook,
   onSelectPartner,
+  onSelectArticle,
 }) => {
   const currentObrt = obrtProfileHook.profil;
 
@@ -111,6 +117,14 @@ export const AppDrawers: React.FC<AppDrawersProps> = ({
         onClose={() => drawers.setIsPartnerDrawerOpen(false)}
         onSelectPartner={onSelectPartner}
         partnersHook={partnersHook}
+      />
+
+      {/* 7. Katalog Artikala i Usluga (Cjenik s KPD 2025) */}
+      <ArticleDrawer
+        isOpen={drawers.isArticleDrawerOpen}
+        onClose={() => drawers.setIsArticleDrawerOpen(false)}
+        onSelectArticle={onSelectArticle}
+        articlesHook={articlesHook}
       />
     </>
   );

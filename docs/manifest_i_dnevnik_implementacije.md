@@ -210,3 +210,43 @@ export interface LogEntry {
 * **Automatski testovi**: 17 testnih datoteka, **92/92 testova prolazi** (100% prolaznost na cijelom monorepou).
 * **Produkcijski build**: `tsc -b && vite build` prolazi s 0 grešaka.
 
+---
+
+## 6. Dnevnik Implementacije: FAZA 9 – Katalog Usluga (KPD 2025), KPR CSV Izvoz i Kriptirani Trezor (AES-256-GCM)
+
+### 6.1. Pregled Implementiranih Komponenti
+1. **Katalog Artikala i Usluga (Cjenik s KPD 2025)**:
+   * **`useArticles.ts`**: React kuka s Dexie perzistencijom tablice `db.artikli`, trenutnim pretraživanjem po nazivu, šifri i KPD oznaci, te filtriranjem po kategorijama (`SVE` | `USLUGE` | `ROBA`).
+   * **Inicijalni Seed**: 6 standardnih paušalnih IT i poslovnih usluga s KPD 2025 šiframa (`62.01.11`, `62.02.20`, `74.10.11`, `70.22.11`, `74.30.11`, `62.03.11`).
+   * **`ArticleDrawer.tsx`**: Sharp UI ladica s formom za dodavanje/uređivanje artikala, integriranim `KpdPicker`, `CurrencyInput`, odabirom mjerne jedinice (`sat`, `kom`, `paušal`, `dan`, `mjesec`, `projekt`, `kartica`, `km`) i akcijom direktnog dodavanja na aktivni račun.
+   * **Uvezivanje u Račun**: Dodan gumb *"Odaberi iz cjenika"* u zaglavlje editora stavaka (`InvoiceItemsEditor.tsx`) te brza akcija *"Spremi u cjenik"* u podnožju svakog retka stavke.
+   * **Navigacija**: Gumb *"Cjenik"* u `AppHeader.tsx` s ikonom `BookMarked` za trenutan pristup cjeniku.
+
+2. **Službeni KPR CSV / Excel Izvoz (`kpr-csv.ts`)**:
+   * **Excel Regionalna Kompatibilnost**: Dodan UTF-8 BOM bajt (`\uFEFF`) na početak datoteke kako bi Microsoft Excel na Windowsima u hrvatskoj lokalizaciji automatski prepoznao dijakritike (`Č, Ć, Ž, Š, Đ`).
+   * **Delimiter & Formati**: Korišten točka-zarez (`;`) kao delimiter polja te hrvatski decimalni zarez (`,`) za novčane iznose (npr. `1.250,00`).
+   * **Kvartalni Sažetak & Ukupno**: Izračun kvartalnih međusuma (Q1–Q4) i ukupnog prometa u gotovini i bezgotovinskim uplatama.
+   * **Dostupnost**: Gumb *"Preuzmi CSV"* u `KprDrawer.tsx` (Tab Knjiga Prometa) koji generira `KPR_YYYY_OIB.csv`.
+
+3. **Lokalni Kriptirani Sigurnosni Backup (AES-256-GCM / PBKDF2 100k)**:
+   * **`useBackupRestore.ts`**: Kuka za upravljanje sigurnosnim kopijama:
+     * `exportEncryptedBackup`: Generira `.obrtniq` paket zaštićen korisničkom lozinkom (Web Crypto API, PBKDF2 s 100.000 iteracija, SHA-256 i AES-256-GCM).
+     * `exportJsonSnapshot`: Generira otvoreni JSON snapshot sheme v3.0 za knjigovodstvo ili vanjsku analizu.
+     * `inspectBackupFile`: Pregledava format datoteke prije uvoza i detektira enkripciju.
+     * `restoreFromFile`: Atomski vraća sve tablice (obrt profil, partneri, artikli, dokumenti, kpr) uz provjeru lozinke i integriteta.
+     * `resetDatabase`: Sigurno tvorničko brisanje lokalne IndexedDB baze uz obavezno upisivanje riječi `OBRISI`.
+   * **Integracija u Postavke**: Četvrti tab *"4. Backup & Trezor"* u `SettingsDrawer.tsx` s jasnim statusnim obavijestima i pregledom restauriranih entiteta.
+
+4. **Prezentacijski Sloj & Kartica Faze 9**:
+   * Ažuriran `PhaseOverviewGrid.tsx` s novom karticom za **FAZU 9** ("Cjenik & Backup", status GOTOVO).
+   * Ažuriran `useAppDrawers.ts` i `AppDrawers.tsx` za upravljanje stanjem i prikaz `ArticleDrawer`.
+
+### 6.2. Verifikacija i Testna Pokrivenost
+* **Novi testovi**:
+  * `packages/core/tests/kpr-csv.test.ts`: 7/7 testova prolazi (BOM marker, delimiter, formatiranje, kvartali, sanitizacija).
+  * `packages/core/tests/articles-catalog.test.ts`: 3/3 testa prolaze (KPD perzistencija, filtriranje, AES-256-GCM backup/restore roundtrip).
+* **Ukupno automatskih testova**: **19 testnih datoteka, 102/102 testa prolaze** (100% prolaznost).
+* **TypeScript & Vite build**: `npm run build` na monorepou završava s kodom 0.
+* **Lokalni dev server**: Radi stabilno na `http://localhost:5173/` (HTTP 200).
+
+

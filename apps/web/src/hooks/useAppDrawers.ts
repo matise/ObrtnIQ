@@ -7,12 +7,14 @@ export interface UseAppDrawersReturn {
   isFiscalDrawerOpen: boolean;
   isSettingsDrawerOpen: boolean;
   isPartnerDrawerOpen: boolean;
+  isArticleDrawerOpen: boolean;
   setIsLogDrawerOpen: (val: boolean) => void;
   setIsDocDrawerOpen: (val: boolean) => void;
   setIsKprDrawerOpen: (val: boolean) => void;
   setIsFiscalDrawerOpen: (val: boolean) => void;
   setIsSettingsDrawerOpen: (val: boolean) => void;
   setIsPartnerDrawerOpen: (val: boolean) => void;
+  setIsArticleDrawerOpen: (val: boolean) => void;
   toggleLogDrawer: () => void;
 }
 
@@ -23,6 +25,7 @@ export function useAppDrawers(): UseAppDrawersReturn {
   const [isFiscalDrawerOpen, setIsFiscalDrawerOpen] = useState(false);
   const [isSettingsDrawerOpen, setIsSettingsDrawerOpen] = useState(false);
   const [isPartnerDrawerOpen, setIsPartnerDrawerOpen] = useState(false);
+  const [isArticleDrawerOpen, setIsArticleDrawerOpen] = useState(false);
 
   const toggleLogDrawer = useCallback(() => {
     setIsLogDrawerOpen((prev) => !prev);
@@ -35,12 +38,14 @@ export function useAppDrawers(): UseAppDrawersReturn {
     isFiscalDrawerOpen,
     isSettingsDrawerOpen,
     isPartnerDrawerOpen,
+    isArticleDrawerOpen,
     setIsLogDrawerOpen,
     setIsDocDrawerOpen,
     setIsKprDrawerOpen,
     setIsFiscalDrawerOpen,
     setIsSettingsDrawerOpen,
     setIsPartnerDrawerOpen,
+    setIsArticleDrawerOpen,
     toggleLogDrawer,
   };
 }

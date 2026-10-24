@@ -1,5 +1,5 @@
 import React from 'react';
-import { Plus, Trash2 } from 'lucide-react';
+import { Plus, Trash2, BookMarked, BookmarkPlus } from 'lucide-react';
 import { formatHrvatskiIznos } from '@obrtniq/core';
 import { CurrencyInput, KpdPicker } from '../controls';
 import type { FormItem } from '../../engine/types';
@@ -10,6 +10,8 @@ export interface InvoiceItemsEditorProps {
   onAddItem: () => void;
   onRemoveItem: (id: string) => void;
   onUpdateItem: (id: string, partial: Partial<FormItem>) => void;
+  onOpenArticleCatalog?: () => void;
+  onSaveItemToCatalog?: (item: FormItem) => void;
 }
 
 export const InvoiceItemsEditor: React.FC<InvoiceItemsEditorProps> = ({
@@ -18,6 +20,8 @@ export const InvoiceItemsEditor: React.FC<InvoiceItemsEditorProps> = ({
   onAddItem,
   onRemoveItem,
   onUpdateItem,
+  onOpenArticleCatalog,
+  onSaveItemToCatalog,
 }) => {
   return (
     <div className="space-y-4">
@@ -30,14 +34,27 @@ export const InvoiceItemsEditor: React.FC<InvoiceItemsEditorProps> = ({
         </span>
 
         {!isLocked && (
-          <button
-            type="button"
-            onClick={onAddItem}
-            className="px-2.5 py-1 bg-[var(--bg-elevated)] hover:bg-[var(--bg-subtle)] text-[var(--accent-primary)] border border-[var(--border-strong)] font-mono text-xs font-bold flex items-center gap-1 transition-all active:scale-95 cursor-pointer"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            Dodaj stavku (Alt+N)
-          </button>
+          <div className="flex items-center gap-2">
+            {onOpenArticleCatalog && (
+              <button
+                type="button"
+                onClick={onOpenArticleCatalog}
+                className="px-2.5 py-1 bg-[var(--bg-canvas)] hover:bg-[var(--bg-elevated)] text-white border border-[var(--border-strong)] font-mono text-xs flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer"
+                title="Otvori cjenik usluga i artikala"
+              >
+                <BookMarked className="w-3.5 h-3.5 text-[var(--accent-primary)]" />
+                Odaberi iz cjenika
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={onAddItem}
+              className="px-2.5 py-1 bg-[var(--bg-elevated)] hover:bg-[var(--bg-subtle)] text-[var(--accent-primary)] border border-[var(--border-strong)] font-mono text-xs font-bold flex items-center gap-1 transition-all active:scale-95 cursor-pointer"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              Dodaj stavku (Alt+N)
+            </button>
+          </div>
         )}
       </div>
 
@@ -116,11 +133,26 @@ export const InvoiceItemsEditor: React.FC<InvoiceItemsEditorProps> = ({
               />
             </div>
 
-            <div className="text-right text-xs font-mono text-[var(--text-secondary)] pt-1 border-t border-[var(--border-subtle)]/40">
-              Ukupno stavka:{' '}
-              <span className="font-bold text-white tabular-nums">
-                {formatHrvatskiIznos(item.kolicina * item.cijena)}
-              </span>
+            <div className="flex items-center justify-between text-xs font-mono text-[var(--text-secondary)] pt-1.5 border-t border-[var(--border-subtle)]/40">
+              <div>
+                {!isLocked && onSaveItemToCatalog && (
+                  <button
+                    type="button"
+                    onClick={() => onSaveItemToCatalog(item)}
+                    title="Spremi ovu stavku u trajni cjenik za buduće račune"
+                    className="text-[10px] font-mono text-[var(--text-muted)] hover:text-[var(--accent-primary)] flex items-center gap-1 transition-colors cursor-pointer"
+                  >
+                    <BookmarkPlus className="w-3 h-3" />
+                    Spremi u cjenik
+                  </button>
+                )}
+              </div>
+              <div>
+                Ukupno stavka:{' '}
+                <span className="font-bold text-white tabular-nums">
+                  {formatHrvatskiIznos(item.kolicina * item.cijena)}
+                </span>
+              </div>
             </div>
           </div>
         ))}

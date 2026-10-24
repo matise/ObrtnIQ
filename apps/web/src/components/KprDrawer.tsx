@@ -22,6 +22,7 @@ import {
   odrediPorezniRazred,
   generatePosdXml, 
   validatePosdXml,
+  generateKprCsv,
   formatHrvatskiIznos, 
   formatHrvatskiDatum,
   type NaplataPromet, 
@@ -128,6 +129,33 @@ export function KprDrawer({
       ukupno: posdIzvjestaj.ukupnoGodina,
       razred: porezniRazredInfo?.razred || 5,
     });
+  };
+
+  // Preuzimanje KPR tablice u CSV formatu za Microsoft Excel (UTF-8 BOM, točka-zarez delimiter)
+  const handleDownloadCsv = () => {
+    try {
+      const csvContent = generateKprCsv(kprStavke, selectedYear, {
+        obrtNaziv,
+        obrtOib,
+      });
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `KPR_${selectedYear}_${obrtOib}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      appLogger.scope('KPR:EXPORT').info(`Preuzet službeni KPR CSV/Excel dokument (${selectedYear})`, {
+        godina: selectedYear,
+        oib: obrtOib,
+        brojStavaka: kprStavke.length,
+      });
+    } catch (err: any) {
+      alert(`Greška pri generiranju CSV dokumenta: ${err?.message || 'Nepoznata greška'}`);
+    }
   };
 
   // Spremanje ručne uplate u KPR
@@ -333,6 +361,15 @@ export function KprDrawer({
                   >
                     <Printer className="w-3.5 h-3.5 text-[var(--accent-primary)]" />
                     Ispiši KPR
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleDownloadCsv}
+                    className="px-3 py-1.5 bg-[var(--bg-elevated)] hover:bg-[var(--bg-subtle)] text-white border border-[var(--border-strong)] font-mono font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer hover:border-[#10B981]"
+                    title="Preuzmi Knjigu prometa u CSV formatu za Microsoft Excel (UTF-8 BOM)"
+                  >
+                    <Download className="w-3.5 h-3.5 text-[#10B981]" />
+                    Preuzmi CSV
                   </button>
                 </div>
               </div>
