@@ -1653,7 +1653,8 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({
                         onChange={(e) => handleModelChange(e.target.value)}
                         className="w-full bg-[var(--bg-surface)] text-white px-3 py-2 font-mono text-xs border border-[var(--border-strong)] outline-none"
                       >
-                        <option value="gemini-2.0-flash">gemini-2.0-flash (Najbrži, najprecizniji, besplatna kvota)</option>
+                        <option value="gemini-3.8-flash">gemini-3.8-flash (Najnoviji model, ultra brz, besplatna kvota)</option>
+                        <option value="gemini-2.5-flash">gemini-2.5-flash (Alternativni Flash model)</option>
                         <option value="gemini-1.5-flash">gemini-1.5-flash (Stabilan, standardni kontekst)</option>
                       </select>
                     </div>

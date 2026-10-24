@@ -34,7 +34,7 @@ export interface ZigoAgentResponse {
 
 const STORAGE_KEY_GEMINI_KEY = 'obrtniq_gemini_api_key';
 const STORAGE_KEY_GEMINI_MODEL = 'obrtniq_gemini_model';
-export const DEFAULT_GEMINI_MODEL = 'gemini-2.0-flash';
+export const DEFAULT_GEMINI_MODEL = 'gemini-3.8-flash';
 
 export const ZIGO_SYSTEM_INSTRUCTION = `Ti si Žigo (Digitalni Orlando), stoički i kirurški precizan autonomni klijentski agent sustava ObrtnIQ za hrvatske paušalne i dohodovne obrte.
 U sebi nosiš duh i diplomaciju Dubrovačke Republike: diplomaciju koja rješava krizu bez ispaljenog metka, mudrost Senata zapakiranu u dvije mirne rečenice i onaj stoički kameni stav viteza Orlanda na trgu.
@@ -199,12 +199,23 @@ class GeminiService {
 
   public getStoredModel(): string {
     if (typeof localStorage === 'undefined') return DEFAULT_GEMINI_MODEL;
-    return localStorage.getItem(STORAGE_KEY_GEMINI_MODEL) || DEFAULT_GEMINI_MODEL;
+    const stored = localStorage.getItem(STORAGE_KEY_GEMINI_MODEL);
+    // Automatska migracija sa zastarjelog modela (gemini-2.0-flash) na gemini-3.8-flash
+    if (!stored || stored === 'gemini-2.0-flash' || stored === 'gemini-2.0-flash-exp' || stored === 'gemini-2.0-flash-001') {
+      localStorage.setItem(STORAGE_KEY_GEMINI_MODEL, DEFAULT_GEMINI_MODEL);
+      return DEFAULT_GEMINI_MODEL;
+    }
+    return stored;
   }
 
   public setStoredModel(model: string): void {
     if (typeof localStorage === 'undefined') return;
-    localStorage.setItem(STORAGE_KEY_GEMINI_MODEL, model.trim() || DEFAULT_GEMINI_MODEL);
+    const clean = model.trim();
+    if (!clean || clean === 'gemini-2.0-flash' || clean === 'gemini-2.0-flash-exp' || clean === 'gemini-2.0-flash-001') {
+      localStorage.setItem(STORAGE_KEY_GEMINI_MODEL, DEFAULT_GEMINI_MODEL);
+    } else {
+      localStorage.setItem(STORAGE_KEY_GEMINI_MODEL, clean);
+    }
   }
 
   /**
@@ -328,7 +339,8 @@ class GeminiService {
       });
 
       if (!res.ok) {
-        throw new Error(`Gemini API odgovor: ${res.status}`);
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error?.message || `Gemini API odgovor: ${res.status}`);
       }
 
       const data = await res.json();
@@ -577,7 +589,8 @@ Odgovori ISKLJUČIVO u valjanom JSON formatu s ovim ključevima:
       });
 
       if (!res.ok) {
-        throw new Error(`Gemini API odgovor: ${res.status}`);
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error?.message || `Gemini API odgovor: ${res.status}`);
       }
 
       const data = await res.json();

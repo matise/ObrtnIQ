@@ -59,7 +59,7 @@ export interface ConnectedServicesConfig {
   googleDriveEnabled: boolean;
   googleDriveLastSync?: string;
   geminiApiKey?: string;         // Korisnikov Google AI Studio API ključ (BYOK)
-  geminiModel?: string;          // Zadani model: 'gemini-2.0-flash'
+  geminiModel?: string;          // Zadani model: 'gemini-3.8-flash'
   firebaseConfig?: {
     apiKey: string;
     projectId: string;

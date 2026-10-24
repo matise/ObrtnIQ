@@ -100,12 +100,17 @@ describe('Faza 10: Gemini AI & Zero-Server Cloud Integration', () => {
     });
 
     it('upravlja odabranim Gemini modelom uz fallback na default', () => {
-      expect(geminiService.getStoredModel()).toBe('gemini-2.0-flash');
+      expect(geminiService.getStoredModel()).toBe('gemini-3.8-flash');
       geminiService.setStoredModel('gemini-1.5-pro');
       expect(geminiService.getStoredModel()).toBe('gemini-1.5-pro');
 
       geminiService.setStoredModel('');
-      expect(geminiService.getStoredModel()).toBe('gemini-2.0-flash');
+      expect(geminiService.getStoredModel()).toBe('gemini-3.8-flash');
+    });
+
+    it('automatski migrira zastarjeli model gemini-2.0-flash na gemini-3.8-flash', () => {
+      localStorage.setItem('obrtniq_gemini_model', 'gemini-2.0-flash');
+      expect(geminiService.getStoredModel()).toBe('gemini-3.8-flash');
     });
   });
 });
