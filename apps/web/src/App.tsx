@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import type { Partner } from '@obrtniq/core';
 import { AppHeader } from './components/layout/AppHeader';
 import { HeroBanner } from './components/layout/HeroBanner';
 import { PhaseOverviewGrid } from './components/layout/PhaseOverviewGrid';
@@ -8,20 +9,24 @@ import { AppFooter } from './components/layout/AppFooter';
 import { InvoiceDesk } from './components/desk/InvoiceDesk';
 import { InvoiceLivePreview } from './components/InvoiceLivePreview';
 import { AppDrawers } from './components/drawers/AppDrawers';
-import { DEFAULT_OBRT_PROFIL } from './engine/obrt-profile';
 import { useAppStats } from './hooks/useAppStats';
 import { useAppDrawers } from './hooks/useAppDrawers';
 import { useInvoiceForm } from './hooks/useInvoiceForm';
 import { useInvoiceItems } from './hooks/useInvoiceItems';
 import { useInvoiceWorkflow } from './hooks/useInvoiceWorkflow';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
+import { useObrtProfile } from './hooks/useObrtProfile';
+import { usePartners } from './hooks/usePartners';
 
 export default function App() {
-  // 1. Aplikacijski engine i hooks
+  // 1. Aplikacijski engine, profili i hooks
   const stats = useAppStats();
   const drawers = useAppDrawers();
   const form = useInvoiceForm();
   const items = useInvoiceItems();
+  const obrtProfileHook = useObrtProfile();
+  const partnersHook = usePartners();
+
   const workflow = useInvoiceWorkflow({
     form,
     items,
@@ -38,6 +43,18 @@ export default function App() {
     isLocked: workflow.isLocked,
   });
 
+  // 3. Odabir partnera iz adresara
+  const handleSelectPartner = (partner: Partner) => {
+    form.setPartnerNaziv(partner.naziv);
+    if (partner.oib) {
+      form.setOib(partner.oib);
+      form.setIsOibValid(true);
+    }
+    form.setTaxZone(partner.poreznaZona);
+  };
+
+  const currentObrt = obrtProfileHook.profil;
+
   return (
     <div className="min-h-screen bg-[var(--bg-canvas)] text-white flex flex-col font-sans transition-colors duration-200">
       {/* Top Precision Header & Dynamic Prag Widget */}
@@ -47,6 +64,8 @@ export default function App() {
         onOpenDocs={() => drawers.setIsDocDrawerOpen(true)}
         onOpenKpr={() => drawers.setIsKprDrawerOpen(true)}
         onOpenFiscal={() => drawers.setIsFiscalDrawerOpen(true)}
+        onOpenSettings={() => drawers.setIsSettingsDrawerOpen(true)}
+        onOpenPartners={() => drawers.setIsPartnerDrawerOpen(true)}
       />
 
       {/* Main Content Area - Full Width Split-Screen Desk */}
@@ -76,6 +95,7 @@ export default function App() {
             form={form}
             items={items}
             workflow={workflow}
+            onOpenAddressBook={() => drawers.setIsPartnerDrawerOpen(true)}
           />
 
           {/* Živi A4 Real-Time Preview (42%) */}
@@ -85,12 +105,14 @@ export default function App() {
             }`}
           >
             <InvoiceLivePreview
-              obrtNaziv={DEFAULT_OBRT_PROFIL.naziv}
-              obrtVlasnik={DEFAULT_OBRT_PROFIL.vlasnikImePrezime}
-              obrtOib={DEFAULT_OBRT_PROFIL.oib}
-              obrtIban={form.iban}
-              obrtBanka={form.detectedBank}
-              obrtAdresa={`${DEFAULT_OBRT_PROFIL.ulicaIBroj}, ${DEFAULT_OBRT_PROFIL.mjesto}`}
+              obrtNaziv={currentObrt.naziv}
+              obrtVlasnik={currentObrt.vlasnikImePrezime}
+              obrtOib={currentObrt.oib}
+              obrtIban={form.iban || currentObrt.iban}
+              obrtBanka={form.detectedBank || currentObrt.bankaNaziv}
+              obrtAdresa={`${currentObrt.ulicaIBroj}, ${currentObrt.mjesto}`}
+              logoImageData={currentObrt.logoImageData}
+              pecatPotpisImageData={currentObrt.pecatPotpisImageData}
               partnerNaziv={form.partnerNaziv}
               partnerOib={form.oib}
               isPartnerOibValid={form.isOibValid}
@@ -118,13 +140,16 @@ export default function App() {
       {/* Precision Footer with Live System Log Trigger */}
       <AppFooter onToggleLogDrawer={drawers.toggleLogDrawer} />
 
-      {/* All Drawers (Log, Documents, KPR & PO-SD, Fiscalization) */}
+      {/* All Drawers (Log, Documents, KPR & PO-SD, Fiscalization, Settings, Partners) */}
       <AppDrawers
         drawers={drawers}
         workflow={workflow}
         form={form}
         items={items}
         stats={stats}
+        obrtProfileHook={obrtProfileHook}
+        partnersHook={partnersHook}
+        onSelectPartner={handleSelectPartner}
       />
     </div>
   );

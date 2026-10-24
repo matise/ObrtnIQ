@@ -67,6 +67,10 @@ export interface InvoiceLivePreviewProps {
   fiskalniQrUrl?: string;
   fiskalizacijaStatus?: string;
 
+  // Memorandum i brending (Faza 8)
+  logoImageData?: string;
+  pecatPotpisImageData?: string;
+
   // Fallback za pojedinačnu stavku (kompatibilnost)
   kpdSifra?: string;
   kpdNaziv?: string;
@@ -236,6 +240,8 @@ export function InvoiceLivePreview(props: InvoiceLivePreviewProps) {
           ukupnoIznos: ukupno,
           includeHub3Barcode: true,
           includeQrCode: true,
+          logoImageData: props.logoImageData,
+          pecatPotpisImageData: props.pecatPotpisImageData,
         });
       }
 
@@ -427,21 +433,34 @@ export function InvoiceLivePreview(props: InvoiceLivePreviewProps) {
 
           {/* 1. Header (Obrt info & Invoice Metadata) - Flex Flow */}
           <div className="flex flex-col sm:flex-row justify-between items-start gap-4 pb-4 border-b border-current/15 text-xs font-mono">
-            <div className="space-y-1 max-w-sm flow-text">
-              <div className={`font-bold text-base ${isPaper ? 'text-black' : 'text-white'}`}>
-                {props.obrtNaziv}
-              </div>
-              <div className={isPaper ? 'text-slate-600' : 'text-[var(--text-muted)]'}>
-                vl. {props.obrtVlasnik}
-              </div>
-              <div className={isPaper ? 'text-slate-600' : 'text-[var(--text-muted)]'}>
-                OIB: <span className="font-semibold">{props.obrtOib}</span>
-              </div>
-              <div className={isPaper ? 'text-slate-600' : 'text-[var(--text-muted)]'}>
-                {props.obrtAdresa}
-              </div>
-              <div className={isPaper ? 'text-slate-600' : 'text-[var(--text-muted)]'}>
-                IBAN: <span className="font-semibold">{props.obrtIban}</span>
+            <div className="flex items-start gap-3.5 max-w-sm flow-text">
+              {props.logoImageData && (
+                <div className={`w-16 h-16 sm:w-20 sm:h-20 shrink-0 p-1 border flex items-center justify-center overflow-hidden ${
+                  isPaper ? 'bg-slate-50 border-slate-200' : 'bg-white/5 border-white/10'
+                }`}>
+                  <img
+                    src={props.logoImageData}
+                    alt="Logo obrta"
+                    className="max-h-full max-w-full object-contain"
+                  />
+                </div>
+              )}
+              <div className="space-y-1">
+                <div className={`font-bold text-base ${isPaper ? 'text-black' : 'text-white'}`}>
+                  {props.obrtNaziv}
+                </div>
+                <div className={isPaper ? 'text-slate-600' : 'text-[var(--text-muted)]'}>
+                  vl. {props.obrtVlasnik}
+                </div>
+                <div className={isPaper ? 'text-slate-600' : 'text-[var(--text-muted)]'}>
+                  OIB: <span className="font-semibold">{props.obrtOib}</span>
+                </div>
+                <div className={isPaper ? 'text-slate-600' : 'text-[var(--text-muted)]'}>
+                  {props.obrtAdresa}
+                </div>
+                <div className={isPaper ? 'text-slate-600' : 'text-[var(--text-muted)]'}>
+                  IBAN: <span className="font-semibold">{props.obrtIban}</span>
+                </div>
               </div>
             </div>
 
@@ -659,6 +678,35 @@ export function InvoiceLivePreview(props: InvoiceLivePreviewProps) {
               )}
             </div>
           )}
+
+          {/* 5.5 Potpis i Digitalni Pečat Izdavatelja (Faza 8) */}
+          <div className="flex justify-end pt-3 pb-1 text-xs font-mono page-break-avoid">
+            <div className="text-center w-56 space-y-1">
+              <div className="h-16 flex items-center justify-center relative">
+                {props.pecatPotpisImageData ? (
+                  <img
+                    src={props.pecatPotpisImageData}
+                    alt="Digitalni pečat i potpis"
+                    className="max-h-16 max-w-full object-contain"
+                  />
+                ) : (
+                  <div className="text-[10px] text-[var(--text-muted)] italic opacity-60">
+                    (Dokument izdan elektroničkim putem)
+                  </div>
+                )}
+              </div>
+              <div
+                className={`border-t pt-1 font-semibold text-[11px] ${
+                  isPaper ? 'border-slate-800 text-slate-800' : 'border-white/40 text-slate-200'
+                }`}
+              >
+                {props.obrtVlasnik}
+              </div>
+              <div className="text-[9px] text-[var(--text-muted)]">
+                Račun izdao i potpisao
+              </div>
+            </div>
+          </div>
 
           {/* 6. Barkodovi na dnu (HUB-3 PDF417 i EPC QR) */}
           <div

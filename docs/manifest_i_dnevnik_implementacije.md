@@ -17,6 +17,7 @@ Ovaj dokument služi kao jedinstveni izvor istine za praćenje napretka, evident
 | **Faza 5** | **Ekran za Izdavanje Računa & Workflow** | 🟢 **ZAVRŠENO** | Multi-stavke, F2/Alt+N prečaci, statusni automat (NACRT->IZDANO->STORNIRANO), immutability, Dexie DocumentDrawer | 2026-10-24 |
 | **Faza 6** | **KPR i Obrazac PO-SD (Knjigovodstvo)** | 🟢 **ZAVRŠENO** | XML validacija protiv službene XSD sheme Porezne uprave v2.0, naplate promet, 40k prag | 2026-10-24 |
 | **Faza 7** | **Fiskalizacija 1.0 (CIS) & 2.0 (e-Račun)** | 🟢 **ZAVRŠENO** | 100% prolaznost (89/89 testova), FINA DEMO/PROD trezor (AES-256 s PIN-om), ZKI/JIR automati, 48h offline fallback, UBL 2.1 CIUS-HR s KPD 2025 i stateless proxy | 2026-10-24 |
+| **Faza 8** | **Postavke Obrta, Adresar Partnera & Memorandum** | 🟢 **ZAVRŠENO** | Dinamički profil obrta u Dexie bazi, adresar partnera s pretragom i brzim odabirom, klijentski upload logotipa i digitalnog pečata/potpisa (Base64), A4 i PDF render | 2026-10-24 |
 
 *Legenda statusa: ⚪ Čeka | 🟡 U tijeku / Sljedeća | 🟢 Završeno (Gate-Check verificiran) | 🔴 Blokirano*
 
@@ -83,6 +84,7 @@ Ovaj dokument služi kao jedinstveni izvor istine za praćenje napretka, evident
 | 2026-10-24 16:58 | Faza 7 | `apps/web/src/App.tsx`, `InvoiceLivePreview.tsx` | Integrirana automatska fiskalizacija pri izdavanju gotovinskog računa (F2), prikaz ZKI/JIR-a, fiskalni QR Porezne uprave, A4 ispis i e-Račun preuzimanje | 🟢 Gate-Check PROŠAO |
 | 2026-10-24 17:15 | Refaktoring | `App.tsx`, `engine/*`, `hooks/*`, `components/*` | Dekompozicija monolitnog App.tsx (sa 1.273 na ~115 linija): izdvajanje engine sloja (types, obrt-profile, invoice-mapper), 5 custom hookova i 8 UI podkomponenti | 🟢 Gate-Check PROŠAO (89/89 testova, 0 grešaka) |
 | 2026-10-24 17:21 | Verifikacija | Monorepo (Faza 0 – 7) | Pokrenut cjelokupni Smoke Test cjevovod: 16 testnih datoteka (89/89 testova), tsc -b bez grešaka, Vite produkcijski build i provjera dev servera (200 OK) | 🟢 Gate-Check PROŠAO (100% uspješnost) |
+| 2026-10-24 17:34 | Faza 8 | `useObrtProfile.ts`, `usePartners.ts`, `SettingsDrawer.tsx`, `PartnerDrawer.tsx`, `InvoiceLivePreview.tsx` | Implementirane Postavke obrta, adresar partnera, upload loga i digitalnog pečata/potpisa (Base64) s automatskim ugrađivanjem u A4 račun i PDF | 🟢 Gate-Check PROŠAO (89/89 testova, 0 grešaka) |
 
 ---
 
@@ -113,6 +115,10 @@ Ovaj dokument služi kao jedinstveni izvor istine za praćenje napretka, evident
   2. **Custom Hooks sloj (`apps/web/src/hooks/`)**: Samostalni hookovi za upravljanje stanjem stavaka (`useInvoiceItems`), formom kupca (`useInvoiceForm`), životnim ciklusom i fiskalizacijom (`useInvoiceWorkflow`), tipkovničkim prečacima (`useKeyboardShortcuts` za F2 i Alt+N) i agregiranim brojačima (`useAppStats`).
   3. **UI Prezentacijski sloj (`apps/web/src/components/`)**: Podijeljen na `layout/` (`AppHeader`, `HeroBanner`, `PhaseOverviewGrid`, `ManifestReferenceCard`, `AppFooter`, `MobileTabSwitcher`), `desk/` (`InvoiceDesk`, `DocumentStatusBar`, `CustomerSection`, `InvoiceItemsEditor`, `InvoiceDeskActions`) i `drawers/` (`AppDrawers`).
   Ovim refaktoringom `App.tsx` je smanjen na ~115 linija čistog deklarativnog sastavljanja, uz zadržavanje 100% postojećeg ponašanja, tipkovničkih prečaca, responzivnosti i nulte regresije na 89/89 testova.
+* **ADR-013 (Klijentski Branding, Upload Loga/Pečata i Dinamički Adresar Partnera u Dexie Bazi):** Kako bi obrtnik imao potpunu kontrolu nad vizualnim identitetom i profesionalnim izgledom računa bez ovisnosti o vanjskim poslužiteljima:
+  1. **Lokalni upload slika (Zero Server Storage)**: Korisnik može učitati logotip (PNG/JPG/SVG do 500 KB) i digitalni pečat/potpis (PNG s prozirnom pozadinom). Slike se u pregledniku konvertiraju u Base64 data URL stringove i perzistiraju u Dexie IndexedDB tablici `obrtProfil`.
+  2. **Automatska ugradnja u memorandum (A4 & PDF)**: Živi A4 račun i klijentski PDF generator (`html2canvas-pro` s očuvanjem transparentnosti i oštrine) automatski ugrađuju logo u zaglavlje i digitalni pečat s potpisom iznad linije izdavatelja na dnu računa.
+  3. **Adresar kupaca s brzim odabirom**: Uveden je `PartnerDrawer` i tablica `partneri` s tražilicom u realnom vremenu po nazivu, OIB-u ili gradu, te gumb *"Odaberi iz adresara"* na radnoj plohi koji jednim klikom popunjava naziv, OIB i poreznu zonu kupca.
 
 ---
 

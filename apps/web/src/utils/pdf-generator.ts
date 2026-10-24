@@ -60,6 +60,10 @@ export interface InvoicePdfData {
   includeHub3Barcode?: boolean;
   includeQrCode?: boolean;
   qrPayloadOverride?: string; // npr. fiskalni URL ako postoji
+
+  // Memorandum slike (Faza 8)
+  logoImageData?: string;
+  pecatPotpisImageData?: string;
 }
 
 export interface PdfGenerationResult {

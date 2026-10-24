@@ -1,4 +1,5 @@
 import React from 'react';
+import { Users } from 'lucide-react';
 import type { PoreznaZona } from '@obrtniq/core';
 import { OibInput, IbanInput, TaxZoneToggle } from '../controls';
 
@@ -13,6 +14,7 @@ export interface CustomerSectionProps {
   onIbanChange: (val: string, valid: boolean, bank?: string) => void;
   detectedBank?: string;
   isLocked: boolean;
+  onOpenAddressBook?: () => void;
 }
 
 export const CustomerSection: React.FC<CustomerSectionProps> = ({
@@ -26,6 +28,7 @@ export const CustomerSection: React.FC<CustomerSectionProps> = ({
   onIbanChange,
   detectedBank,
   isLocked,
+  onOpenAddressBook,
 }) => {
   return (
     <div className="space-y-4">
@@ -40,9 +43,21 @@ export const CustomerSection: React.FC<CustomerSectionProps> = ({
         className={`grid grid-cols-1 md:grid-cols-2 gap-4 ${isLocked ? 'opacity-70 pointer-events-none' : ''}`}
       >
         <div>
-          <label className="text-xs font-mono text-[var(--text-secondary)] font-semibold block mb-1.5">
-            Naziv Partnera / Kupca *
-          </label>
+          <div className="flex items-center justify-between mb-1.5">
+            <label className="text-xs font-mono text-[var(--text-secondary)] font-semibold block">
+              Naziv Partnera / Kupca *
+            </label>
+            {onOpenAddressBook && !isLocked && (
+              <button
+                type="button"
+                onClick={onOpenAddressBook}
+                className="text-[11px] font-mono text-[var(--accent-primary)] hover:underline flex items-center gap-1 cursor-pointer"
+              >
+                <Users className="w-3 h-3" />
+                Odaberi iz adresara
+              </button>
+            )}
+          </div>
           <input
             type="text"
             value={partnerNaziv}

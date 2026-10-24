@@ -1,15 +1,19 @@
 import React from 'react';
+import type { Partner } from '@obrtniq/core';
 import { SystemLogDrawer } from '../SystemLogDrawer';
 import { DocumentDrawer } from '../DocumentDrawer';
 import { KprDrawer } from '../KprDrawer';
 import { FiscalDrawer } from '../FiscalDrawer';
-import { DEFAULT_OBRT_PROFIL } from '../../engine/obrt-profile';
+import { SettingsDrawer } from '../SettingsDrawer';
+import { PartnerDrawer } from '../PartnerDrawer';
 import { buildFiscalDrawerDocument, buildFiscalPartnerSnapshot } from '../../engine/invoice-mapper';
 import type { UseAppDrawersReturn } from '../../hooks/useAppDrawers';
 import type { UseInvoiceWorkflowReturn } from '../../hooks/useInvoiceWorkflow';
 import type { UseInvoiceFormReturn } from '../../hooks/useInvoiceForm';
 import type { UseInvoiceItemsReturn } from '../../hooks/useInvoiceItems';
 import type { UseAppStatsReturn } from '../../hooks/useAppStats';
+import type { UseObrtProfileReturn } from '../../hooks/useObrtProfile';
+import type { UsePartnersReturn } from '../../hooks/usePartners';
 
 export interface AppDrawersProps {
   drawers: UseAppDrawersReturn;
@@ -17,6 +21,9 @@ export interface AppDrawersProps {
   form: UseInvoiceFormReturn;
   items: UseInvoiceItemsReturn;
   stats: UseAppStatsReturn;
+  obrtProfileHook: UseObrtProfileReturn;
+  partnersHook: UsePartnersReturn;
+  onSelectPartner: (partner: Partner) => void;
 }
 
 export const AppDrawers: React.FC<AppDrawersProps> = ({
@@ -25,7 +32,12 @@ export const AppDrawers: React.FC<AppDrawersProps> = ({
   form,
   items,
   stats,
+  obrtProfileHook,
+  partnersHook,
+  onSelectPartner,
 }) => {
+  const currentObrt = obrtProfileHook.profil;
+
   const activeDocument = buildFiscalDrawerDocument({
     docId: workflow.docId,
     docType: workflow.docType,
@@ -69,10 +81,10 @@ export const AppDrawers: React.FC<AppDrawersProps> = ({
       <KprDrawer
         isOpen={drawers.isKprDrawerOpen}
         onClose={() => drawers.setIsKprDrawerOpen(false)}
-        obrtOib={DEFAULT_OBRT_PROFIL.oib}
-        obrtNaziv={DEFAULT_OBRT_PROFIL.naziv}
-        obrtVlasnik={DEFAULT_OBRT_PROFIL.vlasnikImePrezime}
-        obrtAdresa={`${DEFAULT_OBRT_PROFIL.ulicaIBroj}, ${DEFAULT_OBRT_PROFIL.mjesto}`}
+        obrtOib={currentObrt.oib}
+        obrtNaziv={currentObrt.naziv}
+        obrtVlasnik={currentObrt.vlasnikImePrezime}
+        obrtAdresa={`${currentObrt.ulicaIBroj}, ${currentObrt.mjesto}`}
         onKprUpdated={stats.refreshKprTotal}
       />
 
@@ -81,9 +93,24 @@ export const AppDrawers: React.FC<AppDrawersProps> = ({
         isOpen={drawers.isFiscalDrawerOpen}
         onClose={() => drawers.setIsFiscalDrawerOpen(false)}
         activeDocument={activeDocument}
-        obrtProfil={DEFAULT_OBRT_PROFIL}
+        obrtProfil={currentObrt}
         activePartner={activePartner}
         onDocumentUpdated={workflow.handleFiscalUpdated}
+      />
+
+      {/* 5. Postavke Obrta & Memorandum (Logo & Pečat) */}
+      <SettingsDrawer
+        isOpen={drawers.isSettingsDrawerOpen}
+        onClose={() => drawers.setIsSettingsDrawerOpen(false)}
+        obrtProfileHook={obrtProfileHook}
+      />
+
+      {/* 6. Adresar Partnera & Kupaca */}
+      <PartnerDrawer
+        isOpen={drawers.isPartnerDrawerOpen}
+        onClose={() => drawers.setIsPartnerDrawerOpen(false)}
+        onSelectPartner={onSelectPartner}
+        partnersHook={partnersHook}
       />
     </>
   );

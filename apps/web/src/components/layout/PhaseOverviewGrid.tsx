@@ -1,9 +1,9 @@
 import React from 'react';
-import { Cpu, Layers, Printer, Terminal, ShieldCheck, BookOpen } from 'lucide-react';
+import { Cpu, Layers, Printer, Terminal, ShieldCheck, BookOpen, Settings } from 'lucide-react';
 
 export const PhaseOverviewGrid: React.FC = () => {
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3 no-print">
+    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-3 no-print">
       <div className="border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-3.5 space-y-1.5 transition-colors">
         <div className="flex items-center justify-between">
           <span className="text-[10px] font-mono text-[var(--text-muted)]">FAZA 0-2</span>
@@ -113,6 +113,22 @@ export const PhaseOverviewGrid: React.FC = () => {
         </div>
         <p className="text-[11px] text-[var(--text-secondary)] leading-relaxed">
           ZKI, JIR, CIS SOAP, FINA trezor i UBL 2.1 CIUS-HR e-Račun.
+        </p>
+      </div>
+
+      <div className="border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-3.5 space-y-1.5 transition-colors">
+        <div className="flex items-center justify-between">
+          <span className="text-[10px] font-mono text-[var(--accent-primary)] font-bold">FAZA 8</span>
+          <span className="text-[9px] font-mono px-1.5 py-0.2 bg-[#064E3B] text-[#10B981] border border-[#10B981]/30 font-bold">
+            GOTOVO
+          </span>
+        </div>
+        <div className="flex items-center space-x-2">
+          <Settings className="w-4 h-4 text-[var(--accent-primary)]" />
+          <h3 className="font-semibold text-xs text-white">Postavke &amp; Logo</h3>
+        </div>
+        <p className="text-[11px] text-[var(--text-secondary)] leading-relaxed">
+          Profil obrta, adresar partnera, logo i digitalni pečat.
         </p>
       </div>
     </div>

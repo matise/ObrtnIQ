@@ -1,5 +1,5 @@
 import React from 'react';
-import { FolderOpen, BookOpen, ShieldCheck } from 'lucide-react';
+import { FolderOpen, BookOpen, ShieldCheck, Users, Settings } from 'lucide-react';
 import { ThemeSelector } from '../ThemeSelector';
 import { formatHrvatskiIznos } from '@obrtniq/core';
 
@@ -9,6 +9,8 @@ export interface AppHeaderProps {
   onOpenDocs: () => void;
   onOpenKpr: () => void;
   onOpenFiscal: () => void;
+  onOpenSettings: () => void;
+  onOpenPartners: () => void;
 }
 
 export const AppHeader: React.FC<AppHeaderProps> = ({
@@ -17,10 +19,12 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
   onOpenDocs,
   onOpenKpr,
   onOpenFiscal,
+  onOpenSettings,
+  onOpenPartners,
 }) => {
   return (
     <header className="border-b border-[var(--border-subtle)] bg-[var(--bg-surface)]/95 backdrop-blur px-4 sm:px-6 py-2.5 flex items-center justify-between sticky top-0 z-50 no-print">
-      <div className="flex items-center space-x-4">
+      <div className="flex items-center space-x-3 sm:space-x-4">
         <div className="flex items-center space-x-2">
           <div className="w-8 h-8 bg-gradient-to-br from-[var(--accent-primary-hover)] to-[var(--accent-primary)] flex items-center justify-center font-bold font-mono text-sm tracking-wider text-black shadow-inner">
             IQ
@@ -67,7 +71,27 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
           className="flex items-center space-x-1.5 px-2.5 py-1 bg-[var(--bg-canvas)] hover:bg-[var(--bg-elevated)] text-xs font-mono text-white border border-[var(--border-subtle)] hover:border-[#3B82F6] transition-all cursor-pointer"
         >
           <ShieldCheck className="w-3.5 h-3.5 text-[#3B82F6]" />
-          <span>Fiskalizacija &amp; e-Račun</span>
+          <span>Fiskalizacija</span>
+        </button>
+
+        {/* Gumb za Adresar Partnera */}
+        <button
+          type="button"
+          onClick={onOpenPartners}
+          className="hidden md:flex items-center space-x-1.5 px-2.5 py-1 bg-[var(--bg-canvas)] hover:bg-[var(--bg-elevated)] text-xs font-mono text-white border border-[var(--border-subtle)] hover:border-[var(--accent-primary)] transition-all cursor-pointer"
+        >
+          <Users className="w-3.5 h-3.5 text-[var(--accent-primary)]" />
+          <span>Partneri</span>
+        </button>
+
+        {/* Gumb za Postavke Obrta & Memorandum */}
+        <button
+          type="button"
+          onClick={onOpenSettings}
+          className="flex items-center space-x-1.5 px-2.5 py-1 bg-[var(--bg-canvas)] hover:bg-[var(--bg-elevated)] text-xs font-mono text-white border border-[var(--border-subtle)] hover:border-[var(--accent-primary)] transition-all cursor-pointer"
+        >
+          <Settings className="w-3.5 h-3.5 text-[var(--accent-primary)]" />
+          <span>Postavke</span>
         </button>
       </div>
 
@@ -107,7 +131,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
 
         <div className="text-right hidden sm:block">
           <span className="text-[11px] font-mono block text-[var(--text-muted)]">Status Sustava</span>
-          <span className="text-xs font-mono text-[#10B981] font-semibold">Faza 7 &bull; Fiskalizacija 1.0 &amp; e-Račun</span>
+          <span className="text-xs font-mono text-[#10B981] font-semibold">Faza 8 &bull; Postavke, Partneri &amp; Memorandum</span>
         </div>
       </div>
     </header>

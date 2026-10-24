@@ -12,6 +12,7 @@ export interface InvoiceDeskProps {
   form: UseInvoiceFormReturn;
   items: UseInvoiceItemsReturn;
   workflow: UseInvoiceWorkflowReturn;
+  onOpenAddressBook?: () => void;
 }
 
 export const InvoiceDesk: React.FC<InvoiceDeskProps> = ({
@@ -19,6 +20,7 @@ export const InvoiceDesk: React.FC<InvoiceDeskProps> = ({
   form,
   items,
   workflow,
+  onOpenAddressBook,
 }) => {
   return (
     <div
@@ -55,6 +57,7 @@ export const InvoiceDesk: React.FC<InvoiceDeskProps> = ({
         }}
         detectedBank={form.detectedBank}
         isLocked={workflow.isLocked}
+        onOpenAddressBook={onOpenAddressBook}
       />
 
       {/* 3. Uređivač stavaka dokumenta */}
