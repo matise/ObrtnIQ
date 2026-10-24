@@ -1,0 +1,356 @@
+import { jsPDF } from 'jspdf';
+import { getHub3BarcodeDataUrl, getQrCodeDataUrl } from './barcode';
+import { generateHub3Payload, type Hub3Nalog } from '@obrtniq/core';
+import { generateEpcQrPayload, type EpcQrNalog } from '@obrtniq/core';
+
+export interface InvoiceItemPdf {
+  rbr: number;
+  naziv: string;
+  kpdSifra?: string;
+  kolicina: number;
+  jedinicaMjere: string;
+  jedinicnaCijena: number;
+  popustPostotak?: number;
+  ukupno: number;
+}
+
+export interface InvoicePdfData {
+  // Podaci o obrtu (Izdavatelj)
+  obrtNaziv: string;
+  obrtVlasnik: string;
+  obrtOib: string;
+  obrtAdresa: string;
+  obrtIban: string;
+  obrtBanka?: string;
+  
+  // Podaci o kupcu (Primatelj)
+  kupacNaziv: string;
+  kupacOib?: string;
+  kupacAdresa: string;
+  
+  // Detalji dokumenta
+  vrstaDokumentaNaziv: string; // "RAČUN" ili "PONUDA"
+  brojDokumenta: string; // npr. "1/POSL1/1"
+  datumIzdavanja: string; // DD.MM.YYYY.
+  datumIsporuke: string; // DD.MM.YYYY.
+  datumDospijeca: string; // DD.MM.YYYY.
+  nacinPlacanjaNaziv: string; // "Transakcijski račun"
+  pozivNaBroj: string; // "HR00 1-2026"
+  poreznaZonaNaziv?: string;
+  
+  // Stavke
+  stavke: InvoiceItemPdf[];
+  
+  // Ukupno
+  ukupnoOsnovica: number;
+  ukupnoPdv: number;
+  ukupnoIznos: number;
+  zakonskaKlauzula?: string;
+  napomenaZaKupca?: string;
+
+  // Barkodovi opcije
+  includeHub3Barcode?: boolean;
+  includeQrCode?: boolean;
+  qrPayloadOverride?: string; // npr. fiskalni URL ako postoji
+}
+
+export interface PdfGenerationResult {
+  doc: jsPDF;
+  blob: Blob;
+  blobUrl: string;
+  durationMs: number;
+  filename: string;
+}
+
+/**
+ * Generira službeni A4 PDF račun u klijentu u manje od 300 ms
+ */
+export async function generateInvoicePdf(data: InvoicePdfData): Promise<PdfGenerationResult> {
+  const startTime = performance.now();
+
+  // Dimenzije: A4 portret = 210 x 297 mm
+  const doc = new jsPDF({
+    orientation: 'portrait',
+    unit: 'mm',
+    format: 'a4',
+    compress: true,
+  });
+
+  const marginX = 15;
+  const pageWidth = 210;
+  const contentWidth = pageWidth - (marginX * 2); // 180 mm
+  let currentY = 16;
+
+  // 1. ZAGLAVLJE: Podaci o obrtu (Lijevo) i Broj računa (Desno)
+  // Siva ukrasna linija na samom vrhu
+  doc.setDrawColor(24, 24, 27); // #18181B
+  doc.setFillColor(24, 24, 27);
+  doc.rect(marginX, currentY, contentWidth, 1.2, 'F');
+  currentY += 6;
+
+  // Lijevi stupac - Obrt
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(13);
+  doc.setTextColor(15, 23, 42); // slate-900
+  doc.text(data.obrtNaziv, marginX, currentY);
+
+  // Desni stupac - Račun broj
+  doc.setFontSize(14);
+  doc.text(`${data.vrstaDokumentaNaziv} br. ${data.brojDokumenta}`, pageWidth - marginX, currentY, { align: 'right' });
+  currentY += 5;
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
+  doc.setTextColor(71, 85, 105); // slate-600
+
+  doc.text(`vl. ${data.obrtVlasnik}`, marginX, currentY);
+  doc.text(`Datum izdavanja: ${data.datumIzdavanja}`, pageWidth - marginX, currentY, { align: 'right' });
+  currentY += 4.5;
+
+  doc.text(`OIB: ${data.obrtOib}`, marginX, currentY);
+  doc.text(`Datum isporuke: ${data.datumIsporuke}`, pageWidth - marginX, currentY, { align: 'right' });
+  currentY += 4.5;
+
+  doc.text(data.obrtAdresa, marginX, currentY);
+  doc.text(`Dospijeće plaćanja: ${data.datumDospijeca}`, pageWidth - marginX, currentY, { align: 'right' });
+  currentY += 4.5;
+
+  doc.text(`IBAN: ${data.obrtIban} ${data.obrtBanka ? `(${data.obrtBanka})` : ''}`, marginX, currentY);
+  doc.text(`Način plaćanja: ${data.nacinPlacanjaNaziv}`, pageWidth - marginX, currentY, { align: 'right' });
+  currentY += 4.5;
+
+  doc.text(`Model i poziv na broj: ${data.pozivNaBroj}`, pageWidth - marginX, currentY, { align: 'right' });
+  currentY += 8;
+
+  // 2. KUPAC BOX (Okvir za podatke o kupcu)
+  doc.setDrawColor(226, 232, 240); // slate-200
+  doc.setFillColor(248, 250, 252); // slate-50
+  doc.rect(marginX, currentY, contentWidth, 24, 'FD');
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8);
+  doc.setTextColor(100, 116, 139); // slate-500
+  doc.text('KUPAC / PRIMATELJ RAČUNA:', marginX + 4, currentY + 5);
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(11);
+  doc.setTextColor(15, 23, 42);
+  doc.text(data.kupacNaziv, marginX + 4, currentY + 11);
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
+  doc.setTextColor(71, 85, 105);
+  doc.text(`OIB: ${data.kupacOib || '—'}`, marginX + 4, currentY + 16);
+  doc.text(`Adresa: ${data.kupacAdresa || '—'}`, marginX + 4, currentY + 20.5);
+
+  currentY += 30;
+
+  // 3. TABLICA STAVAKA
+  const colX = {
+    rbr: marginX + 2,
+    naziv: marginX + 12,
+    kolicina: marginX + 96,
+    cijena: marginX + 122,
+    popust: marginX + 148,
+    ukupno: pageWidth - marginX - 2,
+  };
+
+  // Zaglavlje tablice
+  doc.setFillColor(241, 245, 249); // slate-100
+  doc.rect(marginX, currentY, contentWidth, 7, 'F');
+  doc.setDrawColor(203, 213, 225);
+  doc.line(marginX, currentY + 7, pageWidth - marginX, currentY + 7);
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8);
+  doc.setTextColor(51, 65, 85);
+
+  doc.text('R.B.', colX.rbr, currentY + 4.8);
+  doc.text('OPIS STAVKE / USLUGE (KPD 2025)', colX.naziv, currentY + 4.8);
+  doc.text('KOL.', colX.kolicina, currentY + 4.8, { align: 'right' });
+  doc.text('CIJENA (€)', colX.cijena, currentY + 4.8, { align: 'right' });
+  doc.text('POPUST', colX.popust, currentY + 4.8, { align: 'right' });
+  doc.text('UKUPNO (€)', colX.ukupno, currentY + 4.8, { align: 'right' });
+
+  currentY += 7;
+
+  // Redovi stavki
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8.5);
+
+  data.stavke.forEach((item, index) => {
+    const rowY = currentY + 5;
+    
+    // Naizmjenična pozadina za bolju čitljivost
+    if (index % 2 === 1) {
+      doc.setFillColor(248, 250, 252);
+      doc.rect(marginX, currentY, contentWidth, 9, 'F');
+    }
+
+    doc.setTextColor(30, 41, 59);
+    doc.text(`${item.rbr}.`, colX.rbr, rowY);
+    
+    // Naziv i KPD
+    doc.setFont('helvetica', 'bold');
+    doc.text(item.naziv.slice(0, 48), colX.naziv, rowY);
+    doc.setFont('helvetica', 'normal');
+    if (item.kpdSifra) {
+      doc.setTextColor(100, 116, 139);
+      doc.setFontSize(7.5);
+      doc.text(`KPD: ${item.kpdSifra}`, colX.naziv, rowY + 3.5);
+      doc.setFontSize(8.5);
+      doc.setTextColor(30, 41, 59);
+    }
+
+    doc.text(`${item.kolicina} ${item.jedinicaMjere || 'kom'}`, colX.kolicina, rowY, { align: 'right' });
+    doc.text(item.jedinicnaCijena.toFixed(2), colX.cijena, rowY, { align: 'right' });
+    doc.text(`${item.popustPostotak || 0}%`, colX.popust, rowY, { align: 'right' });
+    doc.setFont('helvetica', 'bold');
+    doc.text(item.ukupno.toFixed(2), colX.ukupno, rowY, { align: 'right' });
+    doc.setFont('helvetica', 'normal');
+
+    currentY += 9;
+    doc.setDrawColor(241, 245, 249);
+    doc.line(marginX, currentY, pageWidth - marginX, currentY);
+  });
+
+  currentY += 4;
+
+  // 4. FINANCIJSKA REKAPITULACIJA (Desni blok)
+  const summaryX = pageWidth - marginX - 70;
+  const summaryValX = pageWidth - marginX - 2;
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
+  doc.setTextColor(71, 85, 105);
+
+  doc.text('Ukupno osnovica:', summaryX, currentY + 4);
+  doc.text(`${data.ukupnoOsnovica.toFixed(2)} €`, summaryValX, currentY + 4, { align: 'right' });
+  currentY += 5;
+
+  doc.text('PDV (0% - čl. 90 st. 2):', summaryX, currentY + 4);
+  doc.text('0,00 €', summaryValX, currentY + 4, { align: 'right' });
+  currentY += 6;
+
+  // Ukupno za platiti naglašeni box
+  doc.setFillColor(241, 245, 249);
+  doc.rect(summaryX - 4, currentY, 74, 9, 'F');
+  doc.setDrawColor(15, 23, 42);
+  doc.line(summaryX - 4, currentY, pageWidth - marginX, currentY);
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(11);
+  doc.setTextColor(15, 23, 42);
+  doc.text('UKUPNO ZA PLATITI:', summaryX, currentY + 6.2);
+  doc.text(`${data.ukupnoIznos.toFixed(2)} €`, summaryValX, currentY + 6.2, { align: 'right' });
+
+  currentY += 15;
+
+  // 5. ZAKONSKA KLAUZULA ZA PAUŠALISTE (Članak 90. stavak 2.)
+  doc.setDrawColor(226, 232, 240);
+  doc.setFillColor(248, 250, 252);
+  doc.rect(marginX, currentY, contentWidth, 14, 'FD');
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(7.5);
+  doc.setTextColor(100, 116, 139);
+  doc.text('ZAKONSKA NAPOMENA / KLAUZULA:', marginX + 4, currentY + 4.5);
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8);
+  doc.setTextColor(51, 65, 85);
+  const klauzulaTekst = data.zakonskaKlauzula || 
+    'Paušalni obrt nije u sustavu PDV-a prema čl. 90. st. 2. Zakona o PDV-u. Izdano u digitalnom sustavu ObrtnIQ bez fizičkog potpisa i pečata (sukladno Zakonu o računovodstvu).';
+  doc.text(klauzulaTekst, marginX + 4, currentY + 9, { maxWidth: contentWidth - 8 });
+
+  currentY += 18;
+
+  // 6. BARKODOVI NA DNU: HUB-3 PDF417 (Lijevo) i EPC QR Kod (Desno)
+  const bottomBoxY = 222; // Fiksna pozicija na dnu A4 lista
+  
+  // Linija razdvajanja prije barkod sekcije
+  doc.setDrawColor(203, 213, 225);
+  doc.line(marginX, bottomBoxY, pageWidth - marginX, bottomBoxY);
+
+  try {
+    // 6.1 HUB-3 Barkod (Hrvatska uplatnica)
+    if (data.includeHub3Barcode !== false && data.obrtIban) {
+      const hub3Nalog: Hub3Nalog = {
+        iznosEur: data.ukupnoIznos,
+        platiteljImeAdresa: data.kupacNaziv,
+        primateljImeAdresa: data.obrtNaziv,
+        primateljIban: data.obrtIban,
+        model: 'HR00',
+        pozivNaBroj: data.pozivNaBroj.replace(/^HR00\s*/, ''),
+        sifraNamjene: 'GDSV',
+        opisPlacanja: `Racun ${data.brojDokumenta}`,
+      };
+
+      const hub3String = generateHub3Payload(hub3Nalog);
+      const hub3DataUrl = await getHub3BarcodeDataUrl(hub3String, {
+        scale: 2,
+        height: 10,
+        columns: 9,
+      });
+
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(7.5);
+      doc.setTextColor(71, 85, 105);
+      doc.text('HUB-3 2D BARKOD ZA M-BANKING (PDF417):', marginX, bottomBoxY + 5);
+
+      // HUB-3 barkod proporcija (cca 95 x 26 mm)
+      doc.addImage(hub3DataUrl, 'PNG', marginX, bottomBoxY + 7, 95, 26);
+    }
+
+    // 6.2 EPC SEPA QR Kod ili Fiskalni QR
+    if (data.includeQrCode !== false && data.obrtIban) {
+      let qrPayload = data.qrPayloadOverride;
+      if (!qrPayload) {
+        const epcNalog: EpcQrNalog = {
+          primateljIme: data.obrtNaziv,
+          primateljIban: data.obrtIban,
+          iznosEur: data.ukupnoIznos,
+          bic: data.obrtBanka,
+          svrhaKod: 'GDSV',
+          pozivNaBroj: data.pozivNaBroj,
+          opisPlacanja: `Racun ${data.brojDokumenta}`,
+        };
+        qrPayload = generateEpcQrPayload(epcNalog);
+      }
+
+      const qrDataUrl = await getQrCodeDataUrl(qrPayload, 200);
+      const qrX = pageWidth - marginX - 32;
+
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(7.5);
+      doc.setTextColor(71, 85, 105);
+      doc.text('SEPA / EPC QR:', qrX, bottomBoxY + 5);
+
+      doc.addImage(qrDataUrl, 'PNG', qrX, bottomBoxY + 7, 26, 26);
+    }
+  } catch (err) {
+    console.warn('Greška pri renderiranju barkodova za PDF:', err);
+  }
+
+  // 7. PODNOŽJE (Footer)
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7);
+  doc.setTextColor(148, 163, 184); // slate-400
+  doc.text('Generirano putem ObrtnIQ • Zakon o fiskalizaciji 1.0 (B2C) & 2.0 (B2B EN 16931) • Stranica 1 / 1', marginX, 290);
+
+  const endTime = performance.now();
+  const durationMs = Math.round(endTime - startTime);
+
+  const cleanBroj = data.brojDokumenta.replace(/[^a-zA-Z0-9]/g, '_');
+  const filename = `Racun_${cleanBroj}.pdf`;
+  const blob = doc.output('blob');
+  const blobUrl = URL.createObjectURL(blob);
+
+  return {
+    doc,
+    blob,
+    blobUrl,
+    durationMs,
+    filename,
+  };
+}

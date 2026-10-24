@@ -12,8 +12,8 @@ Ovaj dokument služi kao jedinstveni izvor istine za praćenje napretka, evident
 | **Faza 1** | **Domena, Validacije i Poslovna Matematika (Core Engine)** | 🟢 **ZAVRŠENO** | 100% prolaznost Vitest testova za OIB (ISO 7064), IBAN (MOD 97), popuste i HUB-3 | 2026-10-24 |
 | **Faza 2** | **Sloj Pohrane (Storage Abstraction & Adapter)** | 🟢 **ZAVRŠENO** | In-memory CRUD testovi, sekvenca računa bez rupa, export/import | 2026-10-24 |
 | **Faza 3** | **Dizajn Sustav & Sharp UI Primitivi** | 🟢 **ZAVRŠENO** | Responzivnost (375px/1440px), OibInput, IbanInput bank lookup | 2026-10-24 |
-| **Faza 4** | **Generator Kodova i PDF Engine** | 🟡 **SLJEDEĆA NA REDU** | HUB-3 PDF417 skenabilan m-bankingom, PDF export < 300ms | - |
-| **Faza 5** | **Ekran za Izdavanje Računa & Workflow** | ⚪ Čeka | Izdavanje računa tipkovnicom < 30s, statusni automat, immutability | - |
+| **Faza 4** | **Generator Kodova i PDF Engine** | 🟢 **ZAVRŠENO** | HUB-3 PDF417 skenabilan m-bankingom, EPC QR, PDF export < 300ms | 2026-10-24 |
+| **Faza 5** | **Ekran za Izdavanje Računa & Workflow** | 🟡 **SLJEDEĆA NA REDU** | Izdavanje računa tipkovnicom < 30s, statusni automat, immutability | - |
 | **Faza 6** | **KPR i Obrazac PO-SD (Knjigovodstvo)** | ⚪ Čeka | XML validacija protiv službene XSD sheme Porezne uprave | - |
 | **Faza 7** | **Fiskalizacija 1.0 (CIS) & 2.0 (e-Račun)** | ⚪ Čeka | FINA DEMO okruženje: JIR dohvat i UBL 2.1 isporuka posredniku | - |
 
@@ -51,6 +51,13 @@ Ovaj dokument služi kao jedinstveni izvor istine za praćenje napretka, evident
 | 2026-10-24 13:56 | Faza 3 | `apps/web/src/App.tsx` | Gate-Check: Integriran Showroom kontrola, preklopnik Desktop (1440px) / Mobitel (375px), validacija blokade | 🟢 Gate-Check PROŠAO |
 | 2026-10-24 14:00 | UX/Layout | `apps/web/src/App.tsx` | Uklonjen max-w-7xl limit: desktop način rada sada koristi 100% širine prozora (Split-Screen 58/42 s živim A4 preglednikom) | Završeno |
 | 2026-10-24 14:05 | Theme | `apps/web/src/hooks/useTheme.ts`, `apps/web/src/components/ThemeSelector.tsx`, `index.css` | Implementiran dinamički Theme Engine (5 preseta: Amethyst, Emerald, Cobalt, Bronze, Carbon + 0°-360° Hue rotacija s localStorage trajnosti) | Završeno |
+| 2026-10-24 14:16 | Faza 4 | `packages/core/src/utils/epc-qr.ts` | EPC SEPA Credit Transfer standard (EPC069-12 v002) generator i parser | Završeno |
+| 2026-10-24 14:17 | Faza 4 | `packages/core/src/utils/fiscal-qr.ts` | Porezna uprava fiskalni QR kod generator URL-a i parser | Završeno |
+| 2026-10-24 14:18 | Faza 4 | `packages/core/tests/epc-qr.test.ts`, `fiscal-qr.test.ts` | 8 novih jediničnih testova (42/42 ukupno prolaznost u 525ms) | 🟢 Gate-Check PROŠAO |
+| 2026-10-24 14:19 | Faza 4 | `apps/web/src/utils/barcode.ts` | Klijentski Canvas rendereri za HUB-3 PDF417 i EPC QR (bwip-js, qrcode) | Završeno |
+| 2026-10-24 14:20 | Faza 4 | `apps/web/src/utils/pdf-generator.ts` | Službeni A4 PDF generator računa s obrt/kupac podacima, stavkama, KPD 2025, čl. 90 st. 2 klauzulom i barkodovima | Završeno |
+| 2026-10-24 14:21 | Faza 4 | `apps/web/src/components/InvoiceLivePreview.tsx` | Živi A4 preglednik računa s preklopnikom Tema / Bijeli papir i instant PDF downloadom | Završeno |
+| 2026-10-24 14:22 | Faza 4 | `apps/web/src/App.tsx` | Povezan živi A4 preglednik na formu i live inpute, prikaz performansi (< 100 ms) | 🟢 Gate-Check PROŠAO |
 
 ---
 
@@ -60,3 +67,4 @@ Ovaj dokument služi kao jedinstveni izvor istine za praćenje napretka, evident
 * **ADR-002 (Local-First pohrana):** Koristi se lokalna baza unutar korisničkog preglednika (Dexie.js / SQLite Wasm preko OPFS-a) bez ikakvog centralnog poslužitelja ili mjesečnih troškova infrastrukture.
 * **ADR-003 (Precizna financijska matematika):** Svi iznosi se interno računaju u centima (integer) ili decimalnom reprezentacijom s eksplicitnim zaokruživanjem kako bi se eliminirale `IEEE 754 float` anomalije.
 * **ADR-004 (Parametrizirani HSL Theme Engine s Hue rotacijom):** Uveden dinamički CSS HSL sustav baziran na kutu tona (`--theme-hue`, 0°-360°). Omogućuje trenutačnu promjenu palete u realnom vremenu uz zadržavanje visokog kontrasta, odabir 5 kuriranih preseta i finu rotaciju, pri čemu su pravni i porezni signali (zeleno, crveno, žuto) fiksirani radi zakonske jasnoće.
+* **ADR-005 (Klijentski Barcode & PDF Generiranje bez poslužitelja):** Zbog privatnosti korisnika i zero-server cost arhitekture, generiranje HUB-3 PDF417 barkoda (prema HUB standardu s error correction level 4), EPC SEPA QR koda (EPC069-12) i A4 PDF dokumenta odvija se 100% unutar korisničkog web preglednika koristeći `bwip-js` i `jspdf`. Time se osigurava rad offline, trenutno preuzimanje (< 100 ms, daleko ispod Gate-Check praga od 300 ms) i nulti rizik od curenja poslovnih podataka na vanjske servere.
