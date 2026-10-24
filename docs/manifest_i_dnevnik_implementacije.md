@@ -8,8 +8,8 @@ Ovaj dokument služi kao jedinstveni izvor istine za praćenje napretka, evident
 
 | Faza | Naziv Modula / Cjeline | Status | Gate-Check Kriterij | Zadnja Izmjena |
 |---|---|---|---|---|
-| **Faza 0** | **Temeljna konfiguracija & Monorepo postavke** | 🟡 **U TIJEKU** | Uspješno kompajliranje, konfigurirani aliasi, postavljen test runner | 2026-10-24 |
-| **Faza 1** | **Domena, Validacije i Poslovna Matematika (Core Engine)** | ⚪ Čeka | 100% prolaznost Vitest testova za OIB (ISO 7064), IBAN (MOD 97), popuste i HUB-3 | - |
+| **Faza 0** | **Temeljna konfiguracija & Monorepo postavke** | 🟢 **ZAVRŠENO** | Uspješno kompajliranje, konfigurirani aliasi, postavljen test runner | 2026-10-24 |
+| **Faza 1** | **Domena, Validacije i Poslovna Matematika (Core Engine)** | 🟡 **SLJEDEĆA NA REDU** | 100% prolaznost Vitest testova za OIB (ISO 7064), IBAN (MOD 97), popuste i HUB-3 | - |
 | **Faza 2** | **Sloj Pohrane (Storage Abstraction & Adapter)** | ⚪ Čeka | In-memory CRUD testovi, sekvenca računa bez rupa, export/import | - |
 | **Faza 3** | **Dizajn Sustav & Sharp UI Primitivi** | ⚪ Čeka | Responzivnost (375px/1440px), OibInput, IbanInput bank lookup | - |
 | **Faza 4** | **Generator Kodova i PDF Engine** | ⚪ Čeka | HUB-3 PDF417 skenabilan m-bankingom, PDF export < 300ms | - |
@@ -17,7 +17,7 @@ Ovaj dokument služi kao jedinstveni izvor istine za praćenje napretka, evident
 | **Faza 6** | **KPR i Obrazac PO-SD (Knjigovodstvo)** | ⚪ Čeka | XML validacija protiv službene XSD sheme Porezne uprave | - |
 | **Faza 7** | **Fiskalizacija 1.0 (CIS) & 2.0 (e-Račun)** | ⚪ Čeka | FINA DEMO okruženje: JIR dohvat i UBL 2.1 isporuka posredniku | - |
 
-*Legenda statusa: ⚪ Čeka | 🟡 U tijeku | 🟢 Završeno (Gate-Check verificiran) | 🔴 Blokirano*
+*Legenda statusa: ⚪ Čeka | 🟡 U tijeku / Sljedeća | 🟢 Završeno (Gate-Check verificiran) | 🔴 Blokirano*
 
 ---
 
@@ -27,9 +27,10 @@ Ovaj dokument služi kao jedinstveni izvor istine za praćenje napretka, evident
 |---|---|---|---|---|
 | 2026-10-24 13:30 | Setup | `.gitignore`, `.git` | Inicijalizacija Git repozitorija, postavljanje pravila ignoriranja | Završeno |
 | 2026-10-24 13:32 | Setup | `docs/manifest_i_dnevnik_implementacije.md` | Kreiran manifest i sustav za praćenje statusa implementacije | Završeno |
-| 2026-10-24 13:33 | Faza 0 | `package.json`, `tsconfig.base.json` | Konfiguriran korijenski npm workspaces (`packages/*`, `apps/*`) | U pripremi |
-| 2026-10-24 13:33 | Faza 0 | `packages/core` | Inicijalizacija TypeScript biblioteke za domenu s Vitest konfiguracijom | U pripremi |
-| 2026-10-24 13:33 | Faza 0 | `apps/web` | Inicijalizacija React 19 + Vite + Tailwind CSS aplikacije s Midnight Amethyst temom | U pripremi |
+| 2026-10-24 13:33 | Faza 0 | `package.json`, `tsconfig.base.json` | Konfiguriran korijenski npm workspaces (`packages/*`, `apps/*`) | Završeno |
+| 2026-10-24 13:33 | Faza 0 | `packages/core` | Inicijalizacija TypeScript biblioteke za domenu s Vitest konfiguracijom | Završeno |
+| 2026-10-24 13:34 | Faza 0 | `apps/web` | Inicijalizacija React 19 + Vite + Tailwind CSS aplikacije s Midnight Amethyst temom i OPFS zaglavljima | Završeno |
+| 2026-10-24 13:36 | Faza 0 | Monorepo verifikacija | Pokrenut `npm run build` i `npm run test` (Vitest: 1 passed) | 🟢 Gate-Check PROŠAO |
 
 ---
 
