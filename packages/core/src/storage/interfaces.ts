@@ -3,11 +3,14 @@ import type {
   Partner, 
   Artikl, 
   Dokument, 
-  NaplataPromet,
+  NaplataPromet, 
   VrstaDokumenta,
   ZigoChatSesija,
   ZigoChatPoruka
 } from '../domain/types';
+import type { UlazniTrosak } from '../domain/troskovi';
+import type { MjesecniObracunDoprinosa } from '../domain/doprinosi';
+import type { RecurringProfile } from '../domain/recurring';
 
 export interface IObrtRepository {
   getProfil(): Promise<ObrtProfil | null>;
@@ -62,6 +65,29 @@ export interface IChatRepository {
   deletePorukeBySesijaId(sesijaId: string): Promise<void>;
 }
 
+export interface ITroskoviRepository {
+  getAll(filterGodina?: number): Promise<UlazniTrosak[]>;
+  getById(id: string): Promise<UlazniTrosak | null>;
+  save(trosak: UlazniTrosak): Promise<void>;
+  update(id: string, partial: Partial<UlazniTrosak>): Promise<void>;
+  delete(id: string): Promise<void>;
+}
+
+export interface IDoprinosiRepository {
+  getAllUplate(godina?: number): Promise<MjesecniObracunDoprinosa[]>;
+  saveUplata(obracun: MjesecniObracunDoprinosa): Promise<void>;
+  deleteUplata(id: string): Promise<void>;
+}
+
+export interface IRecurringRepository {
+  getAll(filterAktivan?: boolean): Promise<RecurringProfile[]>;
+  getById(id: string): Promise<RecurringProfile | null>;
+  save(profil: RecurringProfile): Promise<void>;
+  update(id: string, partial: Partial<RecurringProfile>): Promise<void>;
+  delete(id: string): Promise<void>;
+  getDospjeli(danasDatum?: string): Promise<RecurringProfile[]>;
+}
+
 export interface IObrtnIQStorage {
   obrt: IObrtRepository;
   partneri: IPartnerRepository;
@@ -69,5 +95,10 @@ export interface IObrtnIQStorage {
   dokumenti: IDokumentRepository;
   kpr: IKprRepository;
   chat?: IChatRepository;
+  troskovi?: ITroskoviRepository;
+  doprinosi?: IDoprinosiRepository;
+  recurring?: IRecurringRepository;
   clearAll(): Promise<void>;
 }
+
+

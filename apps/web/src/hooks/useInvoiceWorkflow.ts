@@ -34,6 +34,10 @@ export interface UseInvoiceWorkflowReturn {
   setDatumIzdavanja: (val: string) => void;
   setDatumDospijeca: (val: string) => void;
   setDatumIsporuke: (val: string) => void;
+  poslovniProstorOznaka: string;
+  setPoslovniProstorOznaka: (val: string) => void;
+  naplatniUredjajOznaka: string;
+  setNaplatniUredjajOznaka: (val: string) => void;
   zki?: string;
   jir?: string;
   fiskalniQrUrl?: string;
@@ -61,6 +65,12 @@ export function useInvoiceWorkflow({
   const [datumIzdavanja, setDatumIzdavanja] = useState<string>('24.10.2026.');
   const [datumDospijeca, setDatumDospijeca] = useState<string>('03.11.2026.');
   const [datumIsporuke, setDatumIsporuke] = useState<string>('24.10.2026.');
+  const [poslovniProstorOznaka, setPoslovniProstorOznaka] = useState<string>(
+    () => DEFAULT_OBRT_PROFIL.poslovniProstorOznaka || 'POSL1'
+  );
+  const [naplatniUredjajOznaka, setNaplatniUredjajOznaka] = useState<string>(
+    () => DEFAULT_OBRT_PROFIL.naplatniUredjajOznaka || '1'
+  );
 
   const [zki, setZki] = useState<string | undefined>(undefined);
   const [jir, setJir] = useState<string | undefined>(undefined);
@@ -91,6 +101,8 @@ export function useInvoiceWorkflow({
         datumDospijeca,
         datumIsporuke,
         nacinPlacanja: form.nacinPlacanja,
+        poslovniProstorOznaka,
+        naplatniUredjajOznaka,
       });
 
       // Pohrani nacrt u Dexie bazu
@@ -155,6 +167,8 @@ export function useInvoiceWorkflow({
     datumIzdavanja,
     datumDospijeca,
     datumIsporuke,
+    poslovniProstorOznaka,
+    naplatniUredjajOznaka,
     onStatsUpdate,
   ]);
 
@@ -165,6 +179,8 @@ export function useInvoiceWorkflow({
     setDocType(vrsta);
     setDocStatus('NACRT');
     setBrojDokumenta('NACRT');
+    setPoslovniProstorOznaka(DEFAULT_OBRT_PROFIL.poslovniProstorOznaka || 'POSL1');
+    setNaplatniUredjajOznaka(DEFAULT_OBRT_PROFIL.naplatniUredjajOznaka || '1');
     setZki(undefined);
     setJir(undefined);
     setFiskalniQrUrl(undefined);
@@ -181,6 +197,8 @@ export function useInvoiceWorkflow({
     setDocType(doc.vrstaDokumenta);
     setDocStatus(doc.status);
     setBrojDokumenta(doc.brojDokumenta);
+    if (doc.poslovniProstorOznaka) setPoslovniProstorOznaka(doc.poslovniProstorOznaka);
+    if (doc.naplatniUredjajOznaka) setNaplatniUredjajOznaka(doc.naplatniUredjajOznaka);
     form.hydrateFromDocument(doc);
     setDatumIzdavanja(doc.datumIzdavanja);
     setDatumDospijeca(doc.datumDospijeca);
@@ -293,6 +311,10 @@ export function useInvoiceWorkflow({
     setDatumIzdavanja,
     setDatumDospijeca,
     setDatumIsporuke,
+    poslovniProstorOznaka,
+    setPoslovniProstorOznaka,
+    naplatniUredjajOznaka,
+    setNaplatniUredjajOznaka,
     zki,
     jir,
     fiskalniQrUrl,

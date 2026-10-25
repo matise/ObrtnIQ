@@ -9,11 +9,22 @@ import {
   Layers,
   Printer,
   Sparkles,
-  ShieldCheck
+  ShieldCheck,
+  Share2,
+  Mail,
+  MessageSquare,
+  Copy,
+  Check
 } from 'lucide-react';
 import { renderHub3Barcode, renderQrCode } from '../utils/barcode';
 import { generateInvoicePdf, generateInvoicePdfFromDom, type PdfGenerationResult } from '../utils/pdf-generator';
 import { appLogger } from '../services/logger';
+import {
+  buildMailtoUrl,
+  buildChatSummary,
+  buildWhatsAppUrl,
+  copyToClipboard,
+} from '../services/invoice-dispatcher';
 import { 
   generateHub3Payload, 
   generateEpcQrPayload, 
@@ -24,6 +35,7 @@ import {
   type EpcQrNalog,
   type PdfValidationResult as CorePdfValidationResult
 } from '@obrtniq/core';
+
 
 export interface InvoiceItemPreview {
   id: string;
@@ -48,6 +60,8 @@ export interface InvoiceLivePreviewProps {
   partnerNaziv: string;
   partnerOib: string;
   isPartnerOibValid: boolean;
+  partnerEmail?: string;
+  partnerTelefon?: string;
 
   vrstaDokumenta?: string; // 'RACUN' | 'PONUDA' | 'STORNO_RACUN'
   statusDokumenta?: string; // 'NACRT' | 'IZDANO' | 'STORNIRANO'
@@ -263,6 +277,45 @@ export function InvoiceLivePreview(props: InvoiceLivePreviewProps) {
     }
   };
 
+  const [isShareMenuOpen, setIsShareMenuOpen] = useState(false);
+  const [copiedToast, setCopiedToast] = useState(false);
+
+  const dispatchParams = useMemo(() => ({
+    kupacEmail: props.partnerEmail,
+    kupacNaziv: props.partnerNaziv,
+    kupacTelefon: props.partnerTelefon,
+    brojDokumenta: props.brojDokumenta,
+    datumIzdavanja: props.datumIzdavanja,
+    datumDospijeca: props.datumDospijeca,
+    ukupniIznosEur: ukupno,
+    iban: props.obrtIban,
+    bankaNaziv: props.obrtBanka,
+    obrtNaziv: props.obrtNaziv,
+    vlasnikNaziv: props.obrtVlasnik,
+    pozivNaBroj: pozivNaBroj,
+  }), [props.partnerEmail, props.partnerNaziv, props.partnerTelefon, props.brojDokumenta, props.datumIzdavanja, props.datumDospijeca, props.obrtIban, props.obrtBanka, props.obrtNaziv, props.obrtVlasnik, ukupno, pozivNaBroj]);
+
+  const handleSendEmail = () => {
+    const url = buildMailtoUrl(dispatchParams);
+    window.open(url, '_blank');
+    setIsShareMenuOpen(false);
+  };
+
+  const handleShareWhatsApp = () => {
+    const summary = buildChatSummary(dispatchParams);
+    const url = buildWhatsAppUrl(summary, props.partnerTelefon);
+    window.open(url, '_blank');
+    setIsShareMenuOpen(false);
+  };
+
+  const handleCopyChatSummary = async () => {
+    const summary = buildChatSummary(dispatchParams);
+    await copyToClipboard(summary);
+    setCopiedToast(true);
+    setTimeout(() => setCopiedToast(false), 2500);
+    setIsShareMenuOpen(false);
+  };
+
   const isPaper = previewStyle === 'paper';
 
   // Određivanje širine prikaza (Fluid vs A4 fiksno vs POS 80mm)
@@ -391,8 +444,69 @@ export function InvoiceLivePreview(props: InvoiceLivePreviewProps) {
             <Download className="w-3.5 h-3.5" />
             {isGeneratingPdf ? 'Generiram...' : 'Preuzmi PDF'}
           </button>
+
+          {/* Pošalji / Podijeli Račun */}
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setIsShareMenuOpen(!isShareMenuOpen)}
+              title="Pošalji račun kupcu putem E-maila, WhatsAppa ili kopiraj sažetak"
+              className="px-3 py-1.5 bg-[var(--bg-elevated)] hover:bg-[var(--bg-subtle)] text-white border border-[var(--border-strong)] font-mono font-bold text-xs flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer"
+            >
+              <Share2 className="w-3.5 h-3.5 text-indigo-400" />
+              <span>Pošalji / Podijeli</span>
+            </button>
+
+            {isShareMenuOpen && (
+              <div className="absolute right-0 mt-1 w-56 bg-slate-900 border border-slate-700 rounded-xl shadow-2xl z-50 py-1.5 text-xs text-slate-200 animate-in fade-in zoom-in-95 duration-150">
+                <button
+                  type="button"
+                  onClick={handleSendEmail}
+                  className="w-full px-3.5 py-2 text-left hover:bg-slate-800 flex items-center gap-2.5 transition"
+                >
+                  <Mail className="w-4 h-4 text-sky-400" />
+                  <div>
+                    <p className="font-semibold text-white">Pošalji E-mailom</p>
+                    <p className="text-[10px] text-slate-400">Otvara pripremljeni mailto nacrt</p>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleShareWhatsApp}
+                  className="w-full px-3.5 py-2 text-left hover:bg-slate-800 flex items-center gap-2.5 transition"
+                >
+                  <MessageSquare className="w-4 h-4 text-emerald-400" />
+                  <div>
+                    <p className="font-semibold text-white">WhatsApp / SMS</p>
+                    <p className="text-[10px] text-slate-400">Brza poruka s IBAN-om i iznosom</p>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleCopyChatSummary}
+                  className="w-full px-3.5 py-2 text-left hover:bg-slate-800 flex items-center gap-2.5 transition border-t border-slate-800 mt-1"
+                >
+                  <Copy className="w-4 h-4 text-amber-400" />
+                  <div>
+                    <p className="font-semibold text-white">Kopiraj sažetak</p>
+                    <p className="text-[10px] text-slate-400">Za chat s kupcem u međuspremnik</p>
+                  </div>
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
+
+      {copiedToast && (
+        <div className="p-2.5 bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 font-mono text-xs rounded-lg flex items-center gap-2 animate-in fade-in duration-200">
+          <Check className="w-4 h-4 text-emerald-400" />
+          <span>✓ Sažetak računa s IBAN-om i pozivom na broj kopiran je u međuspremnik!</span>
+        </div>
+      )}
+
 
       {/* Latency, Typography & PDF Structure Verification Badge */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between px-3 py-1.5 bg-[#064E3B] border border-[#10B981]/40 text-[#10B981] font-mono text-xs gap-2 no-print">

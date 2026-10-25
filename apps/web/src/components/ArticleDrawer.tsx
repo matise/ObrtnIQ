@@ -8,7 +8,9 @@ import {
   ArrowRight,
   Briefcase,
   Package,
-  Sparkles
+  Sparkles,
+  Home,
+  ArrowLeft,
 } from 'lucide-react';
 import type { Artikl } from '@obrtniq/core';
 import { formatHrvatskiIznos } from '@obrtniq/core';
@@ -20,6 +22,8 @@ export interface ArticleDrawerProps {
   onClose: () => void;
   onSelectArticle?: (artikl: Artikl) => void;
   articlesHook: UseArticlesReturn;
+  isEmbedded?: boolean;
+  onNavigateHome?: () => void;
 }
 
 export const ArticleDrawer: React.FC<ArticleDrawerProps> = ({
@@ -27,6 +31,8 @@ export const ArticleDrawer: React.FC<ArticleDrawerProps> = ({
   onClose,
   onSelectArticle,
   articlesHook,
+  isEmbedded = false,
+  onNavigateHome,
 }) => {
   const { 
     filteredArticles, 
@@ -80,47 +86,70 @@ export const ArticleDrawer: React.FC<ArticleDrawerProps> = ({
 
     if (onSelectArticle) {
       onSelectArticle(created);
-      onClose();
+      if (isEmbedded && onNavigateHome) onNavigateHome();
+      else onClose();
     }
   };
 
-  return (
-    <div className="fixed inset-0 z-50 overflow-hidden no-print">
-      {/* Backdrop */}
-      <div 
-        className="absolute inset-0 bg-black/70 backdrop-blur-sm transition-opacity"
-        onClick={onClose}
-      />
-
-      {/* Drawer Panel */}
-      <div className="absolute inset-y-0 right-0 max-w-full flex pl-10">
-        <div className="w-screen max-w-2xl bg-[var(--bg-surface)] border-l border-[var(--border-strong)] text-white flex flex-col shadow-2xl">
-          {/* Header */}
-          <div className="p-5 border-b border-[var(--border-subtle)] flex items-center justify-between bg-[var(--bg-elevated)]/40">
-            <div className="flex items-center space-x-3">
-              <div className="w-8 h-8 rounded bg-[var(--accent-primary)]/20 border border-[var(--accent-primary)]/40 flex items-center justify-center text-[var(--accent-primary)]">
-                <BookMarked className="w-4 h-4" />
-              </div>
-              <div>
-                <h2 className="text-sm font-mono font-bold tracking-wider uppercase text-white flex items-center gap-2">
-                  <span>Cjenik Usluga &amp; Artikala</span>
-                  <span className="text-[10px] font-mono px-2 py-0.5 bg-[#064E3B] text-[#10B981] border border-[#10B981]/40">
-                    KPD 2025
-                  </span>
-                </h2>
-                <p className="text-xs text-[var(--text-muted)] font-mono">
-                  Baza standardnih usluga i artikala za brzi unos računa
-                </p>
-              </div>
-            </div>
-            <button
-              type="button"
-              onClick={onClose}
-              className="text-[var(--text-muted)] hover:text-white p-1 transition-colors cursor-pointer"
-            >
-              <X className="w-5 h-5" />
-            </button>
+  const content = (
+    <div className={
+      isEmbedded
+        ? "w-full bg-[var(--bg-surface)] border border-[var(--border-strong)] rounded-2xl text-white flex flex-col shadow-2xl overflow-hidden min-h-[calc(100vh-160px)] animate-in fade-in duration-200"
+        : "w-screen max-w-2xl bg-[var(--bg-surface)] border-l border-[var(--border-strong)] text-white flex flex-col shadow-2xl"
+    }>
+      {/* Header */}
+      <div className="p-5 border-b border-[var(--border-subtle)] flex items-center justify-between bg-[var(--bg-elevated)]/40 flex-wrap gap-3">
+        <div className="flex items-center space-x-3">
+          <div className="w-8 h-8 rounded bg-[var(--accent-primary)]/20 border border-[var(--accent-primary)]/40 flex items-center justify-center text-[var(--accent-primary)] shrink-0">
+            <BookMarked className="w-4 h-4" />
           </div>
+          <div>
+            {isEmbedded && (
+              <div className="flex items-center gap-2 text-xs text-[var(--text-muted)] mb-1 font-mono">
+                <button
+                  type="button"
+                  onClick={onNavigateHome || onClose}
+                  className="hover:text-[var(--accent-primary)] flex items-center gap-1.5 transition-colors font-medium"
+                >
+                  <Home className="w-3.5 h-3.5 text-[var(--accent-primary)]" />
+                  <span>Radna ploha (Home)</span>
+                </button>
+                <span>/</span>
+                <span className="text-white font-semibold">Cjenik Usluga &amp; Artikala</span>
+              </div>
+            )}
+            <h2 className="text-sm font-mono font-bold tracking-wider uppercase text-white flex items-center gap-2">
+              <span>Cjenik Usluga &amp; Artikala</span>
+              <span className="text-[10px] font-mono px-2 py-0.5 bg-[#064E3B] text-[#10B981] border border-[#10B981]/40">
+                KPD 2025
+              </span>
+            </h2>
+            <p className="text-xs text-[var(--text-muted)] font-mono">
+              Baza standardnih usluga i artikala za brzi unos računa
+            </p>
+          </div>
+        </div>
+
+        {isEmbedded ? (
+          <button
+            type="button"
+            onClick={onNavigateHome || onClose}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-mono text-white bg-[var(--bg-elevated)] hover:bg-[var(--bg-subtle)] border border-[var(--border-strong)] transition-colors"
+            title="Povratak na radnu plohu (Alt+H)"
+          >
+            <ArrowLeft className="w-3.5 h-3.5 text-[var(--accent-primary)]" />
+            <span>Povratak na Radnu plohu</span>
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={onClose}
+            className="text-[var(--text-muted)] hover:text-white p-1 transition-colors cursor-pointer"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        )}
+      </div>
 
           {/* Search, Filter & New Article Action */}
           <div className="p-4 border-b border-[var(--border-subtle)] bg-[var(--bg-canvas)]/60 space-y-3">
@@ -416,7 +445,8 @@ export const ArticleDrawer: React.FC<ArticleDrawerProps> = ({
                         type="button"
                         onClick={() => {
                           onSelectArticle(artikl);
-                          onClose();
+                          if (isEmbedded && onNavigateHome) onNavigateHome();
+                          else onClose();
                         }}
                         className="px-2.5 py-1 bg-[var(--accent-primary)] text-black hover:bg-[var(--accent-primary-hover)] font-bold text-[11px] flex items-center gap-1 transition-all active:scale-95 cursor-pointer shadow-sm"
                       >
@@ -429,7 +459,21 @@ export const ArticleDrawer: React.FC<ArticleDrawerProps> = ({
               ))
             )}
           </div>
-        </div>
+    </div>
+  );
+
+  if (isEmbedded) {
+    return content;
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 overflow-hidden no-print">
+      <div 
+        className="absolute inset-0 bg-black/70 backdrop-blur-sm transition-opacity"
+        onClick={onClose}
+      />
+      <div className="absolute inset-y-0 right-0 max-w-full flex pl-10">
+        {content}
       </div>
     </div>
   );

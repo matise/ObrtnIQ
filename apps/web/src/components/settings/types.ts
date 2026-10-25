@@ -16,6 +16,8 @@ export interface SettingsDrawerProps {
   googleAuthHook?: UseGoogleAuthReturn;
   driveSyncHook?: UseGoogleDriveSyncReturn;
   geminiHook?: UseGeminiAssistantReturn;
+  isEmbedded?: boolean;
+  onNavigateHome?: () => void;
 }
 
 export interface SettingsTabsNavProps {

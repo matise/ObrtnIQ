@@ -78,6 +78,8 @@ export function buildDraftDokument(params: {
   datumDospijeca?: string;
   datumIsporuke?: string;
   nacinPlacanja?: string;
+  poslovniProstorOznaka?: string;
+  naplatniUredjajOznaka?: string;
 }): Dokument {
   const stavke = mapFormItemsToStavkeDokumenta(params.items, params.docId);
   const now = new Date();
@@ -93,8 +95,8 @@ export function buildDraftDokument(params: {
     godina: now.getFullYear(),
     brojSekvenca: 0,
     brojDokumenta: 'NACRT',
-    poslovniProstorOznaka: 'POSL1',
-    naplatniUredjajOznaka: '1',
+    poslovniProstorOznaka: params.poslovniProstorOznaka || 'POSL1',
+    naplatniUredjajOznaka: params.naplatniUredjajOznaka || '1',
     datumIzdavanja: params.datumIzdavanja || datumIso,
     vrijemeIzdavanja: now.toLocaleTimeString('hr-HR'),
     datumDospijeca: params.datumDospijeca || '2026-11-03',

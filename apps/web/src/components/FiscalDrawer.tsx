@@ -17,6 +17,8 @@ import {
   Radio,
   Server,
   Layers,
+  Home,
+  ArrowLeft,
 } from 'lucide-react';
 import {
   fiscalService,
@@ -40,6 +42,8 @@ export interface FiscalDrawerProps {
   obrtProfil: ObrtProfil;
   activePartner: Partner;
   onDocumentUpdated?: (doc: Dokument) => void;
+  isEmbedded?: boolean;
+  onNavigateHome?: () => void;
 }
 
 export function FiscalDrawer({
@@ -49,6 +53,8 @@ export function FiscalDrawer({
   obrtProfil,
   activePartner,
   onDocumentUpdated,
+  isEmbedded = false,
+  onNavigateHome,
 }: FiscalDrawerProps) {
   const [activeTab, setActiveTab] = useState<'certifikat' | 'cis' | 'eracun'>('certifikat');
   const [fiscalConfig, setFiscalConfig] = useState<FiscalConfig>(fiscalService.getConfig());
@@ -181,28 +187,58 @@ export function FiscalDrawer({
     URL.revokeObjectURL(url);
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex justify-end bg-black/60 backdrop-blur-xs transition-opacity animate-in fade-in no-print">
-      <div className="w-full max-w-4xl bg-[var(--bg-surface)] border-l border-[var(--border-strong)] h-full flex flex-col shadow-2xl overflow-hidden font-sans">
-        
-        {/* Drawer Header */}
-        <div className="p-4 sm:p-5 border-b border-[var(--border-subtle)] flex items-center justify-between bg-[var(--bg-canvas)]">
-          <div className="flex items-center space-x-3">
-            <div className="p-2 bg-[var(--accent-primary)]/10 border border-[var(--accent-primary)]/30 text-[var(--accent-primary)]">
-              <ShieldCheck className="w-5 h-5" />
-            </div>
-            <div>
-              <h2 className="font-bold text-base text-white flex items-center gap-2">
-                <span>Fiskalizacija 1.0 (CIS) &amp; Fiskalizacija 2.0 (e-Račun)</span>
-                <span className="text-[10px] font-mono px-2 py-0.5 bg-[#064E3B] text-[#10B981] border border-[#10B981]/40">
-                  FAZA 7
-                </span>
-              </h2>
-              <p className="text-xs text-[var(--text-muted)] font-mono">
-                Web Crypto trezor certifikata, ZKI/JIR automati i UBL 2.1 CIUS-HR e-Račun standard
-              </p>
-            </div>
+  if (!isOpen) return null;
+
+  const content = (
+    <div className={
+      isEmbedded
+        ? "w-full bg-[var(--bg-surface)] border border-[var(--border-strong)] rounded-2xl flex flex-col min-h-[calc(100vh-160px)] shadow-2xl overflow-hidden font-sans animate-in fade-in duration-200"
+        : "w-full max-w-4xl bg-[var(--bg-surface)] border-l border-[var(--border-strong)] h-full flex flex-col shadow-2xl overflow-hidden font-sans"
+    }>
+      {/* Drawer Header */}
+      <div className="p-4 sm:p-5 border-b border-[var(--border-subtle)] flex items-center justify-between bg-[var(--bg-canvas)] flex-wrap gap-3">
+        <div className="flex items-center space-x-3">
+          <div className="p-2 bg-[var(--accent-primary)]/10 border border-[var(--accent-primary)]/30 text-[var(--accent-primary)] shrink-0">
+            <ShieldCheck className="w-5 h-5" />
           </div>
+          <div>
+            {isEmbedded && (
+              <div className="flex items-center gap-2 text-xs text-[var(--text-muted)] mb-1 font-mono">
+                <button
+                  type="button"
+                  onClick={onNavigateHome || onClose}
+                  className="hover:text-[var(--accent-primary)] flex items-center gap-1.5 transition-colors font-medium"
+                >
+                  <Home className="w-3.5 h-3.5 text-[var(--accent-primary)]" />
+                  <span>Radna ploha (Home)</span>
+                </button>
+                <span>/</span>
+                <span className="text-white font-semibold">Fiskalizacija 1.0 &amp; 2.0</span>
+              </div>
+            )}
+            <h2 className="font-bold text-base text-white flex items-center gap-2">
+              <span>Fiskalizacija 1.0 (CIS) &amp; Fiskalizacija 2.0 (e-Račun)</span>
+              <span className="text-[10px] font-mono px-2 py-0.5 bg-[#064E3B] text-[#10B981] border border-[#10B981]/40">
+                FAZA 7
+              </span>
+            </h2>
+            <p className="text-xs text-[var(--text-muted)] font-mono">
+              Web Crypto trezor certifikata, ZKI/JIR automati i UBL 2.1 CIUS-HR e-Račun standard
+            </p>
+          </div>
+        </div>
+
+        {isEmbedded ? (
+          <button
+            type="button"
+            onClick={onNavigateHome || onClose}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-mono text-white bg-[var(--bg-elevated)] hover:bg-[var(--bg-subtle)] border border-[var(--border-strong)] transition-colors"
+            title="Povratak na radnu plohu (Alt+H)"
+          >
+            <ArrowLeft className="w-3.5 h-3.5 text-[var(--accent-primary)]" />
+            <span>Povratak na Radnu plohu</span>
+          </button>
+        ) : (
           <button
             type="button"
             onClick={onClose}
@@ -210,7 +246,8 @@ export function FiscalDrawer({
           >
             <X className="w-5 h-5" />
           </button>
-        </div>
+        )}
+      </div>
 
         {/* Tab Navigation */}
         <div className="flex border-b border-[var(--border-subtle)] bg-[var(--bg-elevated)] font-mono text-xs">
@@ -633,6 +670,15 @@ export function FiscalDrawer({
         )}
 
       </div>
+  );
+
+  if (isEmbedded) {
+    return content;
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex justify-end bg-black/60 backdrop-blur-xs transition-opacity animate-in fade-in no-print">
+      {content}
     </div>
   );
 }

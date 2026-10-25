@@ -1,0 +1,27 @@
+{
+  "name": "ObrtnIQ – Knjigovodstvo i Računi Obrta",
+  "short_name": "ObrtnIQ",
+  "description": "Local-First sustav za izdavanje računa, fiskalizaciju, obvezne doprinose i knjigovodstvo obrta u RH.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "theme_color": "#0F172A",
+  "background_color": "#020617",
+  "lang": "hr",
+  "icons": [
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["business", "finance", "productivity"]
+}

@@ -195,6 +195,22 @@ export const PhaseOverviewGrid: React.FC = () => {
           Dubrovački SVG set (20 ikona), 5-slojni Orlando reljef i dinamički favicon.
         </p>
       </div>
+
+      <div className="border border-emerald-500/50 bg-[#121f1a] p-3.5 space-y-1.5 transition-colors shadow-lg">
+        <div className="flex items-center justify-between">
+          <span className="text-[10px] font-mono text-emerald-400 font-bold">FAZA 17</span>
+          <span className="text-[9px] font-mono px-1.5 py-0.2 bg-[#064E3B] text-[#10B981] border border-[#10B981]/30 font-bold">
+            GOTOVO
+          </span>
+        </div>
+        <div className="flex items-center space-x-2">
+          <ObrtIcon name="legal-scales" size={16} glow />
+          <h3 className="font-semibold text-xs text-white">Knjigovodstvo &amp; Doprinosi</h3>
+        </div>
+        <p className="text-[11px] text-[var(--text-secondary)] leading-relaxed">
+          MIO 1/2 i HZZO s HUB-3 uplatnicama, troškovnik, uvoz bankovnih izvoda i cash-flow.
+        </p>
+      </div>
     </div>
   );
 };

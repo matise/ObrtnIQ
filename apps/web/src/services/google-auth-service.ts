@@ -799,10 +799,14 @@ class GoogleAuthService {
               }
 
               const userInfo = await userInfoRes.json();
+              const pictureCandidate = userInfo.picture || userInfo.avatar_url || userInfo.pictureUrl || userInfo.photo;
+              
               appLogger.scope('AUTH:GOOGLE:USERINFO').info('Korisnički profil uspješno preuzet s Google poslužitelja!', {
                 email: userInfo.email,
                 name: userInfo.name,
                 subSidro: userInfo.sub,
+                imaProfilnuSliku: Boolean(pictureCandidate),
+                pictureUrlSnippet: pictureCandidate ? String(pictureCandidate).slice(0, 35) + '...' : 'NEMA',
               });
 
               const identity: GoogleAuthIdentity = {
@@ -810,7 +814,7 @@ class GoogleAuthService {
                 googleSub: userInfo.sub,
                 email: userInfo.email,
                 name: userInfo.name,
-                pictureUrl: userInfo.picture,
+                pictureUrl: pictureCandidate ? String(pictureCandidate) : undefined,
                 connectedAt: new Date().toISOString(),
                 scopes: scopes.split(' '),
               };

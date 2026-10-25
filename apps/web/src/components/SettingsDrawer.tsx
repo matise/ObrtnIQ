@@ -6,6 +6,8 @@ import {
   RotateCcw,
   Save,
   Terminal,
+  Home,
+  ArrowLeft,
 } from 'lucide-react';
 import type { ObrtProfil } from '@obrtniq/core';
 import { useGoogleAuth } from '../hooks/useGoogleAuth';
@@ -31,6 +33,8 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({
   googleAuthHook,
   driveSyncHook,
   geminiHook,
+  isEmbedded = false,
+  onNavigateHome,
 }) => {
   const { profil, saveProfil, resetToDefault } = obrtProfileHook;
   const [activeTab, setActiveTab] = useState<SettingsTabId>('osnovno');
@@ -166,57 +170,81 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({
     loggerProfile.info('Profil obrta ponovno sinkroniziran nakon obnove baze');
   };
 
-  return (
-    <div className="fixed inset-0 z-50 overflow-hidden no-print">
-      {/* Backdrop */}
-      <div 
-        className="absolute inset-0 bg-black/70 backdrop-blur-sm transition-opacity"
-        onClick={onClose}
-      />
+  if (!isOpen) return null;
 
-      {/* Drawer Panel */}
-      <div className="absolute inset-y-0 right-0 max-w-full flex pl-10">
-        <div className="w-screen max-w-2xl bg-[var(--bg-surface)] border-l border-[var(--border-strong)] text-white flex flex-col shadow-2xl">
-          {/* Header */}
-          <div className="p-5 border-b border-[var(--border-subtle)] flex items-center justify-between bg-[var(--bg-elevated)]/40">
-            <div className="flex items-center space-x-3">
-              <div className="w-8 h-8 rounded bg-[var(--accent-primary)]/10 border border-[var(--accent-primary)]/30 flex items-center justify-center text-[var(--accent-primary)]">
-                <Settings className="w-4 h-4" />
-              </div>
-              <div>
-                <h2 className="text-base font-mono font-bold uppercase tracking-wider text-white">
-                  Postavke Obrta &amp; Poslovanja
-                </h2>
-                <p className="text-xs text-[var(--text-muted)] font-mono">
-                  Konfiguracija računa, memoranduma, sigurnosne kopije i oblaka
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center space-x-1.5">
-              {onToggleLogDrawer && (
+  const content = (
+    <div className={
+      isEmbedded
+        ? "w-full bg-[var(--bg-surface)] border border-[var(--border-strong)] rounded-2xl text-white flex flex-col shadow-2xl overflow-hidden min-h-[calc(100vh-160px)] animate-in fade-in duration-200"
+        : "w-screen max-w-2xl bg-[var(--bg-surface)] border-l border-[var(--border-strong)] text-white flex flex-col shadow-2xl"
+    }>
+      {/* Header */}
+      <div className="p-5 border-b border-[var(--border-subtle)] flex items-center justify-between bg-[var(--bg-elevated)]/40 flex-wrap gap-3">
+        <div className="flex items-center space-x-3">
+          <div className="w-8 h-8 rounded bg-[var(--accent-primary)]/10 border border-[var(--accent-primary)]/30 flex items-center justify-center text-[var(--accent-primary)] shrink-0">
+            <Settings className="w-4 h-4" />
+          </div>
+          <div>
+            {isEmbedded && (
+              <div className="flex items-center gap-2 text-xs text-[var(--text-muted)] mb-1 font-mono">
                 <button
                   type="button"
-                  onClick={onToggleLogDrawer}
-                  title={isLogDrawerOpen ? 'Zatvori Sustavni Dnevnik' : 'Otvori Sustavni Dnevnik (Real-time telemetrija)'}
-                  className={`px-2 py-1 transition-colors cursor-pointer flex items-center gap-1 text-[11px] font-mono border ${
-                    isLogDrawerOpen 
-                      ? 'bg-[var(--accent-primary)] text-black border-[var(--accent-primary)] font-bold' 
-                      : 'text-[var(--text-muted)] hover:text-white hover:bg-[var(--bg-elevated)] border-[var(--border-subtle)]'
-                  }`}
+                  onClick={onNavigateHome || onClose}
+                  className="hover:text-[var(--accent-primary)] flex items-center gap-1.5 transition-colors"
                 >
-                  <Terminal className="w-3.5 h-3.5" />
-                  <span className="hidden sm:inline">Dnevnik</span>
+                  <Home className="w-3.5 h-3.5 text-[var(--accent-primary)]" />
+                  <span>Radna ploha (Home)</span>
                 </button>
-              )}
-              <button
-                type="button"
-                onClick={onClose}
-                className="p-1.5 text-[var(--text-muted)] hover:text-white hover:bg-[var(--bg-elevated)] transition-colors cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
+                <span>/</span>
+                <span className="text-white font-semibold">Postavke Sustava</span>
+              </div>
+            )}
+            <h2 className="text-base font-mono font-bold uppercase tracking-wider text-white">
+              Postavke Obrta &amp; Poslovanja
+            </h2>
+            <p className="text-xs text-[var(--text-muted)] font-mono">
+              Konfiguracija računa, memoranduma, sigurnosne kopije i oblaka
+            </p>
           </div>
+        </div>
+        <div className="flex items-center space-x-2">
+          {onToggleLogDrawer && (
+            <button
+              type="button"
+              onClick={onToggleLogDrawer}
+              title={isLogDrawerOpen ? 'Zatvori Sustavni Dnevnik' : 'Otvori Sustavni Dnevnik (Real-time telemetrija)'}
+              className={`px-2 py-1 transition-colors cursor-pointer flex items-center gap-1 text-[11px] font-mono border ${
+                isLogDrawerOpen 
+                  ? 'bg-[var(--accent-primary)] text-black border-[var(--accent-primary)] font-bold' 
+                  : 'text-[var(--text-muted)] hover:text-white hover:bg-[var(--bg-elevated)] border-[var(--border-subtle)]'
+              }`}
+            >
+              <Terminal className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Dnevnik</span>
+            </button>
+          )}
+
+          {isEmbedded ? (
+            <button
+              type="button"
+              onClick={onNavigateHome || onClose}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-mono text-white bg-[var(--bg-elevated)] hover:bg-[var(--bg-subtle)] border border-[var(--border-strong)] transition-colors"
+              title="Povratak na radnu plohu (Alt+H)"
+            >
+              <ArrowLeft className="w-3.5 h-3.5 text-[var(--accent-primary)]" />
+              <span>Povratak na Radnu plohu</span>
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={onClose}
+              className="p-1.5 text-[var(--text-muted)] hover:text-white hover:bg-[var(--bg-elevated)] transition-colors cursor-pointer"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          )}
+        </div>
+      </div>
 
           {/* Navigation Tabs */}
           <SettingsTabsNav
@@ -297,7 +325,21 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({
               </div>
             )}
           </form>
-        </div>
+    </div>
+  );
+
+  if (isEmbedded) {
+    return content;
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 overflow-hidden no-print">
+      <div 
+        className="absolute inset-0 bg-black/70 backdrop-blur-sm transition-opacity"
+        onClick={onClose}
+      />
+      <div className="absolute inset-y-0 right-0 max-w-full flex pl-10">
+        {content}
       </div>
     </div>
   );

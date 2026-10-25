@@ -26,6 +26,11 @@ export const GoogleIdentityCard: React.FC<GoogleIdentityCardProps> = ({
 }) => {
   const loggerAuth = appLogger.scope('SETTINGS:GOOGLE');
   const [customClientIdInput, setCustomClientIdInput] = useState(googleAuth.clientId);
+  const [avatarError, setAvatarError] = useState(false);
+
+  useEffect(() => {
+    setAvatarError(false);
+  }, [googleAuth.identity?.pictureUrl]);
 
   useEffect(() => {
     loggerAuth.info('Učitana kartica: Google Identity & Kriptografsko Sidro', {
@@ -162,15 +167,18 @@ export const GoogleIdentityCard: React.FC<GoogleIdentityCardProps> = ({
         <div className="p-3 bg-[var(--bg-surface)] border border-[var(--border-strong)] space-y-3 font-mono text-xs">
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-3">
-              {googleAuth.identity.pictureUrl ? (
+              {googleAuth.identity.pictureUrl && !avatarError ? (
                 <img
                   src={googleAuth.identity.pictureUrl}
-                  alt="Avatar"
-                  className="w-10 h-10 rounded-full object-cover border border-[var(--border-subtle)]"
+                  alt={googleAuth.identity.name || 'Avatar'}
+                  referrerPolicy="no-referrer"
+                  crossOrigin="anonymous"
+                  onError={() => setAvatarError(true)}
+                  className="w-10 h-10 rounded-full object-cover border border-[var(--border-subtle)] shrink-0"
                 />
               ) : (
-                <div className="w-10 h-10 rounded-full bg-[#4285F4] text-white flex items-center justify-center font-bold">
-                  {googleAuth.identity.name ? googleAuth.identity.name.charAt(0) : 'G'}
+                <div className="w-10 h-10 rounded-full bg-[#4285F4] text-white flex items-center justify-center font-bold text-base shrink-0 shadow-sm">
+                  {googleAuth.identity.name && googleAuth.identity.name.trim() ? googleAuth.identity.name.trim().charAt(0).toUpperCase() : 'G'}
                 </div>
               )}
               <div>

@@ -16,6 +16,20 @@ appLogger.scope('SYSTEM:BOOT').info('ObrtnIQ sustav uspješno pokrenut (v3.0 Loc
   timestamp: new Date().toISOString(),
 });
 
+// Registracija PWA Service Workera za terenski rad i offline podršku (Faza 18)
+if (typeof window !== 'undefined' && 'serviceWorker' in navigator && (import.meta as any)?.env?.PROD) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker
+      .register('/sw.js')
+      .then((reg) => {
+        appLogger.scope('PWA:SW').info('PWA Service Worker uspješno registriran', { scope: reg.scope });
+      })
+      .catch((err) => {
+        appLogger.scope('PWA:SW').warn('Greška pri registraciji Service Workera', err);
+      });
+  });
+}
+
 import { AudioTransportProvider } from './context/AudioTransportContext';
 
 ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(

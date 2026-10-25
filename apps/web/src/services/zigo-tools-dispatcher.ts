@@ -4,11 +4,27 @@ import {
   generateKprCsv, 
   generatePosdXml, 
   izracunajKprSazetak,
+  generirajGodisnjeDoprinose,
+  generirajKvartalnePorezneNaloge,
+  evidentirajNaplatu,
+  izracunajCashFlow,
+  formatHrvatskiIznos,
+  formatHrvatskiDatum,
+  PRAG_DUGOTRAJNE_IMOVINE_EUR,
+  KATEGORIJE_TROSKA_LABELS,
+  generirajPorezniKalendar,
+  izracunajPreostaleDane,
+  odrediStatusRoka,
+  dohvatiSljedeciPorezniRok,
+  jeDospjeloZaIzdavanje,
+  izracunajUkupnoPretplate,
   type Artikl, 
   type PoreznaZona,
   type ZigoToolResult,
   type IObrtnIQStorage,
-  type ZigoMemoryKategorija
+  type ZigoMemoryKategorija,
+  type KategorijaTroska,
+  type UlazniTrosak
 } from '@obrtniq/core';
 import { dexieStorage } from '../storage/dexie-db';
 import { appLogger } from './logger';
@@ -723,6 +739,345 @@ export async function executeZigoTool(
           uspjeh: true,
           podaci: { memorija: saved },
           poruka: `Zapisano u tefter: "${saved.vrijednost}" pod ključem [${saved.kljuc}].`,
+        };
+        break;
+      }
+
+      // 20. Provjera obveznih doprinosa i poreza (Faza 18)
+      case 'provjeri_obvezne_doprinose_i_porez': {
+        const godina = typeof args.godina === 'number' ? args.godina : new Date().getFullYear();
+        const profil = await storage.obrt.getProfil();
+        const oib = profil?.oib || '00000000000';
+
+        const kprStavke = await storage.kpr.getAll(godina);
+        const kprSazetak = izracunajKprSazetak(kprStavke, godina, { oib, naziv: profil?.naziv || 'Obrt' });
+
+        const spremljeneUplate = storage.doprinosi ? await storage.doprinosi.getAllUplate(godina) : [];
+        const uplaceniMjeseci = new Map<number, string>();
+        for (const u of spremljeneUplate) {
+          if (u.status === 'UPLACENO') {
+            uplaceniMjeseci.set(u.mjesec, u.datumUplate || '');
+          }
+        }
+
+        const mjesecniDoprinosi = generirajGodisnjeDoprinose(oib, godina, uplaceniMjeseci);
+        const kvartalniPorezi = generirajKvartalnePorezneNaloge(oib, godina, kprSazetak.ukupnoGodina, new Map());
+
+        const danas = new Date();
+        const tekuciMjesec = danas.getMonth() + 1;
+        const provjeraMjesec = typeof args.mjesec === 'number' ? args.mjesec : Math.max(1, tekuciMjesec - 1);
+
+        const obracunZaMjesec = mjesecniDoprinosi.find(m => m.mjesec === provjeraMjesec);
+        const neplaceniDospjeli = mjesecniDoprinosi.filter(m => m.status !== 'UPLACENO' && new Date(m.rokPlacanja) < danas);
+        const ukupnoNeplacenoDospjeloEur = neplaceniDospjeli.reduce((sum, m) => sum + m.ukupnoDoprinosiEur, 0);
+
+        result = {
+          uspjeh: true,
+          podaci: {
+            godina,
+            provjeraMjesec,
+            obracunZaMjesec,
+            ukupnoNeplacenoDospjeloEur,
+            brojNeplacenihDospjelih: neplaceniDospjeli.length,
+            doprinosi: mjesecniDoprinosi,
+            mjesecniDoprinosi,
+            kvartalniPorezi,
+          },
+          poruka: obracunZaMjesec?.status === 'UPLACENO'
+            ? `Doprinosi za ${provjeraMjesec}. mjesec (${godina}.) su uplaćeni (${formatHrvatskiIznos(obracunZaMjesec.ukupnoDoprinosiEur)}).`
+            : `Doprinosi za ${provjeraMjesec}. mjesec (${godina}.) čekaju uplatu (${formatHrvatskiIznos(obracunZaMjesec?.ukupnoDoprinosiEur || 262.51)}). Rok dospijeća je ${formatHrvatskiDatum(obracunZaMjesec?.rokPlacanja || '')}.`,
+        };
+        break;
+      }
+
+      // 21. Evidentiranje ulaznog troška (Faza 18)
+      case 'evidentiraj_ulazni_trosak': {
+        const {
+          dobavljacNaziv,
+          ukupnoEur,
+          kategorija = 'OSTALO_POSLOVNO',
+          opis,
+          brojRacuna,
+          datumRacuna,
+          nacinPlacanja = 'TRANSAKCIJSKI_RACUN',
+          jePlaceno = true,
+          serijskiBrojOpreme,
+        } = args;
+
+        if (!dobavljacNaziv || typeof dobavljacNaziv !== 'string' || !dobavljacNaziv.trim()) {
+          return { uspjeh: false, poruka: 'Naziv dobavljača je obvezan.' };
+        }
+        const iznos = typeof ukupnoEur === 'number' ? ukupnoEur : parseFloat(ukupnoEur);
+        if (isNaN(iznos) || iznos <= 0) {
+          return { uspjeh: false, poruka: 'Iznos troška mora biti veći od 0 EUR.' };
+        }
+
+        const danas = new Date().toISOString().slice(0, 10);
+        const datum = datumRacuna && typeof datumRacuna === 'string' ? datumRacuna : danas;
+        const jeDugotrajna = iznos >= PRAG_DUGOTRAJNE_IMOVINE_EUR;
+
+        // Normalizacija kategorije u valjanu KategorijaTroska
+        const rawKat = String(kategorija || '').toUpperCase().trim();
+        let kat: KategorijaTroska = 'OSTALO_POSLOVNO';
+        if (rawKat === 'GORIVO' || rawKat.includes('GORIVO') || rawKat.includes('PUTOVANJ')) {
+          kat = 'GORIVO_I_PUTOVANJA';
+        } else if (rawKat === 'ALAT_I_OPREMA' || rawKat.includes('OPREM') || rawKat.includes('HARDVER') || rawKat.includes('ALAT')) {
+          kat = 'OPREMA_I_HARDVER';
+        } else if (rawKat === 'URED_I_POTROSNI' || rawKat.includes('UREDSK') || rawKat.includes('PAPIR') || rawKat.includes('TONER')) {
+          kat = 'UREDSKI_MATERIJAL';
+        } else if (rawKat === 'TELEKOMUNIKACIJE' || rawKat.includes('TELEKOM') || rawKat.includes('INTERNET')) {
+          kat = 'TELEKOMUNIKACIJE_NET';
+        } else if (rawKat.includes('SOFTVER') || rawKat.includes('CLOUD') || rawKat.includes('LICENC')) {
+          kat = 'SOFTVERSKE_PRETPLATE';
+        } else if (rawKat.includes('BANK') || rawKat.includes('NAKNAD')) {
+          kat = 'BANKOVNE_NAKNADE';
+        } else if (rawKat.includes('KNJIGOVOD') || rawKat.includes('PRAVN')) {
+          kat = 'KNJIGOVODSTVO_PRAVNO';
+        } else if (rawKat.includes('REZ') || rawKat.includes('KOMUNAL') || rawKat.includes('ZAKUP')) {
+          kat = 'KOMUNALIJE_REZANJE';
+        } else if (rawKat.includes('EDUKACI') || rawKat.includes('LITERATUR')) {
+          kat = 'EDUKACIJA_I_LITERATURA';
+        } else if ((KATEGORIJE_TROSKA_LABELS as Record<string, string>)[rawKat]) {
+          kat = rawKat as KategorijaTroska;
+        }
+
+        const noviTrosak: UlazniTrosak = {
+          id: `trosak-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+          brojUlaznogDokumenta: brojRacuna ? String(brojRacuna).trim() : `UL-${Date.now().toString().slice(-6)}`,
+          dobavljacNaziv: dobavljacNaziv.trim(),
+          datumRacuna: datum,
+          datumDospijeca: datum,
+          datumPlacanja: jePlaceno ? datum : undefined,
+          kategorija: kat,
+          opis: opis ? String(opis).trim() : (KATEGORIJE_TROSKA_LABELS[kat] || kat),
+          iznosBezPdvEur: Math.round((iznos / 1.25) * 100) / 100,
+          iznosPdvEur: Math.round((iznos - (iznos / 1.25)) * 100) / 100,
+          ukupnoEur: iznos,
+          nacinPlacanja: nacinPlacanja || 'TRANSAKCIJSKI_RACUN',
+          status: jePlaceno ? 'PLACENO' : 'NEPLACENO',
+          jeDugotrajnaImovina: jeDugotrajna,
+          serijskiBrojOpreme: serijskiBrojOpreme ? String(serijskiBrojOpreme).trim() : undefined,
+          kreirano: new Date().toISOString(),
+        };
+
+        if (storage.troskovi) {
+          await storage.troskovi.save(noviTrosak);
+        }
+
+        if (context.refreshStats) {
+          await context.refreshStats();
+        }
+
+        result = {
+          uspjeh: true,
+          podaci: {
+            trosak: noviTrosak,
+            jeDugotrajnaImovina: jeDugotrajna,
+          },
+          poruka: jeDugotrajna
+            ? `Evidentiran trošak: ${noviTrosak.dobavljacNaziv} (${formatHrvatskiIznos(iznos)}). Prekoračen prag dugotrajne imovine (663,61 €), označeno kao oprema.`
+            : `Evidentiran trošak: ${noviTrosak.dobavljacNaziv} (${formatHrvatskiIznos(iznos)}) u kategoriji "${KATEGORIJE_TROSKA_LABELS[kat]}".`,
+        };
+        break;
+      }
+
+      // 22. Dohvaćanje financijske slike i dobiti (Faza 18)
+      case 'dohvati_financijsku_sliku_i_dobit': {
+        const godina = typeof args.godina === 'number' ? args.godina : new Date().getFullYear();
+        const profil = await storage.obrt.getProfil();
+        const oib = profil?.oib || '00000000000';
+        const kprStavke = await storage.kpr.getAll(godina);
+        const kprSazetak = izracunajKprSazetak(kprStavke, godina, { oib, naziv: profil?.naziv || 'Obrt' });
+        const troskovi = storage.troskovi ? await storage.troskovi.getAll(godina) : [];
+        const placeniTroskovi = troskovi.filter(t => t.status === 'PLACENO');
+        const ukupnoPlaceniTroskovi = placeniTroskovi.reduce((sum, t) => sum + t.ukupnoEur, 0);
+
+        const spremljeneUplate = storage.doprinosi ? await storage.doprinosi.getAllUplate(godina) : [];
+        const uplaceniMjeseci = new Map<number, string>();
+        for (const u of spremljeneUplate) {
+          if (u.status === 'UPLACENO') {
+            uplaceniMjeseci.set(u.mjesec, u.datumUplate || '');
+          }
+        }
+
+        const doprinosi = generirajGodisnjeDoprinose(oib, godina, uplaceniMjeseci);
+        const ukupnoUplaceniDoprinosi = doprinosi.filter(d => d.status === 'UPLACENO').reduce((sum, d) => sum + d.ukupnoDoprinosiEur, 0);
+
+        const cashFlow = izracunajCashFlow({
+          ukupnoNaplacenoKprEur: kprSazetak.ukupnoGodina,
+          ukupnoPlaceniTroskoviEur: ukupnoPlaceniTroskovi,
+          ukupnoPlaceniDoprinosiEur: ukupnoUplaceniDoprinosi,
+          ukupnoPlaceniPorezEur: 0,
+        });
+
+        result = {
+          uspjeh: true,
+          podaci: {
+            godina,
+            kprPrimiciEur: cashFlow.ukupniPrimiciEur,
+            operativniTroskoviEur: ukupnoPlaceniTroskovi,
+            doprinosiEur: ukupnoUplaceniDoprinosi,
+            ukupniIzdaciEur: cashFlow.ukupniIzdaciEur,
+            netoDobitEur: cashFlow.netoDobitEur,
+            profitnaMarzaPostotak: cashFlow.profitnaMarzaPostotak,
+          },
+          poruka: `Financijska slika za ${godina}.: Primici ${formatHrvatskiIznos(cashFlow.ukupniPrimiciEur)}, Izdaci ${formatHrvatskiIznos(cashFlow.ukupniIzdaciEur)}, Čista neto dobit ${formatHrvatskiIznos(cashFlow.netoDobitEur)} (marža ${cashFlow.profitnaMarzaPostotak}%).`,
+        };
+        break;
+      }
+
+      // 23. Saldiranje transakcije s bankovnog izvoda (Faza 18)
+      case 'saldiraj_izvod_transakcije': {
+        const { dokumentId, iznosEur, datumNaplate, brojIzvoda, opisPlatitelja } = args;
+        const iznos = typeof iznosEur === 'number' ? iznosEur : parseFloat(iznosEur);
+        if (isNaN(iznos) || iznos <= 0) {
+          return { uspjeh: false, poruka: 'Iznos transakcije mora biti veći od 0 EUR.' };
+        }
+
+        const datum = datumNaplate && typeof datumNaplate === 'string' 
+          ? datumNaplate 
+          : new Date().toISOString().slice(0, 10);
+
+        const kprStavka = await evidentirajNaplatu(storage.kpr, storage.dokumenti, {
+          dokumentId: dokumentId ? String(dokumentId).trim() : undefined,
+          datumNaplate: datum,
+          iznos: iznos,
+          nacinPlacanja: 'TRANSAKCIJSKI_RACUN',
+          opisPlatitelja: opisPlatitelja ? String(opisPlatitelja).trim() : 'Uplata s bankovnog izvoda',
+          brojIzvoda: brojIzvoda ? String(brojIzvoda).trim() : 'Bankovni izvod',
+        });
+
+        if (context.refreshStats) {
+          await context.refreshStats();
+        }
+
+        result = {
+          uspjeh: true,
+          podaci: { kprStavka },
+          poruka: `Transakcija saldirana u KPR pod rednim brojem #${kprStavka.brojKprStavke} (${formatHrvatskiIznos(iznos)}).`,
+        };
+        break;
+      }
+
+      // 24. Provjera poreznog kalendara i rokova (Faza 20)
+      case 'provjeri_porezni_kalendar_i_rokove': {
+        const godina = typeof args.godina === 'number' ? args.godina : new Date().getFullYear();
+        const samoPredstojeci = args.samoPredstojeci !== false;
+        const danas = new Date().toISOString().slice(0, 10);
+
+        // Provjeri profil i uplate doprinosa iz baze
+        const profil = await storage.obrt.getProfil();
+        const oib = profil?.oib || '00000000000';
+        const spremljeneUplate = storage.doprinosi ? await storage.doprinosi.getAllUplate(godina) : [];
+        const uplaceniMjeseci = new Set<number>();
+        for (const u of spremljeneUplate) {
+          if (u.status === 'UPLACENO') {
+            uplaceniMjeseci.add(u.mjesec);
+          }
+        }
+
+        const sviRokovi = generirajPorezniKalendar(godina, oib).map(rok => {
+          let uplaceno = false;
+          if (rok.vrsta === 'DOPRINOSI' && rok.mjesec && uplaceniMjeseci.has(rok.mjesec)) {
+            uplaceno = true;
+          }
+          const preostaliDani = izracunajPreostaleDane(rok.datumDospijeca, danas);
+          const status = odrediStatusRoka(preostaliDani, uplaceno);
+          return {
+            ...rok,
+            uplaceno,
+            preostaliDani,
+            status,
+          };
+        });
+
+        const sljedeci = dohvatiSljedeciPorezniRok(sviRokovi, danas);
+        const sljedeciRok = sljedeci ? {
+          ...sljedeci.rok,
+          preostaliDani: sljedeci.preostaloDana,
+          jeHitno: sljedeci.jeHitno,
+          uplaceno: sljedeci.rok.vrsta === 'DOPRINOSI' && sljedeci.rok.mjesec ? uplaceniMjeseci.has(sljedeci.rok.mjesec) : false,
+          status: odrediStatusRoka(
+            sljedeci.preostaloDana,
+            sljedeci.rok.vrsta === 'DOPRINOSI' && sljedeci.rok.mjesec ? uplaceniMjeseci.has(sljedeci.rok.mjesec) : false
+          ),
+        } : null;
+
+        const filtriraniRokovi = samoPredstojeci 
+          ? sviRokovi.filter(r => r.status === 'CEKA_UPLATU' || r.status === 'PREKORACENO')
+          : sviRokovi;
+
+        let poruka = '';
+        if (sljedeciRok) {
+          const preostaloTekst = sljedeciRok.preostaliDani === 0 
+            ? 'danas' 
+            : sljedeciRok.preostaliDani === 1 
+              ? 'sutra' 
+              : sljedeciRok.preostaliDani > 1
+                ? `za ${sljedeciRok.preostaliDani} dana (${formatHrvatskiDatum(sljedeciRok.datumDospijeca)})`
+                : `prije ${Math.abs(sljedeciRok.preostaliDani)} dana (${formatHrvatskiDatum(sljedeciRok.datumDospijeca)})`;
+          const iznosTekst = sljedeciRok.okvirniIznosEur ? ` u iznosu od ${formatHrvatskiIznos(sljedeciRok.okvirniIznosEur)}` : '';
+
+          if (sljedeciRok.status === 'PREKORACENO') {
+            poruka = `Gosparu, porezna straža ne spava! Obveza "${sljedeciRok.naslov}" dospjela je ${formatHrvatskiDatum(sljedeciRok.datumDospijeca)}${iznosTekst} i kasni ${Math.abs(sljedeciRok.preostaliDani)} dana. Valja to odma riješit da ne šalju opomene.`;
+          } else if (sljedeciRok.preostaliDani <= 7) {
+            poruka = `Orlandov lakat motri kalendar, gosparu moj. Pred nama je obveza "${sljedeciRok.naslov}" koja dospijeva ${preostaloTekst}${iznosTekst}. Pripremi dukate na vrijeme, neka papiri budu čisti i šesni.`;
+          } else {
+            poruka = `Porezni kalendar za ${godina}. godinu je miran. Sljedeća obveza je "${sljedeciRok.naslov}", dospijeva ${preostaloTekst}${iznosTekst}.`;
+          }
+        } else {
+          poruka = `Za ${godina}. godinu sve su porezne i zakonske obveze podmirene ili arhivirane. Dubrovnik mirno plovi!`;
+        }
+
+        result = {
+          uspjeh: true,
+          podaci: {
+            godina,
+            danas,
+            sljedeciRok,
+            rokovi: filtriraniRokovi,
+          },
+          poruka,
+        };
+        break;
+      }
+
+      // 25. Pregled dospjelih ponavljajućih računa / pretplata (Faza 20)
+      case 'pregledaj_dospjele_ponavljajuce_racune': {
+        if (!storage.recurring) {
+          return {
+            uspjeh: false,
+            poruka: 'Spremište ponavljajućih računa nije konfigurirano.',
+          };
+        }
+
+        const referentniDatum = args.datum && typeof args.datum === 'string' 
+          ? args.datum 
+          : new Date().toISOString().slice(0, 10);
+
+        const aktivniProfili = await storage.recurring.getAll(true);
+        const dospjeliProfili = aktivniProfili.filter(p => jeDospjeloZaIzdavanje(p.sljedeceDospijeceDatum, referentniDatum));
+
+        const ukupnoEur = dospjeliProfili.reduce((sum, p) => sum + izracunajUkupnoPretplate(p.stavke), 0);
+
+        let poruka = '';
+        if (dospjeliProfili.length === 0) {
+          poruka = `Gosparu moj, sve pretplate i ponavljajući računi miruju ko barke pod zidinama. Nema profila koji čekaju izdavanje na dan ${formatHrvatskiDatum(referentniDatum)}.`;
+        } else {
+          const nazivi = dospjeliProfili.map(p => `${p.partnerNaziv} (${formatHrvatskiIznos(izracunajUkupnoPretplate(p.stavke))})`).join(', ');
+          poruka = `Imamo ${dospjeliProfili.length} dospjela ponavljajuća računa spremna za izdavanje ukupne vrijednosti ${formatHrvatskiIznos(ukupnoEur)}: ${nazivi}. Jednim klikom možemo generirati sve nacrte!`;
+        }
+
+        result = {
+          uspjeh: true,
+          podaci: {
+            referentniDatum,
+            brojAktivnih: aktivniProfili.length,
+            brojDospjelih: dospjeliProfili.length,
+            ukupnoDospjeloEur: ukupnoEur,
+            dospjeliProfili,
+          },
+          poruka,
         };
         break;
       }

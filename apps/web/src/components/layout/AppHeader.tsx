@@ -1,16 +1,55 @@
-import React from 'react';
+import { useState } from 'react';
 import { 
   Cloud,
   CloudOff,
   RefreshCw,
+  Download,
+  WifiOff,
+  Home,
 } from 'lucide-react';
 import { ObrtIcon, ObrtBadge } from '../icons';
 import { ThemeSelector } from '../ThemeSelector';
 import { formatHrvatskiIznos, type GoogleAuthIdentity } from '@obrtniq/core';
+import { usePwaInstall } from '../../hooks/usePwaInstall';
+import type { WorkspaceView } from '../../hooks/useWorkspaceRouter';
+
+interface GoogleAvatarBadgeProps {
+  pictureUrl?: string;
+  name?: string;
+}
+
+const GoogleAvatarBadge: React.FC<GoogleAvatarBadgeProps> = ({ pictureUrl, name }) => {
+  const [hasError, setHasError] = useState(false);
+  const initial = name && name.trim() ? name.trim().charAt(0).toUpperCase() : 'G';
+
+  if (!pictureUrl || hasError) {
+    return (
+      <div 
+        className="w-5 h-5 rounded-full bg-[#4285F4] text-white font-bold text-[10px] flex items-center justify-center font-mono shrink-0 shadow-sm"
+        title={name || 'Google račun'}
+      >
+        {initial}
+      </div>
+    );
+  }
+
+  return (
+    <img
+      src={pictureUrl}
+      alt={name || 'Google Avatar'}
+      referrerPolicy="no-referrer"
+      crossOrigin="anonymous"
+      onError={() => setHasError(true)}
+      className="w-5 h-5 rounded-full object-cover shrink-0 border border-white/10"
+    />
+  );
+};
 
 export interface AppHeaderProps {
   totalSavedDocs: number;
   totalKprNaplaceno: number;
+  activeView?: WorkspaceView;
+  onNavigateHome?: () => void;
   onOpenDocs: () => void;
   onOpenKpr: () => void;
   onOpenFiscal: () => void;
@@ -27,6 +66,8 @@ export interface AppHeaderProps {
 export const AppHeader: React.FC<AppHeaderProps> = ({
   totalSavedDocs,
   totalKprNaplaceno,
+  activeView = 'home',
+  onNavigateHome,
   onOpenDocs,
   onOpenKpr,
   onOpenFiscal,
@@ -39,6 +80,8 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
   lastSyncTime,
   onSyncClick,
 }) => {
+  const { isInstallable, isOffline, promptInstall } = usePwaInstall();
+
   return (
     <header className="border-b border-[var(--border-subtle)] bg-[var(--bg-surface)]/95 backdrop-blur px-4 sm:px-6 py-2 flex items-center justify-between sticky top-0 z-50 no-print">
       {/* 1. Lijeva sekcija: Glavni Orlando amblem (veći) + Ujednačeni navigacijski bar s većim ikonama i tooltipovima */}
@@ -51,10 +94,14 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
             glow 
             colorMode="gold"
             className="cursor-pointer hover:scale-105 active:scale-95 transition-transform shrink-0" 
-            onClick={onOpenSettings} 
-            label="ObrtnIQ - Dubrovačka Kripto-Republika" 
+            onClick={onNavigateHome || onOpenDocs} 
+            label="ObrtnIQ - Radna Ploha (Home)" 
           />
-          <div className="flex flex-col justify-center">
+          <div 
+            className="flex flex-col justify-center cursor-pointer select-none"
+            onClick={onNavigateHome}
+            title="Povratak na Radnu Plohu (Home)"
+          >
             <div className="flex items-center gap-1.5">
               <span className="font-extrabold text-xl tracking-tight text-white leading-none">
                 ObrtnIQ
@@ -73,14 +120,46 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
 
         {/* Ujednačeni Navigacijski Gumbi (Uniform 40x40px kapsule, veće ikone 22px, bogati floating tooltipovi) */}
         <nav className="flex items-center space-x-1.5 sm:space-x-2">
+          {/* 0. Gumb: Home / Radna Ploha (Novi račun) */}
+          <button
+            type="button"
+            onClick={onNavigateHome}
+            aria-label="Radna Ploha — Izrada novog računa (Alt+H)"
+            className={`relative group flex items-center justify-center w-10 h-10 transition-all cursor-pointer rounded-none ${
+              activeView === 'home'
+                ? 'bg-[var(--bg-elevated)] border-2 border-[var(--accent-primary)] shadow-[0_0_14px_var(--icon-layer-glow)] text-white'
+                : 'bg-[var(--bg-canvas)] hover:bg-[var(--bg-elevated)] text-slate-300 hover:text-white border border-[var(--border-subtle)] hover:border-[var(--accent-primary)]'
+            }`}
+          >
+            <Home className="w-5 h-5 text-[var(--accent-primary)]" />
+            {activeView === 'home' && (
+              <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-4 h-0.5 bg-[var(--accent-primary)] rounded-full" />
+            )}
+            {/* Tooltip */}
+            <div className="absolute top-full left-1/2 -translate-x-1/2 pt-2 hidden group-hover:flex flex-col items-center pointer-events-none z-[70] whitespace-nowrap">
+              <div className="w-2 h-2 bg-[#121316] border-t border-l border-[var(--border-strong)] rotate-45 -mb-1 z-10" />
+              <div className="bg-[#121316]/95 backdrop-blur-md text-[#e4e4e7] text-xs font-mono px-3 py-1.5 border border-[var(--border-strong)] shadow-2xl flex items-center gap-2">
+                <span className="font-bold text-white">Radna Ploha (Home)</span>
+                <span className="text-[10px] text-[var(--accent-primary)]">Novi račun &bull; Alt+H</span>
+              </div>
+            </div>
+          </button>
+
           {/* 1. Gumb: Dokumenti & Računi */}
           <button
             type="button"
             onClick={onOpenDocs}
             aria-label={`Dokumenti (${totalSavedDocs} spremljenih računa)`}
-            className="relative group flex items-center justify-center w-10 h-10 bg-[var(--bg-canvas)] hover:bg-[var(--bg-elevated)] text-white border border-[var(--border-subtle)] hover:border-[var(--accent-primary)] hover:shadow-[0_0_12px_var(--icon-layer-glow)] transition-all cursor-pointer rounded-none"
+            className={`relative group flex items-center justify-center w-10 h-10 transition-all cursor-pointer rounded-none ${
+              activeView === 'documents'
+                ? 'bg-[var(--bg-elevated)] border-2 border-[var(--accent-primary)] shadow-[0_0_14px_var(--icon-layer-glow)] text-white'
+                : 'bg-[var(--bg-canvas)] hover:bg-[var(--bg-elevated)] text-white border border-[var(--border-subtle)] hover:border-[var(--accent-primary)] hover:shadow-[0_0_12px_var(--icon-layer-glow)]'
+            }`}
           >
             <ObrtIcon name="invoice-document" size={22} isAnimated />
+            {activeView === 'documents' && (
+              <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-4 h-0.5 bg-[var(--accent-primary)] rounded-full" />
+            )}
             {totalSavedDocs > 0 && (
               <span className="absolute -top-1.5 -right-1.5 bg-[var(--accent-primary)] text-black font-mono font-black text-[9px] min-w-[17px] h-4 px-1 rounded-full flex items-center justify-center shadow-lg border border-[var(--bg-surface)] tabular-nums pointer-events-none">
                 {totalSavedDocs}
@@ -100,16 +179,23 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
           <button
             type="button"
             onClick={onOpenKpr}
-            aria-label="Knjiga Prometa i Obrazac PO-SD"
-            className="relative group flex items-center justify-center w-10 h-10 bg-[var(--bg-canvas)] hover:bg-[var(--bg-elevated)] text-white border border-[var(--border-subtle)] hover:border-[#10B981] hover:shadow-[0_0_12px_rgba(16,185,129,0.3)] transition-all cursor-pointer rounded-none"
+            aria-label="Knjigovodstvo: KPR, Doprinosi, Troškovi i Izvodi"
+            className={`relative group flex items-center justify-center w-10 h-10 transition-all cursor-pointer rounded-none ${
+              activeView === 'bookkeeping'
+                ? 'bg-[#10B981]/20 border-2 border-[#10B981] shadow-[0_0_14px_rgba(16,185,129,0.4)] text-white'
+                : 'bg-[var(--bg-canvas)] hover:bg-[var(--bg-elevated)] text-white border border-[var(--border-subtle)] hover:border-[#10B981] hover:shadow-[0_0_12px_rgba(16,185,129,0.3)]'
+            }`}
           >
             <ObrtIcon name="kpr-tower" size={22} isAnimated />
+            {activeView === 'bookkeeping' && (
+              <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-4 h-0.5 bg-[#10B981] rounded-full" />
+            )}
             {/* Tooltip */}
             <div className="absolute top-full left-1/2 -translate-x-1/2 pt-2 hidden group-hover:flex flex-col items-center pointer-events-none z-[70] whitespace-nowrap">
               <div className="w-2 h-2 bg-[#121316] border-t border-l border-[var(--border-strong)] rotate-45 -mb-1 z-10" />
               <div className="bg-[#121316]/95 backdrop-blur-md text-[#e4e4e7] text-xs font-mono px-3 py-1.5 border border-[var(--border-strong)] shadow-2xl flex items-center gap-2">
-                <span className="font-bold text-white">KPR &amp; PO-SD</span>
-                <span className="text-[10px] text-[#10B981]">Knjiga prometa &bull; Porezni XML</span>
+                <span className="font-bold text-white">Knjigovodstvo</span>
+                <span className="text-[10px] text-[#10B981]">Doprinosi &bull; KPR &bull; Troškovi &bull; Izvodi</span>
               </div>
             </div>
           </button>
@@ -119,9 +205,16 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
             type="button"
             onClick={onOpenFiscal}
             aria-label="Fiskalizacija 1.0 i 2.0 e-Račun"
-            className="relative group flex items-center justify-center w-10 h-10 bg-[var(--bg-canvas)] hover:bg-[var(--bg-elevated)] text-white border border-[var(--border-subtle)] hover:border-[#3B82F6] hover:shadow-[0_0_12px_rgba(59,130,246,0.3)] transition-all cursor-pointer rounded-none"
+            className={`relative group flex items-center justify-center w-10 h-10 transition-all cursor-pointer rounded-none ${
+              activeView === 'fiscal'
+                ? 'bg-[#3B82F6]/20 border-2 border-[#3B82F6] shadow-[0_0_14px_rgba(59,130,246,0.4)] text-white'
+                : 'bg-[var(--bg-canvas)] hover:bg-[var(--bg-elevated)] text-white border border-[var(--border-subtle)] hover:border-[#3B82F6] hover:shadow-[0_0_12px_rgba(59,130,246,0.3)]'
+            }`}
           >
             <ObrtIcon name="fiscal-quill" size={22} isAnimated />
+            {activeView === 'fiscal' && (
+              <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-4 h-0.5 bg-[#3B82F6] rounded-full" />
+            )}
             {/* Tooltip */}
             <div className="absolute top-full left-1/2 -translate-x-1/2 pt-2 hidden group-hover:flex flex-col items-center pointer-events-none z-[70] whitespace-nowrap">
               <div className="w-2 h-2 bg-[#121316] border-t border-l border-[var(--border-strong)] rotate-45 -mb-1 z-10" />
@@ -138,9 +231,16 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
               type="button"
               onClick={onOpenArticles}
               aria-label="Cjenik Artikala i Usluga s KPD 2025"
-              className="relative group flex items-center justify-center w-10 h-10 bg-[var(--bg-canvas)] hover:bg-[var(--bg-elevated)] text-white border border-[var(--border-subtle)] hover:border-[#F59E0B] hover:shadow-[0_0_12px_rgba(245,158,11,0.3)] transition-all cursor-pointer rounded-none"
+              className={`relative group flex items-center justify-center w-10 h-10 transition-all cursor-pointer rounded-none ${
+                activeView === 'articles'
+                  ? 'bg-[#F59E0B]/20 border-2 border-[#F59E0B] shadow-[0_0_14px_rgba(245,158,11,0.4)] text-white'
+                  : 'bg-[var(--bg-canvas)] hover:bg-[var(--bg-elevated)] text-white border border-[var(--border-subtle)] hover:border-[#F59E0B] hover:shadow-[0_0_12px_rgba(245,158,11,0.3)]'
+              }`}
             >
               <ObrtIcon name="catalog-pricing" size={22} isAnimated />
+              {activeView === 'articles' && (
+                <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-4 h-0.5 bg-[#F59E0B] rounded-full" />
+              )}
               {/* Tooltip */}
               <div className="absolute top-full left-1/2 -translate-x-1/2 pt-2 hidden group-hover:flex flex-col items-center pointer-events-none z-[70] whitespace-nowrap">
                 <div className="w-2 h-2 bg-[#121316] border-t border-l border-[var(--border-strong)] rotate-45 -mb-1 z-10" />
@@ -157,9 +257,16 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
             type="button"
             onClick={onOpenPartners}
             aria-label="Adresar Poslovnih Partnera (B2B imenik)"
-            className="relative group flex items-center justify-center w-10 h-10 bg-[var(--bg-canvas)] hover:bg-[var(--bg-elevated)] text-white border border-[var(--border-subtle)] hover:border-[var(--accent-primary)] hover:shadow-[0_0_12px_var(--icon-layer-glow)] transition-all cursor-pointer rounded-none"
+            className={`relative group flex items-center justify-center w-10 h-10 transition-all cursor-pointer rounded-none ${
+              activeView === 'partners'
+                ? 'bg-[var(--bg-elevated)] border-2 border-[var(--accent-primary)] shadow-[0_0_14px_var(--icon-layer-glow)] text-white'
+                : 'bg-[var(--bg-canvas)] hover:bg-[var(--bg-elevated)] text-white border border-[var(--border-subtle)] hover:border-[var(--accent-primary)] hover:shadow-[0_0_12px_var(--icon-layer-glow)]'
+            }`}
           >
             <ObrtIcon name="b2b-partners" size={22} isAnimated />
+            {activeView === 'partners' && (
+              <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-4 h-0.5 bg-[var(--accent-primary)] rounded-full" />
+            )}
             {/* Tooltip */}
             <div className="absolute top-full left-1/2 -translate-x-1/2 pt-2 hidden group-hover:flex flex-col items-center pointer-events-none z-[70] whitespace-nowrap">
               <div className="w-2 h-2 bg-[#121316] border-t border-l border-[var(--border-strong)] rotate-45 -mb-1 z-10" />
@@ -175,9 +282,16 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
             type="button"
             onClick={onOpenSettings}
             aria-label="Postavke Obrta i Memorandum"
-            className="relative group flex items-center justify-center w-10 h-10 bg-[var(--bg-canvas)] hover:bg-[var(--bg-elevated)] text-white border border-[var(--border-subtle)] hover:border-[var(--accent-primary)] hover:shadow-[0_0_12px_var(--icon-layer-glow)] transition-all cursor-pointer rounded-none"
+            className={`relative group flex items-center justify-center w-10 h-10 transition-all cursor-pointer rounded-none ${
+              activeView === 'settings'
+                ? 'bg-[var(--bg-elevated)] border-2 border-[var(--accent-primary)] shadow-[0_0_14px_var(--icon-layer-glow)] text-white'
+                : 'bg-[var(--bg-canvas)] hover:bg-[var(--bg-elevated)] text-white border border-[var(--border-subtle)] hover:border-[var(--accent-primary)] hover:shadow-[0_0_12px_var(--icon-layer-glow)]'
+            }`}
           >
             <ObrtIcon name="obrt-tools" size={22} isAnimated />
+            {activeView === 'settings' && (
+              <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-4 h-0.5 bg-[var(--accent-primary)] rounded-full" />
+            )}
             {/* Tooltip */}
             <div className="absolute top-full left-1/2 -translate-x-1/2 pt-2 hidden group-hover:flex flex-col items-center pointer-events-none z-[70] whitespace-nowrap">
               <div className="w-2 h-2 bg-[#121316] border-t border-l border-[var(--border-strong)] rotate-45 -mb-1 z-10" />
@@ -220,17 +334,10 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
               className="h-10 flex items-center space-x-2 px-2.5 bg-[var(--bg-canvas)] border border-[var(--border-subtle)] hover:border-[#4285F4] cursor-pointer transition-all"
               title={`Prijavljen: ${googleIdentity.email} (Google Sub: ${googleIdentity.googleSub})`}
             >
-              {googleIdentity.pictureUrl ? (
-                <img 
-                  src={googleIdentity.pictureUrl} 
-                  alt={googleIdentity.name || 'Google Avatar'} 
-                  className="w-5 h-5 rounded-full object-cover" 
-                />
-              ) : (
-                <div className="w-5 h-5 rounded-full bg-[#4285F4] text-white font-bold text-[10px] flex items-center justify-center font-mono">
-                  {googleIdentity.name ? googleIdentity.name.charAt(0) : 'G'}
-                </div>
-              )}
+              <GoogleAvatarBadge 
+                pictureUrl={googleIdentity.pictureUrl} 
+                name={googleIdentity.name || googleIdentity.email} 
+              />
               <span className="text-xs font-mono text-white hidden md:inline truncate max-w-[100px]">
                 {googleIdentity.name || googleIdentity.email}
               </span>
@@ -271,6 +378,30 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
             </button>
           )}
         </div>
+
+        {/* PWA Offline Indikator */}
+        {isOffline && (
+          <div 
+            className="h-10 flex items-center space-x-1.5 px-2.5 bg-amber-500/10 border border-amber-500/40 text-amber-400 text-xs font-mono select-none"
+            title="Aplikacija radi u offline načinu rada. Svi podaci se spremaju lokalno u preglednik (Dexie/IndexedDB)."
+          >
+            <WifiOff className="w-3.5 h-3.5 shrink-0" />
+            <span className="hidden sm:inline">Offline (PWA)</span>
+          </div>
+        )}
+
+        {/* PWA Instalacija Gumb */}
+        {isInstallable && (
+          <button
+            type="button"
+            onClick={() => promptInstall()}
+            className="h-10 flex items-center space-x-1.5 px-2.5 bg-gradient-to-r from-[var(--accent-primary)]/20 to-[var(--accent-primary)]/10 hover:from-[var(--accent-primary)]/30 hover:to-[var(--accent-primary)]/20 border border-[var(--accent-primary)] text-white text-xs font-mono transition-all cursor-pointer animate-pulse"
+            title="Instalirajte ObrtnIQ kao PWA aplikaciju na vaše računalo ili mobitel za samostalan rad bez interneta."
+          >
+            <Download className="w-3.5 h-3.5 text-[var(--accent-primary)] shrink-0" />
+            <span className="hidden sm:inline font-bold">Instaliraj App</span>
+          </button>
+        )}
 
         {/* Dynamic Theme Selector (Standardiziran na h-10) */}
         <ThemeSelector />

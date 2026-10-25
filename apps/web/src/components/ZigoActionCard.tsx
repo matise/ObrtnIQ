@@ -14,9 +14,20 @@ import {
   Search,
   ExternalLink,
   Check,
-  BookmarkCheck
+  BookmarkCheck,
+  ShieldCheck,
+  Receipt,
+  TrendingUp,
+  FileSpreadsheet,
+  Package
 } from 'lucide-react';
-import type { ZigoToolCall, ZigoToolResult } from '@obrtniq/core';
+import { 
+  formatHrvatskiIznos, 
+  formatHrvatskiDatum, 
+  KATEGORIJE_TROSKA_LABELS,
+  type ZigoToolCall, 
+  type ZigoToolResult 
+} from '@obrtniq/core';
 
 export interface ZigoActionCardProps {
   toolPoziv?: ZigoToolCall;
@@ -292,6 +303,162 @@ export const ZigoActionCard: React.FC<ZigoActionCardProps> = ({
         <div className="text-white font-bold">{mem.vrijednost}</div>
         <div className="text-[10px] text-[var(--text-muted)] mt-1">
           Ključ: <strong className="text-[#ffd700]">[{mem.kljuc}]</strong> {mem.kategorija ? `• ${mem.kategorija}` : ''}
+        </div>
+      </div>
+    );
+  }
+
+  // 9. Provjera obveznih doprinosa i poreza (Faza 18)
+  if (fnName === 'provjeri_obvezne_doprinose_i_porez' && data) {
+    const obracun = data.obracunZaMjesec;
+    const isPlaceno = obracun?.status === 'UPLACENO';
+
+    return (
+      <div className="mt-3 p-3.5 bg-gradient-to-br from-[#1c1d22] to-[#141518] border border-[#b89758]/60 shadow-xl font-mono text-xs space-y-2.5">
+        <div className="flex items-center justify-between border-b border-[#b89758]/30 pb-2">
+          <span className="flex items-center gap-1.5 text-[#ffd700] font-bold text-[11px] uppercase tracking-wider">
+            <ShieldCheck className="w-4 h-4 text-[#10B981]" /> Obvezni Doprinosi RH ({data.godina}.)
+          </span>
+          {isPlaceno ? (
+            <span className="text-[10px] text-[#10B981] px-2 py-0.5 bg-[#10B981]/10 border border-[#10B981]/30 font-bold">
+              UPLAĆENO
+            </span>
+          ) : (
+            <span className="text-[10px] text-[#F59E0B] px-2 py-0.5 bg-[#F59E0B]/10 border border-[#F59E0B]/30 font-bold">
+              ČEKA UPLATU
+            </span>
+          )}
+        </div>
+
+        {obracun && (
+          <div className="space-y-1.5 text-[11px]">
+            <div className="flex justify-between text-slate-300">
+              <span>Mjesec:</span>
+              <strong className="text-white font-bold">{data.provjeraMjesec}. mjesec ({data.godina}.)</strong>
+            </div>
+            <div className="flex justify-between text-slate-300">
+              <span>Ukupno za uplatu:</span>
+              <strong className="text-[#10B981] font-bold font-mono">{formatHrvatskiIznos(obracun.ukupnoDoprinosiEur)}</strong>
+            </div>
+            <div className="flex justify-between text-slate-300 text-[10px]">
+              <span>MIO 1 (15%) + MIO 2 (5%) + HZZO (16.5%):</span>
+              <span className="text-slate-400 font-mono">
+                {obracun.iznosMio1Eur.toFixed(2)} + {obracun.iznosMio2Eur.toFixed(2)} + {obracun.iznosHzzoEur.toFixed(2)} €
+              </span>
+            </div>
+            <div className="flex justify-between text-slate-400 text-[10px] pt-1 border-t border-slate-800">
+              <span>Rok plaćanja:</span>
+              <span className="text-[#ffd700] font-medium">{formatHrvatskiDatum(obracun.rokPlacanja)}</span>
+            </div>
+          </div>
+        )}
+
+        {data.brojNeplacenihDospjelih > 0 && (
+          <div className="p-2 bg-rose-950/30 border border-rose-800/40 rounded text-rose-300 text-[10px]">
+            Upozorenje: Imate {data.brojNeplacenihDospjelih} dospjeli neplaćeni mjesec doprinosa ({formatHrvatskiIznos(data.ukupnoNeplacenoDospjeloEur)}).
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // 10. Evidentiranje ulaznog troška (Faza 18)
+  if (fnName === 'evidentiraj_ulazni_trosak') {
+    const t = data?.trosak || args;
+    const ukupno = Number(t.ukupnoEur) || 0;
+    const katLabel = (KATEGORIJE_TROSKA_LABELS as Record<string, string>)[t.kategorija] || t.kategorija;
+    const isDugotrajna = t.jeDugotrajnaImovina || ukupno >= 663.61;
+
+    return (
+      <div className="mt-3 p-3.5 bg-gradient-to-br from-[#1c1d22] to-[#141518] border border-[#b89758]/60 shadow-xl font-mono text-xs space-y-2">
+        <div className="flex items-center justify-between border-b border-[#b89758]/30 pb-2">
+          <span className="flex items-center gap-1.5 text-[#ffd700] font-bold text-[11px] uppercase tracking-wider">
+            <Receipt className="w-4 h-4 text-[#10B981]" /> Evidentiran Ulazni Trošak
+          </span>
+          <span className="text-[10px] text-[#10B981] px-2 py-0.5 bg-[#10B981]/10 border border-[#10B981]/30 font-bold">
+            ZAVEDENO
+          </span>
+        </div>
+
+        <div className="flex items-start justify-between">
+          <div>
+            <div className="text-white font-bold text-[13px]">{t.dobavljacNaziv}</div>
+            <div className="text-[11px] text-slate-400 mt-0.5">{t.opis || katLabel}</div>
+          </div>
+          <div className="text-right">
+            <div className="text-sm font-bold text-[#10B981] font-mono">
+              {formatHrvatskiIznos(ukupno)}
+            </div>
+            <div className="text-[10px] text-slate-400">
+              {t.status === 'PLACENO' ? 'Plaćeno' : 'Čeka uplatu'}
+            </div>
+          </div>
+        </div>
+
+        <div className="pt-2 border-t border-slate-800 text-[10px] text-slate-400 flex items-center justify-between">
+          <span>Kategorija: <strong className="text-slate-200">{katLabel}</strong></span>
+          {isDugotrajna && (
+            <span className="inline-flex items-center gap-1 text-indigo-400 font-bold">
+              <Package className="w-3 h-3" /> Dugotrajna imovina
+            </span>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // 11. Financijska slika i neto dobit (Faza 18)
+  if (fnName === 'dohvati_financijsku_sliku_i_dobit' && data) {
+    return (
+      <div className="mt-3 p-3.5 bg-gradient-to-br from-[#1c1d22] to-[#141518] border border-[#b89758]/60 shadow-xl font-mono text-xs space-y-3">
+        <div className="flex items-center justify-between border-b border-[#b89758]/30 pb-2">
+          <span className="flex items-center gap-1.5 text-[#ffd700] font-bold text-[11px] uppercase tracking-wider">
+            <TrendingUp className="w-4 h-4 text-[#10B981]" /> Financijska Slika ({data.godina}.)
+          </span>
+          <span className="text-[10px] text-indigo-300 px-2 py-0.5 bg-indigo-500/10 border border-indigo-500/30 font-bold">
+            MARŽA: {data.profitnaMarzaPostotak}%
+          </span>
+        </div>
+
+        <div className="grid grid-cols-2 gap-2 text-[11px]">
+          <div className="p-2 bg-slate-900/60 rounded border border-slate-800">
+            <span className="text-[10px] text-slate-400 block">KPR PRIMICI:</span>
+            <span className="font-bold text-white font-mono text-xs">{formatHrvatskiIznos(data.kprPrimiciEur)}</span>
+          </div>
+          <div className="p-2 bg-slate-900/60 rounded border border-slate-800">
+            <span className="text-[10px] text-slate-400 block">UKUPNI IZDACI:</span>
+            <span className="font-bold text-rose-300 font-mono text-xs">{formatHrvatskiIznos(data.ukupniIzdaciEur)}</span>
+          </div>
+        </div>
+
+        <div className="p-2.5 bg-emerald-950/30 border border-emerald-800/40 rounded flex items-center justify-between">
+          <div>
+            <span className="text-[10px] text-emerald-400 font-bold block uppercase tracking-wider">ČISTA NETO DOBIT:</span>
+            <span className="text-base font-bold text-emerald-300 font-mono">{formatHrvatskiIznos(data.netoDobitEur)}</span>
+          </div>
+          <span className="text-2xl font-mono font-bold text-emerald-400/30">€</span>
+        </div>
+      </div>
+    );
+  }
+
+  // 12. Saldiranje transakcije s izvoda (Faza 18)
+  if (fnName === 'saldiraj_izvod_transakcije' && data) {
+    const kpr = data.kprStavka;
+    return (
+      <div className="mt-3 p-3 bg-[#1c1d22] border border-[#b89758]/60 shadow-md font-mono text-xs space-y-1.5">
+        <div className="flex items-center justify-between text-[#10B981] font-bold">
+          <span className="flex items-center gap-1.5">
+            <FileSpreadsheet className="w-4 h-4 text-[#10B981]" /> Saldirano u Knjigu Prometa
+          </span>
+          <span className="text-[10px] text-[#10B981] px-1.5 py-0.2 bg-[#10B981]/10 border border-[#10B981]/30">
+            KPR #{kpr?.brojKprStavke || 1}
+          </span>
+        </div>
+        <div className="text-white font-bold">{kpr?.opisPlatitelja || 'Uplata s bankovnog izvoda'}</div>
+        <div className="flex items-center justify-between text-[11px] text-slate-400 pt-1 border-t border-slate-800">
+          <span>Datum: {formatHrvatskiDatum(kpr?.datumNaplate || new Date())}</span>
+          <span className="text-white font-bold font-mono">+{formatHrvatskiIznos(kpr?.ukupnoNaplaceno || 0)}</span>
         </div>
       </div>
     );

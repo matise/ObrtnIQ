@@ -18,6 +18,19 @@ Ovaj dokument služi kao jedinstveni izvor istine za praćenje napretka, evident
 | **Faza 6** | **KPR i Obrazac PO-SD (Knjigovodstvo)** | 🟢 **ZAVRŠENO** | XML validacija protiv službene XSD sheme Porezne uprave v2.0, naplate promet, 40k prag | 2026-10-24 |
 | **Faza 7** | **Fiskalizacija 1.0 (CIS) & 2.0 (e-Račun)** | 🟢 **ZAVRŠENO** | 100% prolaznost (89/89 testova), FINA DEMO/PROD trezor (AES-256 s PIN-om), ZKI/JIR automati, 48h offline fallback, UBL 2.1 CIUS-HR s KPD 2025 i stateless proxy | 2026-10-24 |
 | **Faza 8** | **Postavke Obrta, Adresar Partnera & Memorandum** | 🟢 **ZAVRŠENO** | Dinamički profil obrta u Dexie bazi, adresar partnera s pretragom i brzim odabirom, klijentski upload logotipa i digitalnog pečata/potpisa (Base64), A4 i PDF render | 2026-10-24 |
+| **Faza 9** | **Katalog Artikala & Usluga (KPD 2025), KPR CSV & Kriptirani Backup** | 🟢 **ZAVRŠENO** | Cjenik s KPD 2025 šiframa, službeni KPR CSV izvoz s UTF-8 BOM za Excel, lokalni AES-256-GCM / PBKDF2 100k trezor | 2026-10-24 |
+| **Faza 10** | **Google Identity Kripto Sidro, Drive AppData Sync & Gemini BYOK** | 🟢 **ZAVRŠENO** | Zero-Server Auth s Google sub sidrom, skriveni Drive AppData folder, klijentska AI analiza | 2026-10-24 |
+| **Među-faza 10.5** | **Dijagnostika, Stack Parser & Error Boundary** | 🟢 **ZAVRŠENO** | Automatsko hvatanje neuhvaćenih grešaka, filtriranje stack traceova i auto-open konzola | 2026-10-24 |
+| **Faza 11** | **Žigo Autonomni Klijentski Agent (Function Calling & Žigin Rez)** | 🟢 **ZAVRŠENO** | 12 autonomnih alata sustava, perzistentni chat u Dexie bazi, multimodalna obrada (slike/PDF), trijaža i porezni filtar | 2026-10-24 |
+| **Faza 12** | **Vektorski Sustav Ikona, Orlando Pečati & Dinamičko Temiranje** | 🟢 **ZAVRŠENO** | 20 klesanih SVG simbola (48x48), mikro-animacije, dinamički SVG Favicon s crvenim alarmom, HSL integracija | 2026-10-24 |
+| **Faza 13 & 13.1** | **Žigo Omni-Copilot & Sustav Svjesnosti Konteksta (Eyes-on-Glass)** | 🟢 **ZAVRŠENO** | Docked Sidecar način rada, praćenje forme računa i praga u realnom vremenu, dubrovačka fonologija i stilizirane sekcije odgovora | 2026-10-25 |
+| **Faza 14** | **Žigo Glasovni Bedem (In-Browser STT & Akustički Leksikalni Normalizator)** | 🟢 **ZAVRŠENO** | 100% preglednički Web Speech API, fonetska normalizacija kratica (KPR, ZKI, JIR, OIB, PO-SD, e-Račun) | 2026-10-25 |
+| **Faza 15** | **Žigo Glasovni Narator & Master Audio Transport (In-Browser TTS)** | 🟢 **ZAVRŠENO** | Centralizirani Audio Transport s invarijantom jednog govornika, auto-read, vizualno praćenje teksta i prekid govora pri STT-u | 2026-10-25 |
+| **Faza 16** | **Google Cloud STT V2 & Cloud TTS Primarni Motor s Fallbackom** | 🟢 **ZAVRŠENO** | BYOK GCP STT V2 postavke, WaveNet bariton, latencija i test veza, Google Drive 401 retry, Newest-First dnevnik | 2026-10-25 |
+| **Faza 17** | **Sveobuhvatno Knjigovodstvo Obrta: Obvezni Doprinosi, HUB-3 Nalozi & Troškovnik** | 🟢 **ZAVRŠENO** | 100% prolaznost (357/357 testova, 0 tsc grešaka), MIO 1/2 i HZZO doprinosi s HR68 nalozima, kvartalni paušalni porez, troškovnik s dugotrajnom imovinom (>663,61 €), CSV izvod (ZABA, PBZ, Erste, HPB, OTP, Revolut) s 1-klik saldiranjem, HUB-3 i EPC SEPA QR uplatnice i objedinjeni 5-tab BookkeepingDrawer | 2026-10-25 |
+| **Faza 18** | **Žigo Inteligentni Knjigovodstveni Copilot, PWA Offline Instalabilnost & Godišnji Analitički Izvještaji** | 🟢 **ZAVRŠENO** | 100% prolaznost (364/364 testova, 0 tsc grešaka), 4 nova AI knjigovodstvena alata, PWA offline rad & Service Worker, Godišnja analitika i A4 PDF izvještaj | 2026-10-25 |
+| **Faza 19** | **Modularna Workspace Arhitektura (Home & View Router bez Blur Overlay-a, In-Place Navigacija)** | 🟢 **ZAVRŠENO** | Zamjena modalnih ladica punim in-place radnim prozorima bez backdrop blura i disablinga, trajno aktivni AppHeader s Orlando pečatom, očuvanje stanja računa u memoriji, Alt+H / Esc navigacija, 371/371 testova | 2026-10-25 |
+| **Faza 20** | **Poslovno Proširenje Obrta: Ponavljajući Računi (Subscriptions), Porezni Kalendar RH, Multi-Location & 1-Klik ZIP Paket** | 🟡 **SLJEDEĆA** | Ponavljajući paušali, službeni porezni kalendar s odbrojavanjem i uplatnicama, više poslovnih prostora i naplatnih uređaja, klijentsko slanje (Web Share/Mailto) i 1-klik arhivski paket za poreznu | 2026-10-25 |
 
 *Legenda statusa: ⚪ Čeka | 🟡 U tijeku / Sljedeća | 🟢 Završeno (Gate-Check verificiran) | 🔴 Blokirano*
 
@@ -723,3 +736,178 @@ Implementirana je duboka observabilnost kroz sve slojeve agentnog ekosustava:
   - **OAuth prijava (`ya29...`):** Korisnik bi morao dati privolu za pristup Google Cloudu, što bi zahtijevalo verifikaciju aplikacije kod Googlea i korisnički GCP račun s uključenim billingom.
 - **Potreban scope za OAuth:** `https://www.googleapis.com/auth/cloud-platform`. Zbog osjetljivosti i rizika (traži pristup svim GCP resursima korisnika), **ne preporučuje se** dodavati ga na korisnički OAuth login.
 - **Zadani (Default) mehanizam:** **Google Cloud API ključ (`AIzaSy...`)** postavljen u `.env` (`VITE_GOOGLE_CLIENT_API_KEY`) s restrikcijom domene (`localhost` i web domena aplikacije) i restrikcijom API-ja (`Cloud Text-to-Speech API`).
+
+---
+
+## 20. Faza 17: Sveobuhvatno Knjigovodstvo Obrta: Obvezni Doprinosi, HUB-3 Nalozi, Troškovnik i Bankovni Izvodi
+
+### 20.1. Pregled Implementiranih Sustava
+1. **Domenski Modul Obveznih Doprinosa i Poreza (`packages/core/src/domain/doprinosi.ts`):**
+   - Službene osnovice i stope doprinosa za paušalne obrtnike u RH (2026. godina): MIO I. stup (15%), MIO II. stup (5%), HZZO (16,5%).
+   - Generiranje standardnih naloga za plaćanje:
+     - MIO 1: Državni proračun RH (`HR1210010051863000160`), model `HR68`, poziv `8214-OIB`.
+     - MIO 2: REGOS (`HR7410010051700036001`), model `HR68`, poziv `2054-OIB`.
+     - HZZO: Državni proračun RH (`HR1210010051863000160`), model `HR68`, poziv `8478-OIB`.
+     - Kvartalni porez: Račun općine/grada prema sjedištu obrta, model `HR68`, poziv `1414-OIB`.
+   - Automatski izračun dospijeća (15. u mjesecu za doprinose prethodnog mjeseca; zadnji dan kvartala za porez).
+2. **Knjiga Ulaznih Troškova i Dugotrajna Imovina (`packages/core/src/domain/troskovi.ts`):**
+   - 10 kategorija troškova (softver, hosting, uredski materijal, alati, knjigovodstvo, najam, gorivo, komore/članarine, reprezentacija, ostalo).
+   - Detekcija dugotrajne imovine prema zakonskom pragu od 663,61 € (bivših 5.000 HRK) s evidentiranjem serijskog broja i automatskim tagiranjem.
+   - Izračun rekapitulacije troškova i dugotrajne imovine.
+3. **Financijska Slika i Cash-Flow Izračun (`packages/core/src/utils/cashflow.ts`):**
+   - Sintetizira KPR primitke, plaćene operativne troškove, uplaćene doprinose i paušalni porez.
+   - Prikazuje stvarnu čistu neto dobit obrta i profitnu maržu.
+4. **Univerzalni Parser Bankovnih Izvoda (`packages/core/src/domain/bank-statement.ts`):**
+   - Podrška za CSV i TXT izvoze vodećih hrvatskih banaka: ZABA, PBZ, Erste (George), HPB, OTP i Revolut Business.
+   - Automatsko prepoznavanje stupaca (datum, opis, IBAN, uplate, isplate, poziv na broj).
+   - Algoritam uparivanja transakcije s izdanim računom (`upariTransakcijuSRacunom`).
+5. **HUB-3 PDF417 i EPC SEPA QR Generator Uplatnica (`packages/core/src/utils/hub3-gov.ts` & `Hub3PaymentModal.tsx`):**
+   - Generiranje standardnih HUB-3 tekstualnih payloadova za državne račune i REGOS.
+   - Generiranje EPC SEPA QR kodova.
+   - Modalni prozor s Canvas renderiranjem na čistoj bijeloj podlozi za kamere m-bankinga, 1-klik kopiranjem IBAN-a i poziva na broj, ispisom uplatnice i označavanjem uplate.
+6. **Objedinjeni 5-Tab Knjigovodstveni Centar (`BookkeepingDrawer.tsx`):**
+   - Tab 1: Knjiga Prometa (KPR) s vizualnim nadzorom zakonskog praga 40.000,00 € (75% oprez, 90% upozorenje, prekoračen prag), tablicom stavaka, ručnim unosom i CSV izvozom s UTF-8 BOM.
+   - Tab 2: Obrazac PO-SD s 4 kvartalne kartice i validacijom službenog XML-a za ePoreznu.
+   - Tab 3: Obvezni doprinosi i kvartalni porezi s 12 mjesečnih kartica, statusnim bedževima i HUB-3 uplatnicama.
+   - Tab 4: Troškovnik i dugotrajna imovina s filtriranjem po kategorijama, statusu plaćanja, unosom računa i pregledom neto dobiti.
+   - Tab 5: Bankovni izvodi s drag-and-drop CSV zonom, listom transakcija i 1-klik knjiženjem u KPR uz automatsku promjenu statusa računa u `PLACENO`.
+7. **Pohrana i Kriptirani Backup:**
+   - Dexie baza nadograđena na shemu v4 (tablice `troskovi` i `doprinosiUplate`).
+   - Apstraktni repozitoriji `ITroskoviRepository` i `IDoprinosiRepository` integrirani u `IObrtnIQStorage`, `InMemoryObrtnIQStorage` i AES-256-GCM kriptirani JSON backup/restore (`ObrtnIQBackupData`).
+
+### 20.2. Verifikacija i Testovi (Gate-Check V17)
+- **Paket `@obrtniq/core`:** 25 testnih datoteka, **140/140 prolaznih testova (100%)**.
+- **Paket `@obrtniq/web`:** 22 testne datoteke, **217/217 prolaznih testova (100%)**.
+- **Ukupno u monorepu:** **357/357 prolaznih testova (100%)**.
+- **TypeScript build:** `tsc -b` prolazi s **0 grešaka** u svim paketima.
+- **Vite produkcijski bundle:** Uspješno izgrađen za 4,39 sekundi.
+
+---
+
+## 21. Faza 18: Žigo Inteligentni Knjigovodstveni Copilot, PWA Offline Instalabilnost & Godišnji Analitički Izvještaji Obrta
+
+### 21.1. Pregled Implementiranih Sustava
+1. **Četiri Nova Autonomna AI Knjigovodstvena Alata (`ZIGO_TOOLS` & `zigo-tools-dispatcher.ts`):**
+   - `provjeri_obvezne_doprinose_i_porez`: Provjera dospijeća i statusa MIO I, II i HZZO doprinosa te kvartalnog paušalnog poreza s automatskim pozivom HUB-3 uplatnica.
+   - `evidentiraj_ulazni_trosak`: Unos ulaznog računa/odreska s normalizacijom 10 kategorija troškova i automatskom detekcijom dugotrajne imovine (> 663,61 €).
+   - `dohvati_financijsku_sliku_i_dobit`: Sinteza KPR primitaka, operativnih izdataka i javnih davanja u čistu neto dobit i profitnu maržu.
+   - `saldiraj_izvod_transakcije`: Automatsko knjiženje bezgotovinskih uplata s izvoda u KPR i prebacivanje povezanog računa u status `PLACENO`.
+2. **Knjigovodstvene Akcijske Kartice (`ZigoActionCard.tsx`):**
+   - Četiri specijalizirane interaktivne kartice s dubrovačkom orlandovskom temom (`#b89758` / `#ffd700`), jasnim raščlambama troškova, marže i statusa uplate.
+3. **PWA Offline Instalabilnost i Service Worker:**
+   - `apps/web/public/manifest.webmanifest`: PWA konfiguracija za desktop i mobilne uređaje (Midnight tema `#0F172A`, standalone prikaz).
+   - Generirane visoko-rezolucijske ikone (`icon-192.png` i `icon-512.png`).
+   - `apps/web/public/sw.js`: Native Service Worker s Cache-First strategijom za statičke resurse i Google fontove, te Network-First za Google Cloud i CIS API-je.
+   - `apps/web/src/hooks/usePwaInstall.ts`: Hook za detekciju `beforeinstallprompt`, instalacijski status i offline radar.
+   - `AppHeader.tsx`: PWA install gumb s animacijom i diskretni offline bedž kada nema internetske veze.
+4. **Domenski Kalkulator Godišnje Analitike (`packages/core/src/domain/analytics.ts`):**
+   - Funkcija `izracunajGodisnjuAnalitiku`: Izračun ukupnih KPR primitaka, operativnih troškova, doprinosa, poreza, neto dobiti, profitne marže, strukture troškova po 10 kategorija, top 5 klijenata po prometu, 12-mjesečnog trenda poslovanja i registra dugotrajne imovine.
+5. **UI Analitika i A4 PDF Izvještaj Obrta (`BookkeepingDrawer.tsx` Tab 6):**
+   - `AnalitikaTab.tsx`: KPI kartice, status paušalnog praga (40.000 €), distribucija troškova, top partneri, mjesečni grafikon trenda i registar opreme.
+   - `AnnualReportPdfModal.tsx`: Službeni ISO 32000-1 A4 godišnji financijski izvještaj s memorandumom obrta, rekapitulacijom i mjestom za potpis/pečat za arhivu i kreditne institucije.
+
+### 21.2. Verifikacija i Testovi (Gate-Check V18-1 do V18-10)
+- **Paket `@obrtniq/core`:** 26 testnih datoteka, **141/141 prolaznih testova (100%)**.
+- **Paket `@obrtniq/web`:** 24 testne datoteke, **223/223 prolaznih testova (100%)**.
+- **Ukupno u monorepu:** **364/364 prolazna testa (100%)**.
+- **TypeScript build (`tsc -b`):** Prolazi s **0 grešaka** u svim paketima monorepa.
+- **Vite produkcijski bundle:** Uspješno izgrađen za 4,45 sekundi.
+
+---
+
+## 22. Faza 19: Modularna Workspace Arhitektura i In-Place Navigacija (Bez Modalnog Zamagljenja)
+
+### 22.1. Pregled Arhitekture i Izmjena
+1. **Eliminacija Modalnog Zamagljenja & Pozadinskog Zatamnjenja (`backdrop-blur` / `bg-black/60`):**
+   - Umjesto prethodnog koncepta u kojem su se svi moduli otvarali kao plutajuće ladice (drawers) koje zatamnjuju i blokiraju glavni radni prostor, ObrtnIQ je pretvoren u **Modularnu Workspace Aplikaciju**.
+   - Središnji radni prostor (`<main>`) dinamički zamjenjuje prikaz željenim modulom u punoj širini ekrana (`w-full`), pružajući maksimalnu preglednost tablica, analitika i obrazaca.
+2. **Klijentski Workspace Router (`useWorkspaceRouter.ts`):**
+   - Podržava 8 modularnih ruta: `'home' | 'bookkeeping' | 'documents' | 'fiscal' | 'articles' | 'partners' | 'settings' | 'logs'`.
+   - Dvosmjerna sinkronizacija s URL hash sidrom (`#home`, `#bookkeeping`, `#documents`, `#fiscal`, itd.) i parametrima prikaza (npr. `#bookkeeping?tab=doprinosi`).
+   - Dinamičko ažuriranje naslova dokumenta u pregledniku (`document.title`).
+3. **Trajno Aktivno Zaglavlje (`AppHeader.tsx`):**
+   - Zlatni Orlando amblem i naziv "ObrtnIQ" služe kao primarno Home sidro.
+   - Dodan posvećeni gumb: `0. Home / Radna ploha (Novi račun)` s ikonom kuće i aktivnim indikatorom.
+   - Svi gumbi modula (`Knjigovodstvo`, `Dokumenti`, `Fiskalizacija`, `Cjenik`, `Partneri`, `Postavke`) dinamički reflektiraju aktivno stanje s donjom crtom u boji teme.
+4. **Puni In-Place Workspace Prikazi (`*WorkspaceView.tsx`):**
+   - `BookkeepingWorkspaceView`: Puni raspon 6 knjigovodstvenih tabova (KPR, PO-SD, Doprinosi, Troškovnik, Izvodi, Analitika) bez suženja na 1024px.
+   - `SettingsWorkspaceView`: Puni prikaz postavki obrta, memoranduma, Cloud synca i AI motora.
+   - `DocumentWorkspaceView`: Pregledna evidencija izdanih računa s brzom navigacijom na radnu plohu jednim klikom na dokument.
+   - `FiscalWorkspaceView`: Cjelovita kontrolna ploča CIS Fiskalizacije 1.0 i e-Račun UBL 2.1 validatora.
+   - `ArticleWorkspaceView`: Katalog usluga s KPD 2025 tražilicom i trenutnim dodavanjem na račun uz povratak na radnu plohu.
+   - `PartnerWorkspaceView`: Adresar kupaca s OIB provjerom i jednokliknim odabirom partnera na radnu plohu.
+   - `SystemLogWorkspaceView`: Puni konzolni prikaz telemetrije i call stacka.
+   - Svaki workspace prikaz ima ugrađeni breadcrumb (`[🏠 Radna ploha (Home)] > Modul`) i gumb za povratak na radnu plohu (`← Povratak na Radnu plohu (Home)`).
+5. **Očuvanje Stanja Nacrta Računa u Memoriji:**
+   - Navigacijom na knjigovodstvo, postavke ili cjenik podaci računa u formi (`useInvoiceForm`), stavke (`useInvoiceItems`) i status (`useInvoiceWorkflow`) ostaju 100% sačuvani u memoriji React stabla.
+6. **Integracija s Žigo Copilotom i Tipkovničkim Prečacima:**
+   - Žigo u realnom vremenu zna točan aktivni ekran (`snapshot.aktivniEkran`).
+   - Tipkovnički prečac `Alt+H` u bilo kojem trenutku vraća korisnika na radnu plohu.
+   - Tipka `Escape` kada korisnik nije na početnom ekranu vraća na radnu plohu.
+
+### 22.2. Verifikacija i Testovi (Gate-Check V19-1 do V19-8)
+- **Paket `@obrtniq/core`:** 26 testnih datoteka, **141/141 prolaznih testova (100%)**.
+- **Paket `@obrtniq/web`:** 26 testnih datoteka, **230/230 prolaznih testova (100%)**.
+- **Ukupno u monorepu:** **52 testne datoteke, 371/371 prolaznih testova (100%)**.
+- **TypeScript provjera tipova:** `npx tsc --noEmit` i `tsc -b` prolaze s **0 grešaka**.
+- **Vite produkcijski bundle:** Uspješno izgrađen za 4,62 sekunde.
+
+---
+
+## 23. Faza 20: Poslovno Proširenje Obrta: Ponavljajući Računi (Subscriptions), Službeni Porezni Kalendar RH, Više Poslovnih Prostora (Multi-Location) te 1-Klik Arhivski Paket (ZIP)
+
+### 23.1. Pregled Implementiranih Sustava i Modula
+1. **Ponavljajući Računi i Pretplate (Subscriptions & Retainers):**
+   - **Domenski kalkulator (`packages/core/src/domain/recurring.ts`):** Podrška za frekvencije `MJESECNO`, `KVARTALNO` i `GODISNJE`, odabir fiksnog dana u mjesecu (1–31) uz automatsku korekciju za kraće mjesece (npr. 28/29. veljače), funkcija `jeDospjeloZaIzdavanje`, validacija profila i kalkulacija ukupnog iznosa.
+   - **Dexie perzistencija (`apps/web/src/storage/dexie-db.ts`):** Nadogradnja sheme na verziju 5 s novom tablicom `recurringProfiles`, implementacija `DexieRecurringRepository` i `MemoryRecurringRepository`.
+   - **Hook upravljanja (`apps/web/src/hooks/useRecurringInvoices.ts`):** Kompletne CRUD operacije, kreiranje predložaka s više stavaka i KPD 2025 šiframa, metoda `generirajNacrt` koja stvara novi račun u statusu `NACRT` na radnoj plohi, te metoda `generirajSveDospjele` za masovnu pripremu paušala jednim potezom.
+   - **UI komponente:** `RecurringInvoicesModal.tsx` za kreiranje i pregled pretplata s karticama i indikatorima dospijeća, te `RecurringSentinelBanner.tsx` na vrhu radne plohe za proaktivno upozorenje obrtnika o dospjelim računima.
+
+2. **Službeni Porezni Kalendar RH za Paušaliste i Proaktivni Sentinel:**
+   - **Domenski kalendar (`packages/core/src/domain/tax-calendar.ts`):** Katalog 17 službenih zakonskih rokova za paušalne obrtnike (12x mjesečni doprinosi MIO I, MIO II i HZZO s dospijećem 15. u mjesecu za prethodni mjesec, 4x kvartalni paušalni porez s dospijećem zadnji dan kvartala, 1x predaja Obrasca PO-SD s dospijećem 15. siječnja).
+   - **Izračun preostalih dana i statusi:** Funkcija `izracunajPreostaleDane` i statusi `CEKA_UPLATU`, `UPLACENO`, `PREKORACENO` s kronološkim sortiranjem i prepoznavanjem hitnosti (≤ 7 dana).
+   - **UI Tab 7 u Knjigovodstvu (`PorezniKalendarTab.tsx`):** Vremenska crta svih 17 rokova za zadanu godinu, brzi filtri (`Svi`, `Doprinosi`, `Porez`, `PO-SD`, `Čeka uplatu`), statusne značke i gumb za instant generiranje HUB-3 uplatnice i EPC-QR koda putem `Hub3PaymentModal`.
+   - **Tax Sentinel Banner (`TaxSentinelBanner.tsx`):** Proaktivni banner na vrhu radne plohe koji se aktivira 7 dana prije dospijeća poreza ili doprinosa s odbrojavanjem i 1-klik otvaranjem uplatnice.
+
+3. **Više Poslovnih Prostora i Naplatnih Uređaja (Multi-Premise & Multi-Device):**
+   - **Domenska specifikacija (`packages/core/src/domain/premises.ts`):** Strukture `PoslovniProstorConfig` i `NaplatniUredjajConfig`, formatiranje zakonskog broja dokumenta `Broj/Prostor/Uređaj` (npr. `1/POSL1/1`, `1/TEREN/1`), parsiranje i validacija oznaka (1–10 alfanumeričkih znakova, bez kosih crta).
+   - **Postavke obrta (`PoslovanjeTab.tsx`):** Upravljanje listom poslovnih prostora i pripadajućih uređaja (dodavanje, brisanje, adresa, radno vrijeme).
+   - **Workflow integracija (`useInvoiceWorkflow.ts`):** Odabir aktivnog prostora i uređaja za svaki račun uz očuvanje nezavisnih sekvenci numeriranja.
+
+4. **Klijentski Dispečer Slanja i Dijeljenja Računa (`invoice-dispatcher.ts`):**
+   - **E-mail dispečer (`buildMailtoUrl`):** Generira `mailto:` poveznicu s automatski sročenim hrvatskim tekstom koji sadrži broj računa, iznos, poziv na broj i IBAN obrta.
+   - **Chat sažetak (`buildChatSummary` & `buildWhatsAppUrl`):** Formatirani kratki sažetak računa za WhatsApp/Viber/SMS s funkcijom sigurnog kopiranja u međuspremnik (`copyToClipboard`).
+   - **Web Share API (`shareInvoicePdf`):** Korištenje modernog `navigator.share` API-ja za slanje generirane PDF datoteke direktno iz preglednika na podržanim mobilnim i desktop sustavima uz fallback na preuzimanje.
+   - **UI akcije:** Padajući izbornik *"Pošalji / Podijeli"* u `InvoiceLivePreview.tsx`.
+
+5. **1-Klik Arhivski Revizorski Paket (ZIP) (`audit-export-service.ts`):**
+   - **Pakiranje u pregledniku (`jszip`):** Potpuni klijentski izvoz svih relevantnih poslovnih knjiga i dokumenata za zadanu godinu u strukturirani ZIP arhiv naziva `ObrtnIQ_Porezni_Paket_[OIB]_[GODINA].zip`.
+   - **Struktura mapa u paketu:**
+     - `01_Knjiga_Prometa/`: Službeni `KPR_[GODINA].csv` s UTF-8 BOM za Excel i `KPR_Sazetak_[GODINA].txt`.
+     - `02_Obrazac_POSD/`: Službeni `Obrazac_POSD_[GODINA].xml` usklađen s ePorezna shemom v2.0.
+     - `03_Troskovnik_I_Imovina/`: `Evidencija_Troskova_[GODINA].csv` i `Registar_Dugotrajne_Imovine_[GODINA].csv`.
+     - `04_Godisnja_Analitika/`: Tekstualni financijski sažetak poslovanja.
+     - `METAPODACI_REVIZIJA.json`: Metapodaci o generiranju, verziji sustava, profilu obrta i kontrolnom zbroju stavki.
+   - **UI integracija:** Gumb *"📦 Preuzmi cjeloviti godišnji porezni paket (ZIP)"* u `AnalitikaTab.tsx`.
+
+6. **Žigo AI Copilot Proširenje Alata (`gemini-service.ts` & `zigo-tools-dispatcher.ts`):**
+   - **Alat `provjeri_porezni_kalendar_i_rokove`:** Žigo provjerava stanje poreznih obveza i rokova, izračunava preostale dane te korisnika obavještava u orlandovskom dubrovačkom tonu uz preporuku plaćanja.
+   - **Alat `pregledaj_dospjele_ponavljajuce_racune`:** Žigo detektira pretplate koje čekaju izdavanje na današnji dan, izračunava ukupni iznos i nudi generiranje nacrta.
+
+### 23.2. Verifikacija i Testovi (Gate-Check V20-1 do V20-8)
+- **Paket `@obrtniq/core`:** 29 testnih datoteka, **156/156 prolaznih testova (100%)**.
+  - `recurring.test.ts` (6 testova)
+  - `tax-calendar.test.ts` (4 testa)
+  - `premises.test.ts` (5 testova)
+- **Paket `@obrtniq/web`:** 32 testne datoteke, **248/248 prolaznih testova (100%)**.
+  - `recurring-invoices.test.ts` (3 testa)
+  - `tax-calendar-ui.test.ts` (3 testa)
+  - `premises-workflow.test.ts` (3 testa)
+  - `invoice-dispatcher.test.ts` (3 testa)
+  - `audit-export.test.ts` (1 test)
+  - `zigo-faza20-tools.test.ts` (5 testova)
+- **Ukupno u monorepu:** **61 testna datoteka, 404/404 prolazna testa (100%)**.
+- **TypeScript provjera tipova (`tsc -b`):** 0 grešaka u svim paketima monorepa.
+- **Vite produkcijski bundle:** Uspješno izgrađen za 5,62 sekunde.
+
+

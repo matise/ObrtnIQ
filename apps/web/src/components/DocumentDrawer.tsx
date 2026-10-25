@@ -11,7 +11,9 @@ import {
   Calendar, 
   Building2, 
   ArrowRight,
-  RefreshCw
+  RefreshCw,
+  Home,
+  ArrowLeft,
 } from 'lucide-react';
 import type { Dokument, VrstaDokumenta } from '@obrtniq/core';
 import { dexieStorage } from '../storage/dexie-db';
@@ -23,6 +25,8 @@ export interface DocumentDrawerProps {
   activeDocumentId?: string;
   onSelectDocument: (doc: Dokument) => void;
   onNewDocument: (vrsta: VrstaDokumenta) => void;
+  isEmbedded?: boolean;
+  onNavigateHome?: () => void;
 }
 
 export function DocumentDrawer({
@@ -31,6 +35,8 @@ export function DocumentDrawer({
   activeDocumentId,
   onSelectDocument,
   onNewDocument,
+  isEmbedded = false,
+  onNavigateHome,
 }: DocumentDrawerProps) {
   const [documents, setDocuments] = useState<Dokument[]>([]);
   const [filterType, setFilterType] = useState<'ALL' | 'RACUN' | 'PONUDA' | 'STORNO_RACUN'>('ALL');
@@ -59,39 +65,68 @@ export function DocumentDrawer({
     return d.vrstaDokumenta === filterType;
   });
 
-  return (
-    <div className="fixed inset-0 z-50 flex justify-end bg-black/60 backdrop-blur-sm transition-all duration-200 no-print">
-      <div 
-        className="w-full max-w-xl bg-[var(--bg-surface)] border-l border-[var(--border-strong)] flex flex-col h-full shadow-2xl animate-in slide-in-from-right duration-200"
-      >
-        {/* Drawer Header */}
-        <div className="p-4 sm:p-5 border-b border-[var(--border-subtle)] flex items-center justify-between bg-[var(--bg-canvas)]">
-          <div className="flex items-center space-x-3">
-            <div className="w-8 h-8 bg-[var(--accent-primary)]/20 border border-[var(--accent-primary)]/40 flex items-center justify-center text-[var(--accent-primary)]">
-              <FileText className="w-4 h-4" />
-            </div>
-            <div>
-              <h2 className="font-bold text-base text-white flex items-center gap-2">
-                Evidencija Dokumenata
-                <span className="text-xs font-mono font-normal text-[var(--text-muted)] bg-[var(--bg-elevated)] px-2 py-0.5 border border-[var(--border-subtle)]">
-                  {documents.length} u bazi
-                </span>
-              </h2>
-              <p className="text-xs font-mono text-[var(--text-muted)]">
-                Dexie.js IndexedDB &bull; Lokalna trajna pohrana
-              </p>
-            </div>
+  const content = (
+    <div 
+      className={
+        isEmbedded
+          ? "w-full bg-[var(--bg-surface)] border border-[var(--border-strong)] rounded-2xl flex flex-col min-h-[calc(100vh-160px)] shadow-2xl overflow-hidden animate-in fade-in duration-200"
+          : "w-full max-w-xl bg-[var(--bg-surface)] border-l border-[var(--border-strong)] flex flex-col h-full shadow-2xl animate-in slide-in-from-right duration-200"
+      }
+    >
+      {/* Drawer Header */}
+      <div className="p-4 sm:p-5 border-b border-[var(--border-subtle)] flex items-center justify-between bg-[var(--bg-canvas)] flex-wrap gap-3">
+        <div className="flex items-center space-x-3">
+          <div className="w-8 h-8 bg-[var(--accent-primary)]/20 border border-[var(--accent-primary)]/40 flex items-center justify-center text-[var(--accent-primary)] shrink-0">
+            <FileText className="w-4 h-4" />
           </div>
+          <div>
+            {isEmbedded && (
+              <div className="flex items-center gap-2 text-xs text-[var(--text-muted)] mb-1 font-mono">
+                <button
+                  type="button"
+                  onClick={onNavigateHome || onClose}
+                  className="hover:text-[var(--accent-primary)] flex items-center gap-1.5 transition-colors font-medium"
+                >
+                  <Home className="w-3.5 h-3.5 text-[var(--accent-primary)]" />
+                  <span>Radna ploha (Home)</span>
+                </button>
+                <span>/</span>
+                <span className="text-white font-semibold">Evidencija Dokumenata</span>
+              </div>
+            )}
+            <h2 className="font-bold text-base text-white flex items-center gap-2">
+              Evidencija Dokumenata
+              <span className="text-xs font-mono font-normal text-[var(--text-muted)] bg-[var(--bg-elevated)] px-2 py-0.5 border border-[var(--border-subtle)]">
+                {documents.length} u bazi
+              </span>
+            </h2>
+            <p className="text-xs font-mono text-[var(--text-muted)]">
+              Dexie.js IndexedDB &bull; Lokalna trajna pohrana
+            </p>
+          </div>
+        </div>
 
-          <div className="flex items-center space-x-2">
+        <div className="flex items-center space-x-2">
+          <button
+            type="button"
+            onClick={loadDocuments}
+            title="Osvježi popis"
+            className="p-1.5 text-[var(--text-muted)] hover:text-white border border-transparent hover:border-[var(--border-subtle)] transition-colors"
+          >
+            <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
+          </button>
+
+          {isEmbedded ? (
             <button
               type="button"
-              onClick={loadDocuments}
-              title="Osvježi popis"
-              className="p-1.5 text-[var(--text-muted)] hover:text-white border border-transparent hover:border-[var(--border-subtle)] transition-colors"
+              onClick={onNavigateHome || onClose}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-mono text-white bg-[var(--bg-elevated)] hover:bg-[var(--bg-subtle)] border border-[var(--border-strong)] transition-colors"
+              title="Povratak na radnu plohu (Alt+H)"
             >
-              <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
+              <ArrowLeft className="w-3.5 h-3.5 text-[var(--accent-primary)]" />
+              <span>Povratak na Radnu plohu</span>
             </button>
+          ) : (
             <button
               type="button"
               onClick={onClose}
@@ -99,8 +134,9 @@ export function DocumentDrawer({
             >
               <X className="w-5 h-5" />
             </button>
-          </div>
+          )}
         </div>
+      </div>
 
         {/* Action Header: Create New + Filter Tabs */}
         <div className="p-4 border-b border-[var(--border-subtle)] bg-[var(--bg-surface)] space-y-3">
@@ -109,7 +145,8 @@ export function DocumentDrawer({
               type="button"
               onClick={() => {
                 onNewDocument('RACUN');
-                onClose();
+                if (isEmbedded && onNavigateHome) onNavigateHome();
+                else onClose();
               }}
               className="flex-1 py-2 px-3 bg-[#10B981] hover:bg-[#059669] text-black font-mono font-bold text-xs flex items-center justify-center gap-1.5 transition-all shadow-md active:scale-95"
             >
@@ -120,7 +157,8 @@ export function DocumentDrawer({
               type="button"
               onClick={() => {
                 onNewDocument('PONUDA');
-                onClose();
+                if (isEmbedded && onNavigateHome) onNavigateHome();
+                else onClose();
               }}
               className="flex-1 py-2 px-3 bg-[var(--bg-elevated)] hover:bg-[var(--bg-subtle)] text-white border border-[var(--border-strong)] font-mono font-bold text-xs flex items-center justify-center gap-1.5 transition-all active:scale-95"
             >
@@ -176,7 +214,8 @@ export function DocumentDrawer({
                   key={doc.id}
                   onClick={() => {
                     onSelectDocument(doc);
-                    onClose();
+                    if (isEmbedded && onNavigateHome) onNavigateHome();
+                    else onClose();
                   }}
                   className={`p-3.5 border transition-all cursor-pointer font-mono text-xs flex flex-col gap-2 ${
                     isActive
@@ -253,6 +292,15 @@ export function DocumentDrawer({
           <span>IndexedDB Ready</span>
         </div>
       </div>
+  );
+
+  if (isEmbedded) {
+    return content;
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex justify-end bg-black/60 backdrop-blur-sm transition-all duration-200 no-print">
+      {content}
     </div>
   );
 }

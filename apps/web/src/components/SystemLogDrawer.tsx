@@ -15,7 +15,9 @@ import {
   EyeOff,
   Zap,
   ArrowDownUp,
-  Focus
+  Focus,
+  Home,
+  ArrowLeft,
 } from 'lucide-react';
 import { LogLevel, LogEntry } from '@obrtniq/core';
 import { appLogger } from '../services/logger';
@@ -25,12 +27,19 @@ import { ObrtIcon, ObrtBadge } from './icons';
 const STORAGE_KEY_LOG_ORDER = 'obrtniq_log_order_newest_first';
 const STORAGE_KEY_AUTO_SCROLL = 'obrtniq_log_auto_scroll';
 
-interface SystemLogDrawerProps {
+export interface SystemLogDrawerProps {
   isOpen: boolean;
   onClose: () => void;
+  isEmbedded?: boolean;
+  onNavigateHome?: () => void;
 }
 
-export function SystemLogDrawer({ isOpen, onClose }: SystemLogDrawerProps) {
+export function SystemLogDrawer({
+  isOpen,
+  onClose,
+  isEmbedded = false,
+  onNavigateHome,
+}: SystemLogDrawerProps) {
   const { 
     logs, 
     activeLevel, 
@@ -207,15 +216,35 @@ export function SystemLogDrawer({ isOpen, onClose }: SystemLogDrawerProps) {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-x-0 bottom-0 z-[60] bg-[var(--bg-canvas)] border-t border-[var(--border-strong)] shadow-2xl flex flex-col h-[420px] max-h-[85vh] transition-all no-print font-mono text-xs">
+    <div className={
+      isEmbedded
+        ? "w-full bg-[var(--bg-canvas)] border border-[var(--border-strong)] rounded-2xl shadow-2xl flex flex-col min-h-[calc(100vh-160px)] transition-all font-mono text-xs overflow-hidden animate-in fade-in duration-200"
+        : "fixed inset-x-0 bottom-0 z-[60] bg-[var(--bg-canvas)] border-t border-[var(--border-strong)] shadow-2xl flex flex-col h-[420px] max-h-[85vh] transition-all no-print font-mono text-xs"
+    }>
       {/* 1. Top Header Bar */}
-      <div className="px-4 py-2 bg-[var(--bg-surface)] border-b border-[var(--border-subtle)] flex items-center justify-between gap-3">
+      <div className="px-4 py-2.5 bg-[var(--bg-surface)] border-b border-[var(--border-subtle)] flex items-center justify-between gap-3 flex-wrap">
         <div className="flex items-center space-x-3">
           <div className="flex items-center space-x-2 text-white">
             <ObrtIcon name="telemetry-terminal" size={16} glow />
-            <span className="font-mono text-xs font-bold uppercase tracking-wider">
-              Sustavni Dnevnik &bull; Telemetrija &amp; Call Stack
-            </span>
+            <div>
+              {isEmbedded && (
+                <div className="flex items-center gap-2 text-xs text-[var(--text-muted)] mb-1 font-mono">
+                  <button
+                    type="button"
+                    onClick={onNavigateHome || onClose}
+                    className="hover:text-[var(--accent-primary)] flex items-center gap-1.5 transition-colors font-medium"
+                  >
+                    <Home className="w-3.5 h-3.5 text-[var(--accent-primary)]" />
+                    <span>Radna ploha (Home)</span>
+                  </button>
+                  <span>/</span>
+                  <span className="text-white font-semibold">Sustavni Dnevnik</span>
+                </div>
+              )}
+              <span className="font-mono text-xs font-bold uppercase tracking-wider block">
+                Sustavni Dnevnik &bull; Telemetrija &amp; Call Stack
+              </span>
+            </div>
           </div>
 
           <div className="flex items-center space-x-1.5 text-[11px] font-mono">
@@ -336,14 +365,26 @@ export function SystemLogDrawer({ isOpen, onClose }: SystemLogDrawerProps) {
             <Trash2 className="w-3.5 h-3.5" />
           </button>
 
-          {/* Close Drawer Button */}
-          <button
-            type="button"
-            onClick={onClose}
-            className="p-1 text-[var(--text-muted)] hover:text-white border border-transparent hover:border-[var(--border-strong)] transition-colors cursor-pointer"
-          >
-            <X className="w-4 h-4" />
-          </button>
+          {/* Close or Return Button */}
+          {isEmbedded ? (
+            <button
+              type="button"
+              onClick={onNavigateHome || onClose}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-mono text-white bg-[var(--bg-elevated)] hover:bg-[var(--bg-subtle)] border border-[var(--border-strong)] transition-colors cursor-pointer"
+              title="Povratak na radnu plohu (Alt+H)"
+            >
+              <ArrowLeft className="w-3.5 h-3.5 text-[var(--accent-primary)]" />
+              <span>Povratak na Radnu plohu</span>
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={onClose}
+              className="p-1 text-[var(--text-muted)] hover:text-white border border-transparent hover:border-[var(--border-strong)] transition-colors cursor-pointer"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          )}
         </div>
       </div>
 

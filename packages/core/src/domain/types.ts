@@ -1,6 +1,7 @@
 // packages/core/src/domain/types.ts
 
 export type Valuta = 'EUR';
+import type { PoslovniProstorConfig } from './premises';
 
 export type NacinPlacanja = 
   | 'TRANSAKCIJSKI_RACUN' 
@@ -89,6 +90,7 @@ export interface ObrtProfil {
   pdvIdBroj?: string; // Npr. HR79102730089
   poslovniProstorOznaka: string; // Npr. "POSL1"
   naplatniUredjajOznaka: string; // Npr. "1"
+  poslovniProstori?: PoslovniProstorConfig[];
   logoImageData?: string; // Base64 data URL
   pecatPotpisImageData?: string; // Base64 data URL
   eracunPosrednik: 'FINA' | 'MOJ_ERACUN' | 'EDOKUMENT' | 'CUSTOM_API' | 'BEZ_POSREDNIKA';

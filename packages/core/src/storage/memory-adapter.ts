@@ -5,7 +5,10 @@ import type {
   IArtiklRepository, 
   IDokumentRepository, 
   IKprRepository,
-  IChatRepository
+  IChatRepository,
+  ITroskoviRepository,
+  IDoprinosiRepository,
+  IRecurringRepository
 } from './interfaces';
 import type { 
   ObrtProfil, 
@@ -17,6 +20,10 @@ import type {
   ZigoChatSesija,
   ZigoChatPoruka
 } from '../domain/types';
+import type { UlazniTrosak } from '../domain/troskovi';
+import type { MjesecniObracunDoprinosa } from '../domain/doprinosi';
+import type { RecurringProfile } from '../domain/recurring';
+import { jeDospjeloZaIzdavanje } from '../domain/recurring';
 
 export class MemoryObrtRepository implements IObrtRepository {
   private profil: ObrtProfil | null = null;
@@ -273,6 +280,105 @@ export class MemoryChatRepository implements IChatRepository {
   }
 }
 
+export class MemoryTroskoviRepository implements ITroskoviRepository {
+  private troskovi: Map<string, UlazniTrosak> = new Map();
+
+  async getAll(filterGodina?: number): Promise<UlazniTrosak[]> {
+    const list = Array.from(this.troskovi.values());
+    if (filterGodina !== undefined) {
+      return list.filter(t => parseInt(t.datumRacuna.slice(0, 4), 10) === filterGodina);
+    }
+    return list;
+  }
+
+  async getById(id: string): Promise<UlazniTrosak | null> {
+    const t = this.troskovi.get(id);
+    return t ? { ...t } : null;
+  }
+
+  async save(trosak: UlazniTrosak): Promise<void> {
+    this.troskovi.set(trosak.id, { ...trosak });
+  }
+
+  async update(id: string, partial: Partial<UlazniTrosak>): Promise<void> {
+    const current = this.troskovi.get(id);
+    if (!current) throw new Error(`Trošak sa ID ${id} ne postoji.`);
+    this.troskovi.set(id, { ...current, ...partial });
+  }
+
+  async delete(id: string): Promise<void> {
+    this.troskovi.delete(id);
+  }
+
+  clear(): void {
+    this.troskovi.clear();
+  }
+}
+
+export class MemoryDoprinosiRepository implements IDoprinosiRepository {
+  private uplate: Map<string, MjesecniObracunDoprinosa> = new Map();
+
+  async getAllUplate(godina?: number): Promise<MjesecniObracunDoprinosa[]> {
+    const list = Array.from(this.uplate.values());
+    if (godina !== undefined) {
+      return list.filter(u => u.godina === godina);
+    }
+    return list;
+  }
+
+  async saveUplata(obracun: MjesecniObracunDoprinosa): Promise<void> {
+    this.uplate.set(obracun.id, { ...obracun });
+  }
+
+  async deleteUplata(id: string): Promise<void> {
+    this.uplate.delete(id);
+  }
+
+  clear(): void {
+    this.uplate.clear();
+  }
+}
+
+export class MemoryRecurringRepository implements IRecurringRepository {
+  private profili: Map<string, RecurringProfile> = new Map();
+
+  async getAll(filterAktivan?: boolean): Promise<RecurringProfile[]> {
+    const list = Array.from(this.profili.values());
+    if (filterAktivan !== undefined) {
+      return list.filter(p => p.aktivan === filterAktivan);
+    }
+    return list;
+  }
+
+  async getById(id: string): Promise<RecurringProfile | null> {
+    const p = this.profili.get(id);
+    return p ? { ...p } : null;
+  }
+
+  async save(profil: RecurringProfile): Promise<void> {
+    this.profili.set(profil.id, { ...profil });
+  }
+
+  async update(id: string, partial: Partial<RecurringProfile>): Promise<void> {
+    const current = this.profili.get(id);
+    if (!current) throw new Error(`Profil pretplate ${id} ne postoji.`);
+    this.profili.set(id, { ...current, ...partial });
+  }
+
+  async delete(id: string): Promise<void> {
+    this.profili.delete(id);
+  }
+
+  async getDospjeli(danasDatum?: string): Promise<RecurringProfile[]> {
+    const list = Array.from(this.profili.values()).filter(p => p.aktivan);
+    return list.filter(p => jeDospjeloZaIzdavanje(p.sljedeceDospijeceDatum, danasDatum));
+  }
+
+  clear(): void {
+    this.profili.clear();
+  }
+}
+
 export class InMemoryObrtnIQStorage implements IObrtnIQStorage {
   public obrt = new MemoryObrtRepository();
   public partneri = new MemoryPartnerRepository();
@@ -280,6 +386,9 @@ export class InMemoryObrtnIQStorage implements IObrtnIQStorage {
   public dokumenti = new MemoryDokumentRepository();
   public kpr = new MemoryKprRepository();
   public chat = new MemoryChatRepository();
+  public troskovi = new MemoryTroskoviRepository();
+  public doprinosi = new MemoryDoprinosiRepository();
+  public recurring = new MemoryRecurringRepository();
 
   async clearAll(): Promise<void> {
     this.obrt = new MemoryObrtRepository();
@@ -288,6 +397,9 @@ export class InMemoryObrtnIQStorage implements IObrtnIQStorage {
     this.dokumenti.clear();
     this.kpr.clear();
     this.chat.clear();
+    this.troskovi.clear();
+    this.doprinosi.clear();
+    this.recurring.clear();
   }
 }
 

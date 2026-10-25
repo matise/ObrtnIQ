@@ -20,6 +20,8 @@ export interface ObrtnIQBackupData {
   kpr: NaplataPromet[];
   chatSesije?: ZigoChatSesija[];
   chatPoruke?: ZigoChatPoruka[];
+  troskovi?: any[];
+  doprinosi?: any[];
 }
 
 export interface EncryptedPayloadEnvelope {
@@ -82,6 +84,16 @@ export async function createBackupSnapshot(storage: IObrtnIQStorage): Promise<Ob
     chatPoruke = allPoruke;
   }
 
+  let troskovi: any[] | undefined;
+  if (storage.troskovi) {
+    troskovi = await storage.troskovi.getAll();
+  }
+
+  let doprinosi: any[] | undefined;
+  if (storage.doprinosi) {
+    doprinosi = await storage.doprinosi.getAllUplate();
+  }
+
   return {
     shemaVerzija: '3.0',
     sustav: 'ObrtnIQ',
@@ -93,6 +105,8 @@ export async function createBackupSnapshot(storage: IObrtnIQStorage): Promise<Ob
     kpr,
     chatSesije,
     chatPoruke,
+    troskovi,
+    doprinosi,
   };
 }
 
@@ -142,6 +156,18 @@ export async function restoreBackupSnapshot(
       for (const poruka of backup.chatPoruke) {
         await storage.chat.savePoruka(poruka);
       }
+    }
+  }
+
+  if (storage.troskovi && backup.troskovi && backup.troskovi.length > 0) {
+    for (const trosak of backup.troskovi) {
+      await storage.troskovi.save(trosak);
+    }
+  }
+
+  if (storage.doprinosi && backup.doprinosi && backup.doprinosi.length > 0) {
+    for (const doprinos of backup.doprinosi) {
+      await storage.doprinosi.saveUplata(doprinos);
     }
   }
 }

@@ -10,14 +10,20 @@ import type {
   ZigoChatSesija,
   ZigoChatPoruka,
   ZigoUserMemory,
+  RecurringProfile,
   IObrtnIQStorage,
   IObrtRepository,
   IPartnerRepository,
   IArtiklRepository,
   IDokumentRepository,
   IKprRepository,
-  IChatRepository
+  IChatRepository,
+  ITroskoviRepository,
+  IDoprinosiRepository,
+  IRecurringRepository
 } from '@obrtniq/core';
+import { jeDospjeloZaIzdavanje } from '@obrtniq/core';
+
 
 export class ObrtnIQDexieDatabase extends Dexie {
   obrtProfil!: Table<ObrtProfil, string>;
@@ -28,6 +34,9 @@ export class ObrtnIQDexieDatabase extends Dexie {
   chatSesije!: Table<ZigoChatSesija, string>;
   chatPoruke!: Table<ZigoChatPoruka, string>;
   userMemories!: Table<ZigoUserMemory, string>;
+  troskovi!: Table<any, string>;
+  doprinosiUplate!: Table<any, string>;
+  recurringProfiles!: Table<RecurringProfile, string>;
 
   constructor() {
     super('ObrtnIQ_DB');
@@ -48,8 +57,17 @@ export class ObrtnIQDexieDatabase extends Dexie {
       userMemories: 'id, kategorija, kljuc, azurirano',
     });
 
+    this.version(4).stores({
+      troskovi: 'id, brojUlaznogDokumenta, datumRacuna, kategorija, status, dobavljacNaziv',
+      doprinosiUplate: 'id, godina, mjesec, status, datumUplate',
+    });
+
+    this.version(5).stores({
+      recurringProfiles: 'id, partnerId, partnerNaziv, frekvencija, danUMjesecu, aktivan, sljedeceDospijeceDatum',
+    });
+
     this.on('ready', () => {
-      appLogger.scope('STORAGE:DEXIE').info('Dexie.js IndexedDB baza uspješno otvorena (ObrtnIQ_DB v3).');
+      appLogger.scope('STORAGE:DEXIE').info('Dexie.js IndexedDB baza uspješno otvorena (ObrtnIQ_DB v5).');
     });
   }
 }
@@ -296,6 +314,82 @@ export class DexieMemoryRepository {
   }
 }
 
+class DexieTroskoviRepository implements ITroskoviRepository {
+  async getAll(filterGodina?: number): Promise<any[]> {
+    const list = await db.troskovi.toArray();
+    if (filterGodina !== undefined) {
+      return list.filter(t => parseInt(t.datumRacuna?.slice(0, 4) || '0', 10) === filterGodina);
+    }
+    return list;
+  }
+
+  async getById(id: string): Promise<any | null> {
+    const t = await db.troskovi.get(id);
+    return t || null;
+  }
+
+  async save(trosak: any): Promise<void> {
+    await db.troskovi.put(trosak);
+  }
+
+  async update(id: string, partial: Partial<any>): Promise<void> {
+    await db.troskovi.update(id, partial);
+  }
+
+  async delete(id: string): Promise<void> {
+    await db.troskovi.delete(id);
+  }
+}
+
+class DexieDoprinosiRepository implements IDoprinosiRepository {
+  async getAllUplate(godina?: number): Promise<any[]> {
+    const list = await db.doprinosiUplate.toArray();
+    if (godina !== undefined) {
+      return list.filter(d => d.godina === godina);
+    }
+    return list;
+  }
+
+  async saveUplata(obracun: any): Promise<void> {
+    await db.doprinosiUplate.put(obracun);
+  }
+
+  async deleteUplata(id: string): Promise<void> {
+    await db.doprinosiUplate.delete(id);
+  }
+}
+
+class DexieRecurringRepository implements IRecurringRepository {
+  async getAll(filterAktivan?: boolean): Promise<RecurringProfile[]> {
+    if (filterAktivan !== undefined) {
+      return db.recurringProfiles.filter(p => p.aktivan === filterAktivan).toArray();
+    }
+    return db.recurringProfiles.toArray();
+  }
+
+  async getById(id: string): Promise<RecurringProfile | null> {
+    const p = await db.recurringProfiles.get(id);
+    return p || null;
+  }
+
+  async save(profil: RecurringProfile): Promise<void> {
+    await db.recurringProfiles.put(profil);
+  }
+
+  async update(id: string, partial: Partial<RecurringProfile>): Promise<void> {
+    await db.recurringProfiles.update(id, partial);
+  }
+
+  async delete(id: string): Promise<void> {
+    await db.recurringProfiles.delete(id);
+  }
+
+  async getDospjeli(danasDatum?: string): Promise<RecurringProfile[]> {
+    const sviAktivni = await db.recurringProfiles.filter(p => p.aktivan).toArray();
+    return sviAktivni.filter(p => jeDospjeloZaIzdavanje(p.sljedeceDospijeceDatum, danasDatum));
+  }
+}
+
 export class DexieObrtnIQStorage implements IObrtnIQStorage {
   public obrt = new DexieObrtRepository();
   public partneri = new DexiePartnerRepository();
@@ -304,9 +398,24 @@ export class DexieObrtnIQStorage implements IObrtnIQStorage {
   public kpr = new DexieKprRepository();
   public chat = new DexieChatRepository();
   public memorija = new DexieMemoryRepository();
+  public troskovi = new DexieTroskoviRepository();
+  public doprinosi = new DexieDoprinosiRepository();
+  public recurring = new DexieRecurringRepository();
 
   async clearAll(): Promise<void> {
-    await db.transaction('rw', [db.obrtProfil, db.partneri, db.artikli, db.dokumenti, db.naplatePromet, db.chatSesije, db.chatPoruke, db.userMemories], async () => {
+    await db.transaction('rw', [
+      db.obrtProfil, 
+      db.partneri, 
+      db.artikli, 
+      db.dokumenti, 
+      db.naplatePromet, 
+      db.chatSesije, 
+      db.chatPoruke, 
+      db.userMemories,
+      db.troskovi,
+      db.doprinosiUplate,
+      db.recurringProfiles
+    ], async () => {
       await db.obrtProfil.clear();
       await db.partneri.clear();
       await db.artikli.clear();
@@ -315,6 +424,9 @@ export class DexieObrtnIQStorage implements IObrtnIQStorage {
       await db.chatSesije.clear();
       await db.chatPoruke.clear();
       await db.userMemories.clear();
+      await db.troskovi.clear();
+      await db.doprinosiUplate.clear();
+      await db.recurringProfiles.clear();
     });
   }
 

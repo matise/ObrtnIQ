@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import type { Partner, Artikl } from '@obrtniq/core';
 import type { FormItem } from './engine/types';
 import { AppHeader } from './components/layout/AppHeader';
@@ -10,6 +10,15 @@ import { AppFooter } from './components/layout/AppFooter';
 import { InvoiceDesk } from './components/desk/InvoiceDesk';
 import { InvoiceLivePreview } from './components/InvoiceLivePreview';
 import { AppDrawers } from './components/drawers/AppDrawers';
+import { BookkeepingWorkspaceView } from './components/bookkeeping/BookkeepingWorkspaceView';
+import { SettingsWorkspaceView } from './components/settings/SettingsWorkspaceView';
+import { DocumentWorkspaceView } from './components/desk/DocumentWorkspaceView';
+import { FiscalWorkspaceView } from './components/desk/FiscalWorkspaceView';
+import { ArticleWorkspaceView } from './components/desk/ArticleWorkspaceView';
+import { PartnerWorkspaceView } from './components/desk/PartnerWorkspaceView';
+import { SystemLogWorkspaceView } from './components/desk/SystemLogWorkspaceView';
+import { buildFiscalDrawerDocument, buildFiscalPartnerSnapshot } from './engine/invoice-mapper';
+import { useWorkspaceRouter } from './hooks/useWorkspaceRouter';
 import { useAppStats } from './hooks/useAppStats';
 import { useAppDrawers } from './hooks/useAppDrawers';
 import { useInvoiceForm } from './hooks/useInvoiceForm';
@@ -31,10 +40,14 @@ import { getZigoThinkingPhrase } from './services/zigo-context-builder';
 import { onAutoOpenTriggered } from './services/global-error-trap';
 import { appLogger } from './services/logger';
 import { useDynamicFavicon } from './hooks/useDynamicFavicon';
+import type { ActiveScreenView } from './types/zigo-context';
 
 export default function App() {
   // 0. Dinamički SVG Favicon u tabu preglednika sinkroniziran s temom (Faza 12)
   useDynamicFavicon();
+
+  // 0.5. Modularni Workspace Router (Faza 19)
+  const router = useWorkspaceRouter();
 
   // 1. Aplikacijski engine, profili i hooks
   const stats = useAppStats();
@@ -58,16 +71,31 @@ export default function App() {
     onStatsUpdate: stats.refreshAll,
   });
 
+  // Mapiranje trenutnog ekrana za Žigo Copilot
+  const activeScreenView: ActiveScreenView = useMemo(() => {
+    switch (router.activeView) {
+      case 'bookkeeping': return 'KprDrawer';
+      case 'settings': return 'SettingsDrawer';
+      case 'documents': return 'DocumentDrawer';
+      case 'fiscal': return 'FiscalDrawer';
+      case 'articles': return 'ArticleDrawer';
+      case 'partners': return 'PartnerDrawer';
+      case 'logs': return 'SystemLogDrawer';
+      default: return 'InvoiceDesk';
+    }
+  }, [router.activeView]);
+
   // 1.5. Sustav svjesnosti stanja ekrana u stvarnom vremenu (Omni-Context Bus za Žiga)
   const liveScreenContext = useLiveScreenContext({
+    activeScreen: activeScreenView,
     openDrawers: {
-      isKprDrawerOpen: drawers.isKprDrawerOpen,
-      isSettingsDrawerOpen: drawers.isSettingsDrawerOpen,
-      isLogDrawerOpen: drawers.isLogDrawerOpen,
-      isFiscalDrawerOpen: drawers.isFiscalDrawerOpen,
-      isPartnerDrawerOpen: drawers.isPartnerDrawerOpen,
-      isArticleDrawerOpen: drawers.isArticleDrawerOpen,
-      isDocDrawerOpen: drawers.isDocDrawerOpen,
+      isKprDrawerOpen: drawers.isKprDrawerOpen || router.activeView === 'bookkeeping',
+      isSettingsDrawerOpen: drawers.isSettingsDrawerOpen || router.activeView === 'settings',
+      isLogDrawerOpen: drawers.isLogDrawerOpen || router.activeView === 'logs',
+      isFiscalDrawerOpen: drawers.isFiscalDrawerOpen || router.activeView === 'fiscal',
+      isPartnerDrawerOpen: drawers.isPartnerDrawerOpen || router.activeView === 'partners',
+      isArticleDrawerOpen: drawers.isArticleDrawerOpen || router.activeView === 'articles',
+      isDocDrawerOpen: drawers.isDocDrawerOpen || router.activeView === 'documents',
     },
     form: {
       partnerNaziv: form.partnerNaziv,
@@ -152,9 +180,9 @@ export default function App() {
   // Automatsko otvaranje dnevnika grešaka na pojavu ERROR razine (Faza 10.5)
   useEffect(() => {
     return onAutoOpenTriggered(() => {
-      drawers.setIsLogDrawerOpen(true);
+      router.navigateTo('logs');
     });
-  }, [drawers.setIsLogDrawerOpen]);
+  }, [router]);
 
   // Inicijalna telemetrija montiranja radne površine
   useEffect(() => {
@@ -166,12 +194,14 @@ export default function App() {
 
   const [mobileTab, setMobileTab] = useState<'desk' | 'preview'>('desk');
 
-  // 2. Tipkovnički prečaci (F2 = Izdaj, Alt+N = Nova stavka)
+  // 2. Tipkovnički prečaci (F2 = Izdaj, Alt+N = Nova stavka, Alt+H / Esc = Home)
   useKeyboardShortcuts({
     onIssue: workflow.handleIssueDocument,
     onAddItem: items.addItem,
     isSubmittable: workflow.isFormSubmittable,
     isLocked: workflow.isLocked,
+    onNavigateHome: router.navigateHome,
+    isHome: router.isHome,
   });
 
   // 3. Odabir partnera iz adresara
@@ -182,12 +212,18 @@ export default function App() {
       form.setIsOibValid(true);
     }
     form.setTaxZone(partner.poreznaZona);
+    if (!router.isHome) {
+      router.navigateHome();
+    }
   };
 
   // 4. Odabir artikla/usluge iz cjenika
   const handleSelectArticle = (artikl: Artikl) => {
     items.addArticleItem(artikl);
     drawers.setIsArticleDrawerOpen(false);
+    if (!router.isHome) {
+      router.navigateHome();
+    }
   };
 
   // 5. Spremanje stavke s računa u cjenik
@@ -211,118 +247,207 @@ export default function App() {
     <div className="min-h-screen bg-[var(--bg-canvas)] text-white flex flex-col font-sans transition-colors duration-200">
       {/* Top Precision Header & Dynamic Prag Widget */}
       <AppHeader
+        activeView={router.activeView}
+        onNavigateHome={router.navigateHome}
         totalSavedDocs={stats.totalSavedDocs}
         totalKprNaplaceno={stats.totalKprNaplaceno}
-        onOpenDocs={() => drawers.setIsDocDrawerOpen(true)}
-        onOpenKpr={() => drawers.setIsKprDrawerOpen(true)}
-        onOpenFiscal={() => drawers.setIsFiscalDrawerOpen(true)}
-        onOpenSettings={() => drawers.setIsSettingsDrawerOpen(true)}
-        onOpenPartners={() => drawers.setIsPartnerDrawerOpen(true)}
-        onOpenArticles={() => drawers.setIsArticleDrawerOpen(true)}
+        onOpenDocs={() => router.navigateTo('documents')}
+        onOpenKpr={() => router.navigateTo('bookkeeping')}
+        onOpenFiscal={() => router.navigateTo('fiscal')}
+        onOpenSettings={() => router.navigateTo('settings')}
+        onOpenPartners={() => router.navigateTo('partners')}
+        onOpenArticles={() => router.navigateTo('articles')}
         onOpenZigo={zigoAgent.toggleDrawer}
         googleIdentity={googleAuthHook.identity}
         cloudSyncStatus={driveSyncHook.syncStatus}
         lastSyncTime={driveSyncHook.lastSyncTime}
         onSyncClick={() => {
           if (!googleAuthHook.isAuthenticated) {
-            drawers.setIsSettingsDrawerOpen(true);
+            router.navigateTo('settings');
           } else {
             driveSyncHook.syncToDrive();
           }
         }}
       />
 
-      {/* Main Content Area - Full Width Split-Screen Desk */}
+      {/* Main Content Area - Full Width Split-Screen Desk or In-Place Workspace Views */}
       <main className="flex-1 w-full px-4 sm:px-6 lg:px-8 py-6 space-y-6">
-        {/* Hero Alert Banner s immutability statusom */}
-        <HeroBanner
-          docType={workflow.docType}
-          brojDokumenta={workflow.brojDokumenta}
-          docStatus={workflow.docStatus}
-          isLocked={workflow.isLocked}
-        />
-
-        {/* Phase Grid Overview (Faza 0-2 do Faza 7) */}
-        <PhaseOverviewGrid />
-
-        {/* Mobile View Tab Switcher (< xl screens) */}
-        <MobileTabSwitcher
-          activeTab={mobileTab}
-          onChange={setMobileTab}
-        />
-
-        {/* Workspace: Full-Width Split-Screen Layout with optional Docked Copilot (Edge Copilot / Gemini in Workspace style) */}
-        <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 w-full items-start">
-          {/* Radna Ploha Unosa (Input Desk) */}
-          <div className={zigoAgent.isDocked ? 'xl:col-span-5' : 'xl:col-span-7'}>
-            <InvoiceDesk
-              className={mobileTab === 'preview' ? 'hidden xl:block' : 'block'}
-              form={form}
-              items={items}
-              workflow={workflow}
-              onOpenAddressBook={() => drawers.setIsPartnerDrawerOpen(true)}
-              onOpenArticleCatalog={() => drawers.setIsArticleDrawerOpen(true)}
-              onSaveItemToCatalog={handleSaveItemToCatalog}
-              geminiAssistant={geminiHook}
-            />
-          </div>
-
-          {/* Živi A4 Real-Time Preview */}
-          <div
-            className={`printable-invoice-wrapper ${
-              zigoAgent.isDocked ? 'xl:col-span-4' : 'xl:col-span-5'
-            } bg-[var(--bg-surface)] border border-[var(--border-strong)] p-5 space-y-4 sticky top-20 shadow-xl transition-colors ${
-              mobileTab === 'desk' ? 'hidden xl:block' : 'block'
-            }`}
-          >
-            <InvoiceLivePreview
-              obrtNaziv={currentObrt.naziv}
-              obrtVlasnik={currentObrt.vlasnikImePrezime}
-              obrtOib={currentObrt.oib}
-              obrtIban={form.iban || currentObrt.iban}
-              obrtBanka={form.detectedBank || currentObrt.bankaNaziv}
-              obrtAdresa={`${currentObrt.ulicaIBroj}, ${currentObrt.mjesto}`}
-              logoImageData={currentObrt.logoImageData}
-              pecatPotpisImageData={currentObrt.pecatPotpisImageData}
-              partnerNaziv={form.partnerNaziv}
-              partnerOib={form.oib}
-              isPartnerOibValid={form.isOibValid}
-              vrstaDokumenta={workflow.docType}
-              statusDokumenta={workflow.docStatus}
+        {router.activeView === 'home' && (
+          <>
+            {/* Hero Alert Banner s immutability statusom */}
+            <HeroBanner
+              docType={workflow.docType}
               brojDokumenta={workflow.brojDokumenta}
-              datumIzdavanja={workflow.datumIzdavanja}
-              datumIsporuke={workflow.datumIsporuke}
-              datumDospijeca={workflow.datumDospijeca}
-              nacinPlacanja={form.nacinPlacanja}
-              taxZone={form.taxZone}
-              items={items.previewItems}
-              zki={workflow.zki}
-              jir={workflow.jir}
-              fiskalniQrUrl={workflow.fiskalniQrUrl}
-              fiskalizacijaStatus={workflow.fiskalizacijaStatus}
+              docStatus={workflow.docStatus}
+              isLocked={workflow.isLocked}
             />
-          </div>
 
-          {/* 3. Usidreni Sidecar Copilot (Docked Companion Mode) */}
-          {zigoAgent.isDocked && (
-            <div className="hidden xl:block xl:col-span-3 sticky top-20 h-[calc(100vh-140px)] shadow-2xl border border-[#b89758]/50 overflow-hidden">
-              <ZigoCopilotPanel
-                agent={zigoAgent}
-                liveContext={liveScreenContext}
-                isDocked={true}
-                onToggleDock={zigoAgent.toggleDock}
-                onClose={() => zigoAgent.setIsDocked(false)}
-              />
+            {/* Phase Grid Overview (Faza 0-2 do Faza 7) */}
+            <PhaseOverviewGrid />
+
+            {/* Mobile View Tab Switcher (< xl screens) */}
+            <MobileTabSwitcher
+              activeTab={mobileTab}
+              onChange={setMobileTab}
+            />
+
+            {/* Workspace: Full-Width Split-Screen Layout with optional Docked Copilot */}
+            <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 w-full items-start">
+              {/* Radna Ploha Unosa (Input Desk) */}
+              <div className={zigoAgent.isDocked ? 'xl:col-span-5' : 'xl:col-span-7'}>
+                <InvoiceDesk
+                  className={mobileTab === 'preview' ? 'hidden xl:block' : 'block'}
+                  form={form}
+                  items={items}
+                  workflow={workflow}
+                  onOpenAddressBook={() => router.navigateTo('partners')}
+                  onOpenArticleCatalog={() => router.navigateTo('articles')}
+                  onSaveItemToCatalog={handleSaveItemToCatalog}
+                  geminiAssistant={geminiHook}
+                />
+              </div>
+
+              {/* Živi A4 Real-Time Preview */}
+              <div
+                className={`printable-invoice-wrapper ${
+                  zigoAgent.isDocked ? 'xl:col-span-4' : 'xl:col-span-5'
+                } bg-[var(--bg-surface)] border border-[var(--border-strong)] p-5 space-y-4 sticky top-20 shadow-xl transition-colors ${
+                  mobileTab === 'desk' ? 'hidden xl:block' : 'block'
+                }`}
+              >
+                <InvoiceLivePreview
+                  obrtNaziv={currentObrt.naziv}
+                  obrtVlasnik={currentObrt.vlasnikImePrezime}
+                  obrtOib={currentObrt.oib}
+                  obrtIban={form.iban || currentObrt.iban}
+                  obrtBanka={form.detectedBank || currentObrt.bankaNaziv}
+                  obrtAdresa={`${currentObrt.ulicaIBroj}, ${currentObrt.mjesto}`}
+                  logoImageData={currentObrt.logoImageData}
+                  pecatPotpisImageData={currentObrt.pecatPotpisImageData}
+                  partnerNaziv={form.partnerNaziv}
+                  partnerOib={form.oib}
+                  isPartnerOibValid={form.isOibValid}
+                  vrstaDokumenta={workflow.docType}
+                  statusDokumenta={workflow.docStatus}
+                  brojDokumenta={workflow.brojDokumenta}
+                  datumIzdavanja={workflow.datumIzdavanja}
+                  datumIsporuke={workflow.datumIsporuke}
+                  datumDospijeca={workflow.datumDospijeca}
+                  nacinPlacanja={form.nacinPlacanja}
+                  taxZone={form.taxZone}
+                  items={items.previewItems}
+                  zki={workflow.zki}
+                  jir={workflow.jir}
+                  fiskalniQrUrl={workflow.fiskalniQrUrl}
+                  fiskalizacijaStatus={workflow.fiskalizacijaStatus}
+                />
+              </div>
+
+              {/* 3. Usidreni Sidecar Copilot (Docked Companion Mode) */}
+              {zigoAgent.isDocked && (
+                <div className="hidden xl:block xl:col-span-3 sticky top-20 h-[calc(100vh-140px)] shadow-2xl border border-[#b89758]/50 overflow-hidden">
+                  <ZigoCopilotPanel
+                    agent={zigoAgent}
+                    liveContext={liveScreenContext}
+                    isDocked={true}
+                    onToggleDock={zigoAgent.toggleDock}
+                    onClose={() => zigoAgent.setIsDocked(false)}
+                  />
+                </div>
+              )}
             </div>
-          )}
-        </div>
 
-        {/* Documentation & Manifest Reference */}
-        <ManifestReferenceCard />
+            {/* Documentation & Manifest Reference */}
+            <ManifestReferenceCard />
+          </>
+        )}
+
+        {/* Modular Workspace In-Place Views (Bez zamagljenja, puna širina) */}
+        {router.activeView === 'bookkeeping' && (
+          <BookkeepingWorkspaceView
+            obrtOib={currentObrt.oib}
+            obrtNaziv={currentObrt.naziv}
+            obrtVlasnik={currentObrt.vlasnikImePrezime}
+            obrtAdresa={`${currentObrt.ulicaIBroj}, ${currentObrt.mjesto}`}
+            onKprUpdated={stats.refreshKprTotal}
+            onNavigateHome={router.navigateHome}
+          />
+        )}
+
+        {router.activeView === 'settings' && (
+          <SettingsWorkspaceView
+            obrtProfileHook={obrtProfileHook}
+            googleAuthHook={googleAuthHook}
+            driveSyncHook={driveSyncHook}
+            geminiHook={geminiHook}
+            onNavigateHome={router.navigateHome}
+            onToggleLogDrawer={() => router.navigateTo('logs')}
+            isLogDrawerOpen={false}
+          />
+        )}
+
+        {router.activeView === 'documents' && (
+          <DocumentWorkspaceView
+            activeDocumentId={workflow.docId}
+            onSelectDocument={workflow.handleSelectDocument}
+            onNewDocument={workflow.handleNewDocument}
+            onNavigateHome={router.navigateHome}
+          />
+        )}
+
+        {router.activeView === 'fiscal' && (
+          <FiscalWorkspaceView
+            activeDocument={buildFiscalDrawerDocument({
+              docId: workflow.docId,
+              docType: workflow.docType,
+              docStatus: workflow.docStatus,
+              brojDokumenta: workflow.brojDokumenta,
+              partnerNaziv: form.partnerNaziv,
+              oib: form.oib,
+              iban: form.iban,
+              datumIzdavanja: workflow.datumIzdavanja,
+              datumDospijeca: workflow.datumDospijeca,
+              datumIsporuke: workflow.datumIsporuke,
+              nacinPlacanja: form.nacinPlacanja,
+              items: items.items,
+              ukupniIznos: items.ukupniIznos,
+              zki: workflow.zki,
+              jir: workflow.jir,
+              fiskalniQrUrl: workflow.fiskalniQrUrl,
+              fiskalizacijaStatus: workflow.fiskalizacijaStatus,
+            })}
+            obrtProfil={currentObrt}
+            activePartner={buildFiscalPartnerSnapshot(form.partnerData)}
+            onDocumentUpdated={workflow.handleFiscalUpdated}
+            onNavigateHome={router.navigateHome}
+          />
+        )}
+
+        {router.activeView === 'articles' && (
+          <ArticleWorkspaceView
+            articlesHook={articlesHook}
+            onSelectArticle={handleSelectArticle}
+            onNavigateHome={router.navigateHome}
+          />
+        )}
+
+        {router.activeView === 'partners' && (
+          <PartnerWorkspaceView
+            partnersHook={partnersHook}
+            onSelectPartner={handleSelectPartner}
+            onNavigateHome={router.navigateHome}
+          />
+        )}
+
+        {router.activeView === 'logs' && (
+          <SystemLogWorkspaceView
+            onNavigateHome={router.navigateHome}
+          />
+        )}
       </main>
 
       {/* Precision Footer with Live System Log Trigger */}
-      <AppFooter onToggleLogDrawer={drawers.toggleLogDrawer} />
+      <AppFooter onToggleLogDrawer={() => router.navigateTo(router.activeView === 'logs' ? 'home' : 'logs')} />
 
       {/* All Drawers (Log, Documents, KPR & PO-SD, Fiscalization, Settings, Partners, Articles) */}
       <AppDrawers

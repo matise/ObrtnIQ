@@ -7,7 +7,9 @@ import {
   Trash2, 
   CheckCircle2, 
   ArrowRight,
-  Building
+  Building,
+  Home,
+  ArrowLeft,
 } from 'lucide-react';
 import type { Partner, PoreznaZona } from '@obrtniq/core';
 import { OibInput } from './controls';
@@ -18,6 +20,8 @@ export interface PartnerDrawerProps {
   onClose: () => void;
   onSelectPartner: (partner: Partner) => void;
   partnersHook: UsePartnersReturn;
+  isEmbedded?: boolean;
+  onNavigateHome?: () => void;
 }
 
 export const PartnerDrawer: React.FC<PartnerDrawerProps> = ({
@@ -25,6 +29,8 @@ export const PartnerDrawer: React.FC<PartnerDrawerProps> = ({
   onClose,
   onSelectPartner,
   partnersHook,
+  isEmbedded = false,
+  onNavigateHome,
 }) => {
   const { 
     filteredPartneri, 
@@ -77,47 +83,69 @@ export const PartnerDrawer: React.FC<PartnerDrawerProps> = ({
 
     // Automatski odaberi novoizrađenog partnera
     onSelectPartner(created);
-    onClose();
+    if (isEmbedded && onNavigateHome) onNavigateHome();
+    else onClose();
   };
 
-  return (
-    <div className="fixed inset-0 z-50 overflow-hidden no-print">
-      {/* Backdrop */}
-      <div 
-        className="absolute inset-0 bg-black/70 backdrop-blur-sm transition-opacity"
-        onClick={onClose}
-      />
-
-      {/* Drawer Panel */}
-      <div className="absolute inset-y-0 right-0 max-w-full flex pl-10">
-        <div className="w-screen max-w-xl bg-[var(--bg-surface)] border-l border-[var(--border-strong)] text-white flex flex-col shadow-2xl">
-          {/* Header */}
-          <div className="p-5 border-b border-[var(--border-subtle)] flex items-center justify-between bg-[var(--bg-elevated)]/40">
-            <div className="flex items-center space-x-3">
-              <div className="w-8 h-8 rounded bg-[var(--accent-primary)]/20 border border-[var(--accent-primary)]/40 flex items-center justify-center text-[var(--accent-primary)]">
-                <Users className="w-4 h-4" />
-              </div>
-              <div>
-                <h2 className="font-bold text-base tracking-tight flex items-center gap-2">
-                  Adresar Partnera &amp; Kupaca
-                  <span className="text-[10px] font-mono px-2 py-0.5 bg-[var(--bg-canvas)] border border-[var(--border-subtle)] text-[var(--accent-primary)]">
-                    {filteredPartneri.length}
-                  </span>
-                </h2>
-                <p className="text-xs text-[var(--text-muted)] font-mono">
-                  Baza stalnih klijenata, brzi odabir i porezne zone
-                </p>
-              </div>
-            </div>
-
-            <button
-              type="button"
-              onClick={onClose}
-              className="p-1.5 text-[var(--text-muted)] hover:text-white hover:bg-[var(--bg-canvas)] transition-colors cursor-pointer"
-            >
-              <X className="w-5 h-5" />
-            </button>
+  const content = (
+    <div className={
+      isEmbedded
+        ? "w-full bg-[var(--bg-surface)] border border-[var(--border-strong)] rounded-2xl text-white flex flex-col shadow-2xl overflow-hidden min-h-[calc(100vh-160px)] animate-in fade-in duration-200"
+        : "w-screen max-w-xl bg-[var(--bg-surface)] border-l border-[var(--border-strong)] text-white flex flex-col shadow-2xl"
+    }>
+      {/* Header */}
+      <div className="p-5 border-b border-[var(--border-subtle)] flex items-center justify-between bg-[var(--bg-elevated)]/40 flex-wrap gap-3">
+        <div className="flex items-center space-x-3">
+          <div className="w-8 h-8 rounded bg-[var(--accent-primary)]/20 border border-[var(--accent-primary)]/40 flex items-center justify-center text-[var(--accent-primary)] shrink-0">
+            <Users className="w-4 h-4" />
           </div>
+          <div>
+            {isEmbedded && (
+              <div className="flex items-center gap-2 text-xs text-[var(--text-muted)] mb-1 font-mono">
+                <button
+                  type="button"
+                  onClick={onNavigateHome || onClose}
+                  className="hover:text-[var(--accent-primary)] flex items-center gap-1.5 transition-colors font-medium"
+                >
+                  <Home className="w-3.5 h-3.5 text-[var(--accent-primary)]" />
+                  <span>Radna ploha (Home)</span>
+                </button>
+                <span>/</span>
+                <span className="text-white font-semibold">Adresar Partnera &amp; Kupaca</span>
+              </div>
+            )}
+            <h2 className="font-bold text-base tracking-tight flex items-center gap-2">
+              Adresar Partnera &amp; Kupaca
+              <span className="text-[10px] font-mono px-2 py-0.5 bg-[var(--bg-canvas)] border border-[var(--border-subtle)] text-[var(--accent-primary)]">
+                {filteredPartneri.length}
+              </span>
+            </h2>
+            <p className="text-xs text-[var(--text-muted)] font-mono">
+              Baza stalnih klijenata, brzi odabir i porezne zone
+            </p>
+          </div>
+        </div>
+
+        {isEmbedded ? (
+          <button
+            type="button"
+            onClick={onNavigateHome || onClose}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-mono text-white bg-[var(--bg-elevated)] hover:bg-[var(--bg-subtle)] border border-[var(--border-strong)] transition-colors"
+            title="Povratak na radnu plohu (Alt+H)"
+          >
+            <ArrowLeft className="w-3.5 h-3.5 text-[var(--accent-primary)]" />
+            <span>Povratak na Radnu plohu</span>
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={onClose}
+            className="p-1.5 text-[var(--text-muted)] hover:text-white hover:bg-[var(--bg-canvas)] transition-colors cursor-pointer"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        )}
+      </div>
 
           {/* Search & Actions Bar */}
           <div className="p-4 border-b border-[var(--border-subtle)] bg-[var(--bg-canvas)] space-y-3">
@@ -264,7 +292,8 @@ export const PartnerDrawer: React.FC<PartnerDrawerProps> = ({
                       type="button"
                       onClick={() => {
                         onSelectPartner(p);
-                        onClose();
+                        if (isEmbedded && onNavigateHome) onNavigateHome();
+                        else onClose();
                       }}
                       className="px-3 py-1.5 bg-[var(--accent-primary)] hover:bg-[var(--accent-primary-hover)] text-black font-bold font-mono text-xs flex items-center gap-1 cursor-pointer transition-all shadow-sm"
                     >
@@ -289,7 +318,21 @@ export const PartnerDrawer: React.FC<PartnerDrawerProps> = ({
               ))
             )}
           </div>
-        </div>
+    </div>
+  );
+
+  if (isEmbedded) {
+    return content;
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 overflow-hidden no-print">
+      <div 
+        className="absolute inset-0 bg-black/70 backdrop-blur-sm transition-opacity"
+        onClick={onClose}
+      />
+      <div className="absolute inset-y-0 right-0 max-w-full flex pl-10">
+        {content}
       </div>
     </div>
   );

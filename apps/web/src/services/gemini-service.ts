@@ -1,5 +1,5 @@
 import { appLogger } from './logger';
-import type { ZigoChatPoruka } from '@obrtniq/core';
+import { formatHrvatskiIznos, type ZigoChatPoruka } from '@obrtniq/core';
 import type { LiveScreenContextSnapshot } from '../types/zigo-context';
 import { formatContextForSystemPrompt } from './zigo-context-builder';
 import { zigoMemoryService } from './zigo-memory-service';
@@ -328,6 +328,101 @@ export const ZIGO_FUNCTION_DECLARATIONS = [
         vrijednost: { type: 'STRING', description: 'Vrijednost ili opis činjenice' }
       },
       required: ['vrijednost']
+    }
+  },
+  {
+    name: 'provjeri_obvezne_doprinose_i_porez',
+    description: 'Provjerava status uplata obveznih mjesečnih doprinosa (MIO 1, MIO 2, HZZO) i kvartalnog paušalnog poreza, rokove dospijeća (15. u mjesecu) i priprema uplatnice',
+    parameters: {
+      type: 'OBJECT',
+      properties: {
+        godina: { type: 'NUMBER', description: 'Godina za provjeru (zadano: tekuća godina)' },
+        mjesec: { type: 'NUMBER', description: 'Mjesec za provjeru (1-12, zadano: tekući ili prethodni mjesec)' }
+      }
+    }
+  },
+  {
+    name: 'evidentiraj_ulazni_trosak',
+    description: 'Evidentira ulazni račun ili poslovni trošak (spêndzu) u Troškovnik obrta. Automatski detektira dugotrajnu imovinu (>663.61 €)',
+    parameters: {
+      type: 'OBJECT',
+      properties: {
+        dobavljacNaziv: { type: 'STRING', description: 'Naziv dobavljača ili trgovine (npr. INA, Pevex, Hetzner, Apple)' },
+        ukupnoEur: { type: 'NUMBER', description: 'Ukupni iznos računa u EUR' },
+        kategorija: { 
+          type: 'STRING', 
+          enum: [
+            'SOFTVERSKE_PRETPLATE',
+            'HOSTING_I_DOMENE',
+            'UREDSKI_MATERIJAL',
+            'ALATI_I_OPREMA',
+            'KNJIGOVODSTVO_I_SAVJETOVANJE',
+            'REZISTE_I_PROSTOR',
+            'GORIVO_I_VOZILA',
+            'CLANARINE_I_KOMORE',
+            'REPREZENTACIJA_I_UGOSTITELJSTVO',
+            'OSTALI_OPERATIVNI_TROSKOVI'
+          ],
+          description: 'Kategorija troška'
+        },
+        opis: { type: 'STRING', description: 'Opis kupljene robe, alata ili usluge' },
+        brojRacuna: { type: 'STRING', description: 'Broj ulaznog računa dobavljača' },
+        datumRacuna: { type: 'STRING', description: 'Datum računa (YYYY-MM-DD)' },
+        nacinPlacanja: { 
+          type: 'STRING', 
+          enum: ['TRANSAKCIJSKI_RACUN', 'KARTICA_POSLOVNA', 'GOTOVINA'],
+          description: 'Način plaćanja računa'
+        },
+        jePlaceno: { type: 'BOOLEAN', description: 'Je li račun već plaćen (zadano true)' },
+        serijskiBrojOpreme: { type: 'STRING', description: 'Serijski broj ako se radi o opremi ili stroju' }
+      },
+      required: ['dobavljacNaziv', 'ukupnoEur']
+    }
+  },
+  {
+    name: 'dohvati_financijsku_sliku_i_dobit',
+    description: 'Dohvaća cjelovitu financijsku sliku obrta: KPR primitke, plaćene operativne troškove, uplaćene doprinose i poreze, te izračunava čistu neto dobit i profitnu maržu',
+    parameters: {
+      type: 'OBJECT',
+      properties: {
+        godina: { type: 'NUMBER', description: 'Godina za financijski pregled (zadano: tekuća godina)' }
+      }
+    }
+  },
+  {
+    name: 'saldiraj_izvod_transakcije',
+    description: 'Saldiranje transakcije s bankovnog izvoda: knjiži uplatu u Knjigu Prometa (KPR) i automatski postavlja povezani izlazni račun na PLACENO',
+    parameters: {
+      type: 'OBJECT',
+      properties: {
+        dokumentId: { type: 'STRING', description: 'ID izdanog računa koji se saldira' },
+        iznosEur: { type: 'NUMBER', description: 'Iznos uplate u EUR' },
+        datumNaplate: { type: 'STRING', description: 'Datum uplate s izvoda (YYYY-MM-DD)' },
+        brojIzvoda: { type: 'STRING', description: 'Broj izvoda banke (npr. Izvod 12/2026)' },
+        opisPlatitelja: { type: 'STRING', description: 'Opis platitelja ili naziv kupca' }
+      },
+      required: ['iznosEur']
+    }
+  },
+  {
+    name: 'provjeri_porezni_kalendar_i_rokove',
+    description: 'Provjerava službeni porezni kalendar RH za paušaliste (obvezni doprinosi 15. u mjesecu, kvartalni paušalni porez, članarina TZ/HOK, predaja PO-SD obrasca), izračunava preostale dane do dospijeća i priprema uplatnice',
+    parameters: {
+      type: 'OBJECT',
+      properties: {
+        godina: { type: 'NUMBER', description: 'Godina za provjeru kalendara (zadano: tekuća godina)' },
+        samoPredstojeci: { type: 'BOOLEAN', description: 'Prikazati samo predstojeće i dospjele obveze (zadano true)' }
+      }
+    }
+  },
+  {
+    name: 'pregledaj_dospjele_ponavljajuce_racune',
+    description: 'Provjerava definirane ponavljajuće profile (mjesečne/kvartalne pretplate ili paušale), detektira profile kojima je stigao datum dospijeća i nudi pripremu nacrta računa',
+    parameters: {
+      type: 'OBJECT',
+      properties: {
+        datum: { type: 'STRING', description: 'Referentni datum za provjeru dospijeća (YYYY-MM-DD, zadano: danas)' }
+      }
     }
   }
 ];
@@ -949,15 +1044,37 @@ class GeminiService {
       return resp;
     }
 
-    // 9. Multimodalni sken opravdanog računa
+    // 9. Provjera obveznih doprinosa i poreza (Faza 18)
     if (
-      hasAttachments ||
-      text.includes('skeniraj') ||
+      text.includes('doprinos') ||
+      text.includes('miob') ||
+      text.includes('hzz') ||
+      text.includes('rok za uplatu') ||
+      text.includes('porezni dug') ||
+      (text.includes('porez') && (text.includes('provjeri') || text.includes('platiti') || text.includes('dug') || text.includes('rok')))
+    ) {
+      logHeuristic.info('Heurističko pravilo #9 okinuto [Provjera obveznih doprinosa i poreza]');
+      const resp: ZigoAgentResponse = {
+        odgovorTekst: `**Opservacija:**\nProvjeravam tvoje obvezne mjesečne doprinose i akontacije poreza.\n\n**Dijagnoza:**\nKao paušalni obrtnik imaš fiksne doprinose (MIO I, MIO II, HZZO) s rokom uplate do 15. u mjesecu za prethodni mjesec, te kvartalni paušalni porez do kraja svakog tromjesečja.\n\n**Žigin Rez:**\nOtvaram ti precizan pregled statusa uplate i generiram barkodove za plaćanje.`,
+        toolPoziv: {
+          imeFunkcije: 'provjeri_obvezne_doprinose_i_porez',
+          argumenti: {
+            godina: new Date().getFullYear(),
+          },
+        },
+        jeAiGenerirano: false,
+      };
+      logHeuristic.verbose('Generiran odgovor za Doprinose i porez', resp);
+      return resp;
+    }
+
+    // 10. Multimodalni sken računa za uredski papir (Faza 11 / dodaj_stavku_racuna)
+    if (
       text.includes('račun za papir') ||
       text.includes('uredski papir') ||
       text.includes('toner')
     ) {
-      logHeuristic.info('Heurističko pravilo #9 okinuto [Multimodal sken računa: Uredski papir]');
+      logHeuristic.info('Heurističko pravilo #10 okinuto [Multimodal sken računa: Uredski papir]');
       const resp: ZigoAgentResponse = {
         odgovorTekst: `**Opservacija:**\nSkeniro san račun s kamenog stola.\n\n**Dijagnoza:**\nPrepoznat je dobavljač 'Narodne novine d.d.' (OIB: 41234567891), stavka 'Uredski papir A4 80g' u iznosu od 24,50 €. Ovaj trošak je u cijelosti poslovno opravdan prema poreznim propisima RH.\n\n**Žigin Rez:**\nDodajen ga na radnu plohu, šesno i čisto.`,
         toolPoziv: {
@@ -973,6 +1090,124 @@ class GeminiService {
         jeAiGenerirano: false,
       };
       logHeuristic.verbose('Generiran odgovor za Sken računa', resp);
+      return resp;
+    }
+
+    // 11. Evidentiranje ulaznog troška i multimodalni sken računa/odreska (Faza 18)
+    if (
+      hasAttachments ||
+      text.includes('trošak') ||
+      text.includes('trosak') ||
+      text.includes('odrezak') ||
+      text.includes('gorivo') ||
+      text.includes('diesel') ||
+      text.includes('benzin') ||
+      text.includes('pevex') ||
+      text.includes('bauhaus') ||
+      text.includes('ina') ||
+      text.includes('alat')
+    ) {
+      let dobavljac = 'INA d.d.';
+      let kat: any = 'GORIVO';
+      let opis = 'Eurodiesel gorivo za terensko vozilo';
+      let ukupno = 65.50;
+      let jeDugotrajna = false;
+      let serijski: string | undefined = undefined;
+
+      if (text.includes('pevex') || text.includes('bauhaus') || text.includes('alat') || text.includes('oprem') || text.includes('bušilic') || text.includes('laptop')) {
+        dobavljac = text.includes('bauhaus') ? 'Bauhaus d.o.o.' : 'Pevex d.d.';
+        kat = 'ALAT_I_OPREMA';
+        opis = 'Profesionalna udarna bušilica / radna oprema';
+        ukupno = 720.00;
+        jeDugotrajna = true;
+        serijski = 'SN-2026-BOSCH-884';
+      } else if (text.includes('papir') || text.includes('toner') || text.includes('ured')) {
+        dobavljac = 'Narodne novine d.d.';
+        kat = 'URED_I_POTROSNI';
+        opis = 'Uredski materijal i papir A4 80g';
+        ukupno = 28.50;
+      }
+
+      const cijenaMatch = lastUserMsg.tekst.match(/(\d+[\.,]?\d*)\s*(eur|eura|€)?/i);
+      if (cijenaMatch && cijenaMatch[1]) {
+        ukupno = parseFloat(cijenaMatch[1].replace(',', '.'));
+        if (ukupno >= 663.61) {
+          jeDugotrajna = true;
+        }
+      }
+
+      logHeuristic.info('Heurističko pravilo #10 okinuto [Evidentiranje ulaznog troška]', { dobavljac, kat, ukupno, jeDugotrajna });
+      const resp: ZigoAgentResponse = {
+        odgovorTekst: `**Opservacija:**\nPregledao sam račun dobavljača ${dobavljac} na iznos od ${formatHrvatskiIznos(ukupno)}.\n\n**Dijagnoza:**\nTrošak je kategoriziran kao ${kat}. ${ukupno >= 663.61 ? 'Iznos prelazi 663,61 € pa se evidentira kao dugotrajna imovina (DI).' : 'Operativni poslovni trošak priznat u poslovanju.'}\n\n**Žigin Rez:**\nZavodim trošak u knjigu troškova s jednim klikom odobrenja.`,
+        toolPoziv: {
+          imeFunkcije: 'evidentiraj_ulazni_trosak',
+          argumenti: {
+            dobavljacNaziv: dobavljac,
+            kategorija: kat,
+            opis,
+            ukupnoEur: ukupno,
+            datumRacuna: new Date().toISOString().split('T')[0],
+            nacinPlacanja: 'KARTICA_POSLOVNA',
+            jePlaceno: true,
+            serijskiBrojOpreme: serijski,
+          },
+        },
+        jeAiGenerirano: false,
+      };
+      logHeuristic.verbose('Generiran odgovor za Ulazni trošak', resp);
+      return resp;
+    }
+
+    // 11. Financijska slika i neto dobit (Faza 18)
+    if (
+      text.includes('dobit') ||
+      text.includes('neto dobit') ||
+      text.includes('financijska slika') ||
+      text.includes('zarada') ||
+      text.includes('koliko sam zaradio') ||
+      text.includes('profitna marža') ||
+      text.includes('analitika poslovanja')
+    ) {
+      logHeuristic.info('Heurističko pravilo #11 okinuto [Financijska slika i neto dobit]');
+      const resp: ZigoAgentResponse = {
+        odgovorTekst: `**Opservacija:**\nOtvaram cjelovitu financijsku sliku poslovanja obrta za tekuću godinu.\n\n**Dijagnoza:**\nUspoređujem sve naplaćene KPR primitke naspram plaćenih operativnih troškova, doprinosa za mirovinsko/zdravstveno i paušalnog poreza.\n\n**Žigin Rez:**\nEvo tvoje čiste neto dobiti i profitne marže – kamen temeljac zdravog poslovanja.`,
+        toolPoziv: {
+          imeFunkcije: 'dohvati_financijsku_sliku_i_dobit',
+          argumenti: {
+            godina: new Date().getFullYear(),
+          },
+        },
+        jeAiGenerirano: false,
+      };
+      logHeuristic.verbose('Generiran odgovor za Financijsku sliku', resp);
+      return resp;
+    }
+
+    // 12. Saldiranje transakcije s izvoda (Faza 18)
+    if (
+      text.includes('saldiraj') ||
+      text.includes('izvod') ||
+      text.includes('knjiži uplatu') ||
+      text.includes('uplata kupca')
+    ) {
+      const iznosMatch = lastUserMsg.tekst.match(/(\d+[\.,]?\d*)\s*(eur|eura|€)?/i);
+      const iznos = iznosMatch && iznosMatch[1] ? parseFloat(iznosMatch[1].replace(',', '.')) : 450.0;
+
+      logHeuristic.info('Heurističko pravilo #12 okinuto [Saldiranje transakcije s izvoda]', { iznos });
+      const resp: ZigoAgentResponse = {
+        odgovorTekst: `**Opservacija:**\nUčitana je uplata s bankovnog izvoda u iznosu od ${formatHrvatskiIznos(iznos)}.\n\n**Dijagnoza:**\nUsklađujem uplatu s izlaznim računom u sustavu i automatski bilježim bezgotovinski promet u Knjigu prometa (KPR).\n\n**Žigin Rez:**\nTransakcija je saldirana, a status računa označen kao PLAĆENO.`,
+        toolPoziv: {
+          imeFunkcije: 'saldiraj_izvod_transakcije',
+          argumenti: {
+            iznosEur: iznos,
+            datumNaplate: new Date().toISOString().split('T')[0],
+            brojIzvoda: 'Izvod 1/2026',
+            opisPlatitelja: 'Uplata po računu',
+          },
+        },
+        jeAiGenerirano: false,
+      };
+      logHeuristic.verbose('Generiran odgovor za Saldiranje izvoda', resp);
       return resp;
     }
 
