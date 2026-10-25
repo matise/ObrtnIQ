@@ -11,7 +11,8 @@
   <a href="#-kripto-trezor-google-identity-sidro--6h-sesija"><img src="https://img.shields.io/badge/Sigurnost-AES--256--GCM%20%2F%20PBKDF2%20100k-F59E0B?style=for-the-badge" alt="AES-256" /></a>
   <a href="#-fiskalizacija-10--20"><img src="https://img.shields.io/badge/Fiskalizacija-1.0%20(CIS)%20%26%202.0%20(e--Ra%C4%8Dun)-3B82F6?style=for-the-badge" alt="Fiskalizacija" /></a>
   <a href="#-žigo-omni-copilot-gemini-20-byok-function-calling--rh-heuristika"><img src="https://img.shields.io/badge/AI-Žigo%20Omni--Copilot%20%2F%20Gemini%202.0%20BYOK-8B5CF6?style=for-the-badge" alt="Žigo Omni-Copilot" /></a>
-  <a href="#-verifikacija-i-testovi"><img src="https://img.shields.io/badge/Testovi-259%2F259%20Prolazi%20(100%25)-059669?style=for-the-badge" alt="Tests" /></a>
+  <a href="#10-žigo-audio-naracija--google-cloud-text-to-speech-v1"><img src="https://img.shields.io/badge/Audio-Google%20Cloud%20TTS%20%26%20STT%20V2-EC4899?style=for-the-badge" alt="Audio & TTS" /></a>
+  <a href="#-verifikacija-i-testovi-338338-prolazi"><img src="https://img.shields.io/badge/Testovi-338%2F338%20Prolazi%20(100%25)-059669?style=for-the-badge" alt="Tests" /></a>
 </p>
 
 ---
@@ -19,7 +20,7 @@
 ## 📖 Sadržaj
 1. [O Aplikaciji](#-o-aplikaciji)
 2. [Žigo — Digitalni Orlando i Filozofija Sustava](#-žigo--digitalni-orlando-i-filozofija-sustava)
-3. [Ključne Značajke (Faza 0 do Faze 14)](#-ključne-značajke)
+3. [Ključne Značajke (Faza 0 do Faze 19)](#-ključne-značajke)
    - [Brzina i Tipkovnički Workflow (`Alt+N` / `F2`)](#1-brzina-i-tipkovnički-workflow-altn--f2)
    - [Fiskalizacija 1.0 (CIS) i Fiskalizacija 2.0 (e-Račun)](#2-fiskalizacija-10-cis-i-fiskalizacija-20-e-račun)
    - [Vektorski A4 PDF, HUB-3 PDF417 i EPC QR](#3-vektorski-a4-pdf-hub-3-pdf417-i-epc-qr)
@@ -29,11 +30,14 @@
    - [Google Drive AppData Sinkronizacija](#7-google-drive-appdata-sinkronizacija)
    - [Žigo Omni-Copilot (Gemini 2.0 BYOK, Function Calling & RH Heuristika)](#8-žigo-omni-copilot-gemini-20-byok-function-calling--rh-heuristika)
    - [SystemLog & Slojeviti Arhitekturni Logger](#9-systemlog--slojeviti-arhitekturni-logger)
+   - [Žigo Audio Naracija & Google Cloud Text-to-Speech V1](#10-žigo-audio-naracija--google-cloud-text-to-speech-v1)
+   - [Govorno Upravljanje & Google Cloud Speech-to-Text V2](#11-govorno-upravljanje--google-cloud-speech-to-text-v2)
+   - [Google Sigurnosni i Autentifikacijski Model](#12-google-sigurnosni-i-autentifikacijski-model)
 4. [Arhitektura Sustava (Zero-Server)](#-arhitektura-sustava-zero-server)
 5. [O Autoru: Matija Miloslavić ("Mate Fox" / "m@tise")](#-o-autoru-matija-miloslavić)
 6. [Obrt Robot Hand Made](#-obrt-robot-hand-made)
 7. [Brzi Početak (Quickstart & Razvoj)](#-brzi-početak)
-8. [Verifikacija i Testovi (259/259 Prolazi)](#-verifikacija-i-testovi)
+8. [Verifikacija i Testovi (338/338 Prolazi)](#-verifikacija-i-testovi-338338-prolazi)
 9. [Atribucija i Licenca](#-atribucija-i-licenca)
 
 ---
@@ -140,10 +144,61 @@ Duhovni čuvar, digitalni suputnik i maskota ObrtnIQ sustava zove se **Žigo**.
 * **100% Offline RH Heuristički Fallback**: Čak i ako korisnik nema uneseni API ključ ili nema interneta, ugrađeni deterministički algoritam analizira preko 14 domenskih pravila i nudi točne odgovore s autentičnom dubrovačkom retorikom.
 
 ### 9. SystemLog & Slojeviti Arhitekturni Logger
-* **Hijerarhijski Scoped Logeri (`appLogger`)**: Cjelokupni sustav pokriven je namenskim kanalima (`AGENT:CHAT`, `AGENT:ACTION`, `AI:GEMINI:REQ`, `AI:GEMINI:RES`, `AI:GEMINI:ERROR`, `AUTH:GOOGLE`, `FISCAL:CIS`, `STORAGE`, `SETTINGS`).
+* **Hijerarhijski Scoped Logeri (`appLogger`)**: Cjelokupni sustav pokriven je namenskim kanalima (`AGENT:CHAT`, `AGENT:ACTION`, `AI:GEMINI:REQ`, `AI:GEMINI:RES`, `AI:GEMINI:ERROR`, `AUTH:GOOGLE`, `SERVICE:GOOGLE_TTS`, `SERVICE:GOOGLE_STT`, `FISCAL:CIS`, `STORAGE`, `SETTINGS`).
 * **Sigurnosna Sanitizacija**: Automatsko cenzuriranje osjetljivih podataka (`***REDACTED***`) za lozinke, tokene, tajne i privatne RSA ključeve prije ulaska u logove.
 * **Strukturirani Stack Parser**: Razlučuje interne okvire aplikacije od knjižnica trećih strana (`node_modules`), omogućujući trenutačnu dijagnostiku točne linije koda.
-* **SystemLogDrawer**: Vizualna konzola unutar postavki koja omogućuje pretragu u stvarnom vremenu, filtriranje po stupnjevima (ERROR, WARN, INFO, DEBUG, VERBOSE) i kopiranje dijagnostičkog izvještaja jednim klikom.
+* **Fleksibilni Prikaz Dnevnika**:
+  * Podrška za **obrnuti redoslijed** (najnovije poruke na vrhu za trenutni uvid u zadnje akcije).
+  * Podrška za **kronološki redoslijed** s ugrađenim automatskim scrollanjem i fokusom na dno pri zaprimanju novih unosa.
+* **SystemLogDrawer**: Vizualna konzola unutar postavki koja omogućuje pretragu u stvarnom vremenu, filtriranje po stupnjevima (ERROR, WARN, INFO, DEBUG, VERBOSE), kopiranje dijagnostičkog izvještaja i inteligentnu detekciju uzroka grešaka (npr. Google OAuth scopes naspram API ključa).
+
+### 10. Žigo Audio Naracija & Google Cloud Text-to-Speech V1
+* **Viteški Muški Bariton (`hr-HR-Wavenet-B`)**:
+  * Žigo govori stamenim, dubljim glasom dubrovačkog viteza Orlanda zahvaljujući pažljivo ugođenim audio parametrima:
+    * **Visina tona (Pitch):** `-2.0 semitona` za autoritativan, smiren bariton.
+    * **Brzina govora (Speaking Rate):** `0.94` za odmjerenu, mudru dikciju bez žurbe.
+* **In-Memory Audio Caching (Zero-Lag & Zero-Waste)**:
+  * Svaka sintetizirana rečenica pohranjuje se kao audio Blob u radnu memoriju (`URL.createObjectURL`). Ponavljajuće poruke ili navigacije ne troše dodatne API kvote niti stvaraju latenciju.
+* **Fleksibilni Formati Zvuka**: Podrška za `MP3` (najšira podrška, niska latencija) i `OGG_OPUS` (visoka kompresija).
+* **Trostruka Fallback Hijerarhija**:
+  1. *Google Cloud Text-to-Speech API* (vrhunska WaveNet sinteza).
+  2. *Lokalni preglednički Web Speech API* (offline Microsoft ili sistemski muški glasovi).
+  3. *Vizualni titlovi i poruke u sučelju*.
+* **Panel za Testiranje i Debugiranje**: Mjerenje mrežne latencije u milisekundama uz trenutnu reprodukciju testnog uzorka u zvučnicima korisnika.
+
+### 11. Govorno Upravljanje & Google Cloud Speech-to-Text V2
+* **Hibridni STT Motor**:
+  * **Preglednički Web Speech API:** 100% lokalno u pregledniku, besplatno, bez API ključeva i trenutno spremno za rad.
+  * **Google Cloud Speech-to-Text V2 (Chirp 2):** Vrhunski model za prepoznavanje govora na hrvatskom jeziku s podrškom za poreznu i računovodstvenu terminologiju te raguzejski leksik.
+* **Jednostavno Dijeljenje Ključa (`useSttApiKey`)**: Jednim klikom korisnik može koristiti isti Google Cloud API ključ i za govorno prepoznavanje (STT) i za glasovnu sintezu (TTS).
+* **Audio Transport**: Praćenje statusa reprodukcije naratora, automatsko čišćenje i ponovno stvaranje transportne trake nakon promjene konfiguracije.
+
+### 12. Google Sigurnosni i Autentifikacijski Model
+ObrtnIQ koristi pažljivo osmišljenu sigurnosnu arhitekturu koja strogo razdvaja infrastrukturu aplikacije od privatnih podataka korisnika:
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                    SIGURNOSNO RAZDVAJANJE VJERODAJNICA                          │
+├───────────────────────────────────────┬─────────────────────────────────────────┤
+│    KORISNIČKI GOOGLE RAČUN (OAuth)    │     GOOGLE CLOUD API KLJUČ (Infrastr.)  │
+├───────────────────────────────────────┼─────────────────────────────────────────┤
+│ • ya29... Pristupni Token             │ • AIzaSy... API Ključ                   │
+│ • Isključivo za identitet i backup    │ • Za Text-to-Speech i Speech-to-Text    │
+│ • Scopes: openid, email, profile,     │ • NEMA skočnih prozora za korisnika     │
+│   drive.appdata                       │ • Korisnik NE MORA imati GCP račun      │
+│ • Podaci obrtnika ostaju 100% privatni│ • Zaštićen restrikcijom domene i API-ja │
+└───────────────────────────────────────┴─────────────────────────────────────────┘
+```
+
+* **Prioritet određivanja aktivne vjerodajnice:**
+  1. Korisnički prilagođeni ključ unesen u postavkama (`config.apiKey`)
+  2. Ugrađeni aplikacijski Web Client API ključ iz `.env` (`VITE_GOOGLE_CLIENT_API_KEY` / `VITE_GOOGLE_API_KEY`)
+  3. Dijeljeni STT ključ (`useSttApiKey`)
+  4. Naslijeđeni Gemini AI API ključ
+  5. OAuth 2.0 Web Client sesijski token
+* **Preporučena GCP zaštita ključa:**
+  * **Application restrictions (Websites):** Ograničeno na `http://localhost:5173/*` i produkcijsku domenu aplikacije.
+  * **API restrictions:** Ograničeno isključivo na `Cloud Text-to-Speech API` i `Cloud Speech-to-Text API`.
 
 ---
 
@@ -155,20 +210,20 @@ ObrtnIQ je strukturiran kao moderan **TypeScript monorepo** s potpunim razdvajan
 ObrtnIQ/
 ├── packages/core/              # Čista domena (Pure TypeScript, Zero DOM dependencies)
 │   ├── src/
-│   │   ├── domain/             # Kalkulator, OIB MOD 11, IBAN MOD 97, KPR CSV, PO-SD
+│   │   ├── domain/             # Kalkulator, OIB MOD 11, IBAN MOD 97, KPR CSV, PO-SD, Audio Transport
 │   │   ├── fiscal/             # Fiskalizacija 1.0 (ZKI, SOAP), Fiskalizacija 2.0 (UBL 2.1)
 │   │   ├── pdf/                # ISO 32000-1 struktura, HUB-3 barkod generator, EPC QR
 │   │   ├── storage/            # Kripto-trezor (AES-256-GCM, PBKDF2, Google Sub sidro)
 │   │   └── logger/             # Arhitekturni Logger, Scoped Logeri, Sanitizacija, Stack Parser
-│   └── tests/                  # 20 testnih datoteka, 107/107 testova prolazi (100%)
+│   └── tests/                  # 22 testne datoteke, 127/127 testova prolazi (100%)
 │
 └── apps/web/                   # Web aplikacija (React 19, Vite 6, Dexie.js, Sharp UI)
     ├── src/
-    │   ├── components/         # Sharp UI, InvoiceDesk, ZigoCopilotPanel, FloatingZigoWidget, SystemLogDrawer
+    │   ├── components/         # Sharp UI, InvoiceDesk, ZigoCopilotPanel, GoogleSttSettingsCard, SystemLogDrawer
     │   ├── hooks/              # useInvoiceWorkflow, useGoogleAuth, useGoogleDriveSync, useZigoAgent
-    │   ├── services/           # zigo-context-builder, zigo-memory-service, gemini-service, google-auth-service
+    │   ├── services/           # google-tts-service, google-stt-service, app-client-credentials, gemini-service
     │   └── storage/            # Dexie.js IndexedDB perzistencija (Računi, KPR, Zigo memorija)
-    └── tests/                  # 17 testnih datoteka, 152/152 testa prolazi (100%)
+    └── tests/                  # 21 testna datoteka, 211/211 testova prolazi (100%)
 ```
 
 ### Shema Kripto-Sidra i Prijenosa Podataka:
@@ -256,13 +311,23 @@ cd ObrtnIQ
 npm install
 ```
 
-### 3. Pokretanje razvojnog poslužitelja
+### 3. Konfiguracija okruženja (Opcionalno za Cloud servise)
+Kopirajte predložak `.env.example` u `.env` ako želite konfigurirati ugrađeni Google Cloud API ključ ili Google OAuth Client ID:
+```bash
+cp .env.example .env
+```
+Dostupne varijable:
+* `VITE_GOOGLE_CLIENT_API_KEY`: Ugrađeni Web Client API ključ aplikacije za Google Cloud Text-to-Speech (sintezu viteza Orlanda) i Speech-to-Text V2. Korisnik ne mora unositi ključ niti davati OAuth privolu.
+* `VITE_GOOGLE_CLIENT_ID`: Google OAuth 2.0 Web Client ID za privatni Google Drive `appDataFolder` backup.
+* `VITE_GEMINI_API_KEY`: Opcionalni zadani ključ za Žigo AI model ako se ne unosi kroz korisničko sučelje (BYOK).
+
+### 4. Pokretanje razvojnog poslužitelja
 ```bash
 npm run dev
 ```
 Aplikacija će biti dostupna na lokalnoj adresi: `http://localhost:5173/`
 
-### 4. Izgradnja produkcijskog paketa
+### 5. Izgradnja produkcijskog paketa
 ```bash
 npm run build
 ```
@@ -270,34 +335,36 @@ Generirani optimizirani statički bundle nalazi se u mapi `apps/web/dist/`. Budu
 
 ---
 
-## ✅ Verifikacija i Testovi (259/259 Prolazi)
+## ✅ Verifikacija i Testovi (338/338 Prolazi)
 
 Cjelokupni monorepo pokriven je strogim automatiziranim testovima u okruženju **Vitest**:
 
 ```bash
-# Pokretanje svih testova na cijelom projektu
+# Pokretanje svih testova na cijelom projektu (43 testne datoteke, 338 testova)
 npm test
 
-# Pokretanje testova domenskog paketa (@obrtniq/core)
+# Pokretanje testova domenskog paketa (@obrtniq/core - 127 testova)
 npm test --workspace=@obrtniq/core
 
-# Pokretanje testova web aplikacije (@obrtniq/web)
+# Pokretanje testova web aplikacije (@obrtniq/web - 211 testova)
 npm test --workspace=@obrtniq/web
 ```
 
 ### Sažetak verifikacije:
-* **@obrtniq/core**: 20 testnih datoteka, **107 testova** prolaze sa 100% uspješnošću:
+* **@obrtniq/core**: 22 testne datoteke, **127 testova** prolaze sa 100% uspješnošću:
   * Domenski algoritmi: OIB MOD 11, IBAN MOD 97, decimalni kalkulator, KPR CSV izvoz s UTF-8 BOM-om, PO-SD ePorezna XML.
   * Fiskalizacija 1.0 (CIS SOAP XML, ZKI izračun, JIR validacija) i Fiskalizacija 2.0 (UBL 2.1 e-Račun prema CIUS-HR).
   * Vektorski PDF (ISO 32000-1), HUB-3 PDF417 2D barkod (14 redaka, ECC 4), EPC SEPA QR kod i fiskalni QR.
+  * Audio Transport: Model zvučnog transporta, stanja reprodukcije naracije i validacija glasovnih profila.
   * Kriptografski trezor: PBKDF2 (100k iteracija), AES-256-GCM enkripcija, Google Sub kripto-sidro.
   * Arhitekturni Logger: Ring-buffer, sanitizacija osjetljivih podataka, strukturirani stack trace parser.
-* **@obrtniq/web**: 17 testnih datoteka, **152 testa** prolaze sa 100% uspješnošću:
+* **@obrtniq/web**: 21 testna datoteka, **211 testova** prolaze sa 100% uspješnošću:
   * Žigo Omni-Copilot: Persona, autentični dubrovački leksik, heuristička pravila (14/14), live screen awareness.
+  * Google Cloud Audio & TTS: WaveNet sinteza viteza Orlanda (`hr-HR-Wavenet-B`), in-memory Blob caching, fallback na preglednički Web Speech API, detekcija 403 `insufficient authentication scopes` i prepoznavanje ugrađenog API ključa (23/23 testa).
   * Stop & Error Handling: `AbortController` prekid zahtjeva na zahtjev korisnika, robusno 503 Overloaded procesiranje bez `[object Object]`, automatsko prebacivanje na Orlandov fallback.
   * Google OAuth & Cloud Sync: 6-satna radna sesija (`GOOGLE_TOKEN_VALIDITY_SECONDS = 21,600s`), tiho pozadinsko obnavljanje, Google Drive `appDataFolder` sinkronizacija, cloud dijagnostika.
-  * Korisničko sučelje: SettingsDrawer modularizacija, SystemLogDrawer konzola i filtri, E2E matrica Z-01 do Z-07.
-* **Ukupno**: **259 / 259 testova prolazi sa 100% uspješnošću** (0 grešaka, 0 preskočenih).
+  * Korisničko sučelje & Dnevnik: SettingsDrawer modularizacija, reverzibilni SystemLog (najnovije na vrhu / kronološki s auto-scrollom), E2E matrica Z-01 do Z-07.
+* **Ukupno**: **338 / 338 testova prolazi sa 100% uspješnošću** (0 grešaka, 0 preskočenih).
 
 ---
 
