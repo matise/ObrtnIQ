@@ -6,14 +6,17 @@ import type {
   ZigoToolCall,
   ZigoToolResult 
 } from '@obrtniq/core';
+import type { LiveScreenContextSnapshot } from '../types/zigo-context';
 import { dexieStorage } from '../storage/dexie-db';
 import { geminiService } from '../services/gemini-service';
 import { executeZigoTool, type ZigoToolsContext } from '../services/zigo-tools-dispatcher';
+import { zigoMemoryService } from '../services/zigo-memory-service';
 import { appLogger } from '../services/logger';
 
 export interface UseZigoAgentOptions {
   toolsContext?: ZigoToolsContext;
   apiKeyOverride?: string;
+  liveContext?: LiveScreenContextSnapshot;
 }
 
 export interface UseZigoAgentReturn {
@@ -24,6 +27,9 @@ export interface UseZigoAgentReturn {
   isDrawerOpen: boolean;
   setIsDrawerOpen: (val: boolean) => void;
   toggleDrawer: () => void;
+  isDocked: boolean;
+  setIsDocked: (val: boolean) => void;
+  toggleDock: () => void;
   stvoriNovuSesiju: (naslov?: string) => Promise<string>;
   odaberiSesiju: (sesijaId: string) => Promise<void>;
   obrisiSesiju: (sesijaId: string) => Promise<void>;
@@ -39,12 +45,18 @@ export function useZigoAgent(options: UseZigoAgentOptions = {}): UseZigoAgentRet
   const [poruke, setPoruke] = useState<ZigoChatPoruka[]>([]);
   const [isThinking, setIsThinking] = useState<boolean>(false);
   const [isDrawerOpen, setIsDrawerOpen] = useState<boolean>(false);
+  const [isDocked, setIsDocked] = useState<boolean>(false);
 
-  // Čuvamo referencu na najnoviji toolsContext kako dispečer uvijek ima aktualne hookove
+  // Čuvamo referencu na najnoviji toolsContext i liveContext kako dispečer i agent uvijek imaju aktualne podatke
   const toolsContextRef = useRef<ZigoToolsContext | undefined>(options.toolsContext);
   useEffect(() => {
     toolsContextRef.current = options.toolsContext;
   }, [options.toolsContext]);
+
+  const liveContextRef = useRef<LiveScreenContextSnapshot | undefined>(options.liveContext);
+  useEffect(() => {
+    liveContextRef.current = options.liveContext;
+  }, [options.liveContext]);
 
   const loggerSession = appLogger.scope('AGENT:SESSION');
   const loggerChat = appLogger.scope('AGENT:CHAT');
@@ -187,9 +199,29 @@ export function useZigoAgent(options: UseZigoAgentOptions = {}): UseZigoAgentRet
       });
       const ctx = toolsContextRef.current || {};
       const rez = await executeZigoTool(toolPoziv.imeFunkcije, toolPoziv.argumenti, ctx);
+
+      // Ažuriraj odgovarajuću poruku u stanju i bazi s rezultatom izvršenja
+      setPoruke((prev) => {
+        const copy = [...prev];
+        const msgIdx = copy.findIndex(
+          (m) => m.toolPoziv?.imeFunkcije === toolPoziv.imeFunkcije && !m.toolRezultat
+        );
+        if (msgIdx !== -1 && copy[msgIdx]) {
+          const azurirana: ZigoChatPoruka = {
+            ...copy[msgIdx]!,
+            toolRezultat: rez,
+          };
+          dexieStorage.chat.savePoruka(azurirana).catch((e) =>
+            loggerAction.error('Greška pri spremanju ažurirane poruke s rezultatom alata:', e)
+          );
+          copy[msgIdx] = azurirana;
+        }
+        return copy;
+      });
+
       return rez;
     },
-    []
+    [loggerAction]
   );
 
   // Slanje poruke
@@ -222,9 +254,21 @@ export function useZigoAgent(options: UseZigoAgentOptions = {}): UseZigoAgentRet
       };
 
       await dexieStorage.chat.savePoruka(userMsg);
+      loggerChat.verbose('Korisnička poruka spremljena u bazu', userMsg);
       const azuriranePoruke = [...poruke, userMsg];
       setPoruke(azuriranePoruke);
       setIsThinking(true);
+      loggerChat.debug('Stanje razmišljanja agenta: AKTIVNO (isThinking = true)');
+
+      // Spontano učenje činjenica o korisniku iz poruke ("Žigin Tefter")
+      try {
+        const potentialMemories = zigoMemoryService.extractPotentialMemories(cleanTekst);
+        for (const item of potentialMemories) {
+          await zigoMemoryService.saveMemory(item.kategorija, item.kljuc, item.vrijednost, item.izvor);
+        }
+      } catch (memErr) {
+        loggerChat.warn('Greška pri automatskom izvlačenju činjenica za tefter:', memErr);
+      }
 
       // Ažuriraj naslov sesije ako je još zadani
       const currSesija = sesije.find((s) => s.id === currentSesijaId);
@@ -232,6 +276,7 @@ export function useZigoAgent(options: UseZigoAgentOptions = {}): UseZigoAgentRet
         const pametniNaslov = cleanTekst.slice(0, 36) + (cleanTekst.length > 36 ? '...' : '');
         if (pametniNaslov) {
           await dexieStorage.chat.updateSesija(currentSesijaId, { naslov: pametniNaslov });
+          loggerSession.debug('Automatski ažuriran naslov sesije', { sesijaId: currentSesijaId, noviNaslov: pametniNaslov });
           await loadSesije();
         }
       }
@@ -246,7 +291,8 @@ export function useZigoAgent(options: UseZigoAgentOptions = {}): UseZigoAgentRet
 
         const agentResponse = await geminiService.chatWithAgent(
           azuriranePoruke,
-          options.apiKeyOverride
+          options.apiKeyOverride,
+          liveContextRef.current
         );
         const trajanjeMs = Math.round(performance.now() - t0);
 
@@ -260,14 +306,25 @@ export function useZigoAgent(options: UseZigoAgentOptions = {}): UseZigoAgentRet
 
         let toolRezultat: ZigoToolResult | undefined = undefined;
 
-        // 3. Ako postoji toolPoziv, automatski ga izvrši dispečerom
-        if (agentResponse.toolPoziv) {
+        // 3. Ako postoji toolPoziv, automatski ga izvrši dispečerom,
+        // OSIM alata za istraživanje weba koji zahtijeva eksplicitno odobrenje korisnika (HITL)
+        const isHitlWebSearch = agentResponse.toolPoziv?.imeFunkcije === 'istrazi_propise_web';
+
+        if (agentResponse.toolPoziv && !isHitlWebSearch) {
+          loggerAction.info(`Agent zatražio automatsko izvršenje alata: [${agentResponse.toolPoziv.imeFunkcije}]`, {
+            argumenti: agentResponse.toolPoziv.argumenti,
+          });
           const ctx = toolsContextRef.current || {};
           toolRezultat = await executeZigoTool(
             agentResponse.toolPoziv.imeFunkcije,
             agentResponse.toolPoziv.argumenti,
             ctx
           );
+          loggerAction.verbose('Rezultat automatski izvršenog alata', toolRezultat);
+        } else if (isHitlWebSearch) {
+          loggerAction.info('Alat istrazi_propise_web čeka odobrenje korisnika putem akcijske kartice (HITL)', {
+            argumenti: agentResponse.toolPoziv?.argumenti,
+          });
         }
 
         // 4. Stvori i spremi Žiginu poruku
@@ -282,6 +339,7 @@ export function useZigoAgent(options: UseZigoAgentOptions = {}): UseZigoAgentRet
         };
 
         await dexieStorage.chat.savePoruka(assistantMsg);
+        loggerChat.verbose('Odgovor agenta spremljen u bazu', assistantMsg);
         setPoruke([...azuriranePoruke, assistantMsg]);
       } catch (err: any) {
         const trajanjeMs = Math.round(performance.now() - t0);
@@ -294,13 +352,14 @@ export function useZigoAgent(options: UseZigoAgentOptions = {}): UseZigoAgentRet
           id: `msg-${Date.now()}-error`,
           sesijaId: currentSesijaId,
           uloga: 'assistant',
-          tekst: `Naletio sam na birokratsku neveru: ${err?.message || 'Greška u obradi.'}. Popij čašu vode, ja držim stražu.`,
+          tekst: `Naletio san na birokratsku neveru: ${err?.message || 'Greška u obradi.'}. Popij čašu vode, ja držin stražu.`,
           kreirano: new Date().toISOString(),
         };
         await dexieStorage.chat.savePoruka(errorMsg);
         setPoruke([...azuriranePoruke, errorMsg]);
       } finally {
         setIsThinking(false);
+        loggerChat.debug('Stanje razmišljanja agenta: ZAVRŠENO (isThinking = false)');
       }
     },
     [aktivnaSesijaId, poruke, sesije, stvoriNovuSesiju, loadSesije, options.apiKeyOverride, loggerChat, loggerSession]
@@ -317,6 +376,10 @@ export function useZigoAgent(options: UseZigoAgentOptions = {}): UseZigoAgentRet
     setIsDrawerOpen((prev) => !prev);
   }, []);
 
+  const toggleDock = useCallback(() => {
+    setIsDocked((prev) => !prev);
+  }, []);
+
   const aktivnaSesija = useMemo(() => {
     return sesije.find((s) => s.id === aktivnaSesijaId) || null;
   }, [sesije, aktivnaSesijaId]);
@@ -329,6 +392,9 @@ export function useZigoAgent(options: UseZigoAgentOptions = {}): UseZigoAgentRet
     isDrawerOpen,
     setIsDrawerOpen,
     toggleDrawer,
+    isDocked,
+    setIsDocked,
+    toggleDock,
     stvoriNovuSesiju,
     odaberiSesiju,
     obrisiSesiju,

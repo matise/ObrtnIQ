@@ -22,16 +22,16 @@ export default defineConfig({
   server: {
     port: 5173,
     headers: {
-      // Potrebno za SQLite Wasm preko OPFS-a (SharedArrayBuffer i Origin Private File System)
-      'Cross-Origin-Opener-Policy': 'same-origin',
-      'Cross-Origin-Embedder-Policy': 'require-corp',
+      // Omogućuje crossOriginIsolated za SQLite Wasm / OPFS uz podršku za Google OAuth popupe i vanjske API resurse (npr. Google UserInfo)
+      'Cross-Origin-Opener-Policy': 'same-origin-allow-popups',
+      'Cross-Origin-Embedder-Policy': 'credentialless',
     },
   },
   preview: {
     port: 5173,
     headers: {
-      'Cross-Origin-Opener-Policy': 'same-origin',
-      'Cross-Origin-Embedder-Policy': 'require-corp',
+      'Cross-Origin-Opener-Policy': 'same-origin-allow-popups',
+      'Cross-Origin-Embedder-Policy': 'credentialless',
     },
   },
 });

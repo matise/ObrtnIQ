@@ -7,10 +7,13 @@ import {
   type Artikl, 
   type PoreznaZona,
   type ZigoToolResult,
-  type IObrtnIQStorage
+  type IObrtnIQStorage,
+  type ZigoMemoryKategorija
 } from '@obrtniq/core';
 import { dexieStorage } from '../storage/dexie-db';
 import { appLogger } from './logger';
+import { tavilySearchService } from './tavily-search-service';
+import { zigoMemoryService } from './zigo-memory-service';
 import type { FormItem } from '../engine/types';
 
 export interface ZigoToolsContext {
@@ -40,6 +43,12 @@ export interface ZigoToolsContext {
     isFormSubmittable: boolean;
     handleIssueDocument: () => Promise<void>;
     handleStorno: () => Promise<void>;
+    datumIzdavanja?: string;
+    setDatumIzdavanja?: (val: string) => void;
+    datumDospijeca?: string;
+    setDatumDospijeca?: (val: string) => void;
+    datumIsporuke?: string;
+    setDatumIsporuke?: (val: string) => void;
   };
   drawers?: {
     setIsKprDrawerOpen?: (val: boolean) => void;
@@ -499,6 +508,225 @@ export async function executeZigoTool(
         break;
       }
 
+      // 13. Automatsko dodjeljivanje KPD 2025 šifri stavkama računa
+      case 'auto_ispuni_kpd_sifre': {
+        logger.info('Pokrećem automatsko dodjeljivanje KPD 2025 šifri stavkama');
+        if (!context.items || !context.items.items || context.items.items.length === 0) {
+          return { uspjeh: false, poruka: 'Nema stavki na radnoj plohi za dodjelu KPD šifri.' };
+        }
+
+        let azuriranoBroj = 0;
+        const azuriraneStavke = context.items.items.map((it) => {
+          if (it.kpdSifra && it.kpdSifra.trim()) {
+            return it;
+          }
+          azuriranoBroj++;
+          const text = (it.kpdNaziv || '').toLowerCase();
+          let novaSifra = '62.02.20';
+          let novNaziv = it.kpdNaziv || 'Usluga';
+
+          if (text.includes('programir') || text.includes('softver') || text.includes('kod') || text.includes('web') || text.includes('aplikacij') || text.includes('razvoj')) {
+            novaSifra = '62.01.11';
+            novNaziv = it.kpdNaziv || 'Usluge računalnog programiranja';
+          } else if (text.includes('dizajn') || text.includes('logo') || text.includes('grafik') || text.includes('ui') || text.includes('ux')) {
+            novaSifra = '74.10.11';
+            novNaziv = it.kpdNaziv || 'Usluge grafičkog oblikovanja';
+          } else if (text.includes('savjet') || text.includes('konzult') || text.includes('mentor')) {
+            novaSifra = '70.22.11';
+            novNaziv = it.kpdNaziv || 'Usluge poslovnog savjetovanja';
+          } else if (text.includes('prijevod') || text.includes('tumač')) {
+            novaSifra = '74.30.11';
+            novNaziv = it.kpdNaziv || 'Prevoditeljske usluge';
+          } else if (text.includes('edukacij') || text.includes('tečaj') || text.includes('radionic') || text.includes('predavanj')) {
+            novaSifra = '85.59.19';
+            novNaziv = it.kpdNaziv || 'Ostalo obrazovanje i poučavanje';
+          } else if (text.includes('foto') || text.includes('snimanj') || text.includes('video')) {
+            novaSifra = '74.20.21';
+            novNaziv = it.kpdNaziv || 'Fotografske usluge';
+          } else if (text.includes('održavanj') || text.includes('podršk') || text.includes('server')) {
+            novaSifra = '62.02.30';
+            novNaziv = it.kpdNaziv || 'Usluge tehničke podrške za informacijsku tehnologiju';
+          }
+
+          return {
+            ...it,
+            kpdSifra: novaSifra,
+            kpdNaziv: novNaziv,
+          };
+        });
+
+        logger.verbose('Ažurirane stavke s novim KPD 2025 šiframa', { azuriranoBroj });
+        context.items.setItems(azuriraneStavke);
+        result = {
+          uspjeh: true,
+          podaci: { azuriranoStavki: azuriranoBroj },
+          poruka: `Dodijeljene su KPD 2025 šifre za ${azuriranoBroj} stavki. Papiri su sad šesni i spremni za e-Račun.`,
+        };
+        break;
+      }
+
+      // 14. Provjera i ispravak OIB-a partnera (MOD 11)
+      case 'provjeri_i_ispravi_oib': {
+        const oibParam = args.oib || context.form?.oib;
+        if (!oibParam || typeof oibParam !== 'string') {
+          return { uspjeh: false, poruka: 'OIB nije zadan za provjeru.' };
+        }
+        const cleanOib = oibParam.trim();
+        const isValid = validateOib(cleanOib);
+        logger.verbose('MOD 11 provjera kontrolne znamenke OIB-a', { oib: cleanOib, isValid });
+
+        if (isValid) {
+          if (context.form) {
+            context.form.setOib(cleanOib);
+            context.form.setIsOibValid(true);
+          }
+          result = {
+            uspjeh: true,
+            podaci: { oib: cleanOib, isOibValid: true },
+            poruka: `OIB ${cleanOib} je valjan prema ISO 7064 MOD 11,10 kontroli.`,
+          };
+        } else {
+          // Pokušaj pronaći partnera u adresaru po sličnosti ako postoji
+          const sviPartneri = await storage.partneri.getAll();
+          const partnerQuery = (context.form?.partnerNaziv || '').trim().toLowerCase();
+          const pronadjeni = partnerQuery
+            ? sviPartneri.find((p) => p.oib && validateOib(p.oib) && p.naziv.toLowerCase().includes(partnerQuery))
+            : undefined;
+
+          if (pronadjeni && pronadjeni.oib && context.form) {
+            context.form.setOib(pronadjeni.oib);
+            context.form.setIsOibValid(true);
+            logger.verbose('Pronađen zamjenski OIB partnera u adresaru', { partner: pronadjeni.naziv, oib: pronadjeni.oib });
+            result = {
+              uspjeh: true,
+              podaci: { oib: pronadjeni.oib, isOibValid: true, partnerNaziv: pronadjeni.naziv },
+              poruka: `Pronađen je točan OIB partnera iz adresara: ${pronadjeni.oib} (${pronadjeni.naziv}). Ažurirano na radnoj plohi.`,
+            };
+          } else {
+            result = {
+              uspjeh: false,
+              podaci: { oib: cleanOib, isOibValid: false },
+              poruka: `OIB '${cleanOib}' je nevaljan prema MOD 11 kontrolnoj znamenki. Provjeri cifre u sudskom registru.`,
+            };
+          }
+        }
+        break;
+      }
+
+      // 15. Simulacija utjecaja na paušalni prag od 40.000 €
+      case 'simuliraj_utjecaj_na_prag': {
+        const godina = new Date().getFullYear();
+        const naplate = await storage.kpr.getAll(godina);
+        const kprPromet = naplate.reduce((sum, n) => sum + (n.ukupnoNaplaceno || 0), 0);
+        const iznosEur = args.iznosEur !== undefined ? Number(args.iznosEur) : (context.items?.ukupniIznos || 0);
+        const noviUkupno = kprPromet + iznosEur;
+        const prekoracenje = noviUkupno > 40000;
+        const preostalo = Math.max(0, 40000 - noviUkupno);
+
+        logger.verbose('Izračun simulacije utjecaja na paušalni prag', {
+          godina,
+          kprPrometYtd: kprPromet,
+          iznosEur,
+          noviUkupno,
+          prekoracenje,
+          preostalo,
+        });
+
+        result = {
+          uspjeh: true,
+          podaci: {
+            kprPrometYtd: kprPromet,
+            dodatniIznosEur: iznosEur,
+            noviUkupno,
+            prekoracenje,
+            preostaloDoPraga: preostalo,
+          },
+          poruka: prekoracenje
+            ? `POZOR: S ovim računom od ${iznosEur.toFixed(2)} € ukupni promet iznosit će ${noviUkupno.toFixed(2)} €, čime probijaš limit od 40.000 € za ${(noviUkupno - 40000).toFixed(2)} €!`
+            : `Unutar praga si. Nakon ovog računa od ${iznosEur.toFixed(2)} €, do limita od 40.000 € preostaje ti još ${preostalo.toFixed(2)} €.`,
+        };
+        break;
+      }
+
+      // 16. Prebacivanje datuma u iduću kalendarsku godinu radi zaštite praga
+      case 'prebaci_datum_u_iducu_godinu': {
+        const nextYear = new Date().getFullYear() + 1;
+        const datumIzd = `${nextYear}-01-02`;
+        const datumDosp = `${nextYear}-01-17`;
+
+        logger.verbose('Postavljanje datuma u iduću godinu', { datumIzd, datumDosp, nextYear });
+
+        if (context.workflow?.setDatumIzdavanja) {
+          context.workflow.setDatumIzdavanja(datumIzd);
+        }
+        if (context.workflow?.setDatumDospijeca) {
+          context.workflow.setDatumDospijeca(datumDosp);
+        }
+        if (context.workflow?.setDatumIsporuke) {
+          context.workflow.setDatumIsporuke(datumIzd);
+        }
+
+        result = {
+          uspjeh: true,
+          podaci: { datumIzdavanja: datumIzd, datumDospijeca: datumDosp },
+          poruka: `Datum izdavanja i isporuke postavljen je na 02.01.${nextYear}. Sačuvan je paušalni status i mirna glava.`,
+        };
+        break;
+      }
+
+      // 17. Stoički Fjaka Mode (Anti-Burnout)
+      case 'aktiviraj_fjaku': {
+        logger.verbose('Aktivacija Fjaka načina rada (Anti-Burnout)', { sat: new Date().getHours() });
+        result = {
+          uspjeh: true,
+          podaci: { fjakaAktivna: true },
+          poruka: `Fjaka je aktivirana. Novci poslani u ponoć ne putuju brže. Zidovi Grada stoje stoljećima – pođi leć, Republika treba odmorne ljude.`,
+        };
+        break;
+      }
+
+      // 18. Web istraživanje propisa (Tavily AI Search)
+      case 'istrazi_propise_web': {
+        const { upit, ciljanaDomena } = args;
+        if (!upit || typeof upit !== 'string' || !upit.trim()) {
+          return { uspjeh: false, poruka: 'Upit za pretragu propisa je obvezan.' };
+        }
+        logger.info(`Pokrećem web istraživanje propisa: "${upit.trim()}"`, { ciljanaDomena });
+        const searchRes = await tavilySearchService.searchRegulations(upit.trim(), undefined, ciljanaDomena);
+        result = {
+          uspjeh: searchRes.uspjeh,
+          podaci: {
+            query: searchRes.query,
+            odgovorSazetak: searchRes.odgovorSazetak,
+            izvor: searchRes.izvor,
+            results: searchRes.results,
+          },
+          poruka: searchRes.odgovorSazetak
+            ? `Istraživanje dovršeno (${searchRes.izvor}): ${searchRes.odgovorSazetak}`
+            : `Pretraženi službeni propisi za: "${upit.trim()}".`,
+        };
+        break;
+      }
+
+      // 19. Pamćenje činjenice u Žigin tefter
+      case 'zapamti_cinjenicu': {
+        const { kategorija, kljuc, vrijednost } = args;
+        if (!vrijednost || typeof vrijednost !== 'string' || !vrijednost.trim()) {
+          return { uspjeh: false, poruka: 'Vrijednost za pamćenje je obvezna.' };
+        }
+        const cleanKljuc = (kljuc && typeof kljuc === 'string' && kljuc.trim()) 
+          ? kljuc.trim() 
+          : vrijednost.trim().slice(0, 24);
+        const memKat = (kategorija as ZigoMemoryKategorija) || 'posao';
+        const saved = await zigoMemoryService.saveMemory(memKat, cleanKljuc, vrijednost.trim(), 'izricito_korisnik');
+        result = {
+          uspjeh: true,
+          podaci: { memorija: saved },
+          poruka: `Zapisano u tefter: "${saved.vrijednost}" pod ključem [${saved.kljuc}].`,
+        };
+        break;
+      }
+
       default:
         logger.warn(`Pozvan nepoznat alat: "${toolName}"`);
         return {
@@ -512,6 +740,7 @@ export async function executeZigoTool(
       uspjeh: result.uspjeh,
       trajanjeMs: durationMs,
     });
+    logger.verbose(`Cjeloviti podaci rezultata alata [${toolName}]`, result);
     return result;
   } catch (err: any) {
     const durationMs = Math.round(performance.now() - startTime);

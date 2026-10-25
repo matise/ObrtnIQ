@@ -1,9 +1,9 @@
 import React from 'react';
-import { Cpu, Layers, Printer, Terminal, ShieldCheck, BookOpen, Settings, BookMarked, Sparkles, Shield } from 'lucide-react';
+import { ObrtIcon } from '../icons';
 
 export const PhaseOverviewGrid: React.FC = () => {
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-11 gap-3 no-print">
+    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 2xl:grid-cols-12 gap-3 no-print">
       <div className="border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-3.5 space-y-1.5 transition-colors">
         <div className="flex items-center justify-between">
           <span className="text-[10px] font-mono text-[var(--text-muted)]">FAZA 0-2</span>
@@ -12,7 +12,7 @@ export const PhaseOverviewGrid: React.FC = () => {
           </span>
         </div>
         <div className="flex items-center space-x-2">
-          <Cpu className="w-4 h-4 text-[#10B981]" />
+          <ObrtIcon name="crypto-vault" size={16} glow />
           <h3 className="font-semibold text-xs text-white">Domena &amp; Baza</h3>
         </div>
         <p className="text-[11px] text-[var(--text-muted)] leading-relaxed">
@@ -28,7 +28,7 @@ export const PhaseOverviewGrid: React.FC = () => {
           </span>
         </div>
         <div className="flex items-center space-x-2">
-          <Layers className="w-4 h-4 text-[#10B981]" />
+          <ObrtIcon name="app-seal" size={16} glow />
           <h3 className="font-semibold text-xs text-white">Sharp UI &amp; Teme</h3>
         </div>
         <p className="text-[11px] text-[var(--text-muted)] leading-relaxed">
@@ -44,7 +44,7 @@ export const PhaseOverviewGrid: React.FC = () => {
           </span>
         </div>
         <div className="flex items-center space-x-2">
-          <Printer className="w-4 h-4 text-[#10B981]" />
+          <ObrtIcon name="invoice-document" size={16} glow />
           <h3 className="font-semibold text-xs text-white">HUB-3 &amp; PDF</h3>
         </div>
         <p className="text-[11px] text-[var(--text-muted)] leading-relaxed">
@@ -60,7 +60,7 @@ export const PhaseOverviewGrid: React.FC = () => {
           </span>
         </div>
         <div className="flex items-center space-x-2">
-          <Terminal className="w-4 h-4 text-[#10B981]" />
+          <ObrtIcon name="telemetry-terminal" size={16} glow />
           <h3 className="font-semibold text-xs text-white">Logging Engine</h3>
         </div>
         <p className="text-[11px] text-[var(--text-muted)] leading-relaxed">
@@ -76,7 +76,7 @@ export const PhaseOverviewGrid: React.FC = () => {
           </span>
         </div>
         <div className="flex items-center space-x-2">
-          <ShieldCheck className="w-4 h-4 text-[#10B981]" />
+          <ObrtIcon name="b2b-partners" size={16} glow />
           <h3 className="font-semibold text-xs text-white">Workflow &amp; State</h3>
         </div>
         <p className="text-[11px] text-[var(--text-secondary)] leading-relaxed">
@@ -92,7 +92,7 @@ export const PhaseOverviewGrid: React.FC = () => {
           </span>
         </div>
         <div className="flex items-center space-x-2">
-          <BookOpen className="w-4 h-4 text-[#10B981]" />
+          <ObrtIcon name="kpr-tower" size={16} glow />
           <h3 className="font-semibold text-xs text-white">KPR &amp; PO-SD</h3>
         </div>
         <p className="text-[11px] text-[var(--text-secondary)] leading-relaxed">
@@ -108,7 +108,7 @@ export const PhaseOverviewGrid: React.FC = () => {
           </span>
         </div>
         <div className="flex items-center space-x-2">
-          <ShieldCheck className="w-4 h-4 text-[#3B82F6]" />
+          <ObrtIcon name="fiscal-quill" size={16} glow />
           <h3 className="font-semibold text-xs text-white">Fiskal. 1.0 &amp; 2.0</h3>
         </div>
         <p className="text-[11px] text-[var(--text-secondary)] leading-relaxed">
@@ -124,7 +124,7 @@ export const PhaseOverviewGrid: React.FC = () => {
           </span>
         </div>
         <div className="flex items-center space-x-2">
-          <Settings className="w-4 h-4 text-[var(--accent-primary)]" />
+          <ObrtIcon name="obrt-tools" size={16} glow />
           <h3 className="font-semibold text-xs text-white">Postavke &amp; Logo</h3>
         </div>
         <p className="text-[11px] text-[var(--text-secondary)] leading-relaxed">
@@ -140,7 +140,7 @@ export const PhaseOverviewGrid: React.FC = () => {
           </span>
         </div>
         <div className="flex items-center space-x-2">
-          <BookMarked className="w-4 h-4 text-[#F59E0B]" />
+          <ObrtIcon name="catalog-pricing" size={16} glow />
           <h3 className="font-semibold text-xs text-white">Cjenik &amp; Backup</h3>
         </div>
         <p className="text-[11px] text-[var(--text-secondary)] leading-relaxed">
@@ -156,7 +156,7 @@ export const PhaseOverviewGrid: React.FC = () => {
           </span>
         </div>
         <div className="flex items-center space-x-2">
-          <Sparkles className="w-4 h-4 text-amber-400" />
+          <ObrtIcon name="shield-security" size={16} glow />
           <h3 className="font-semibold text-xs text-white">Google &amp; Cloud</h3>
         </div>
         <p className="text-[11px] text-[var(--text-secondary)] leading-relaxed">
@@ -172,11 +172,27 @@ export const PhaseOverviewGrid: React.FC = () => {
           </span>
         </div>
         <div className="flex items-center space-x-2">
-          <Shield className="w-4 h-4 text-[#ffd700]" />
+          <ObrtIcon name="zigo-emblem" size={16} glow />
           <h3 className="font-semibold text-xs text-[#ffd700]">Žigo Agent</h3>
         </div>
         <p className="text-[11px] text-[var(--text-secondary)] leading-relaxed">
           Autonomni Gemini agent, function calling, multimodal, Žigin rez.
+        </p>
+      </div>
+
+      <div className="border border-[var(--accent-primary)]/40 bg-[var(--bg-surface)] p-3.5 space-y-1.5 transition-colors shadow-lg">
+        <div className="flex items-center justify-between">
+          <span className="text-[10px] font-mono text-[var(--accent-primary)] font-bold">FAZA 12</span>
+          <span className="text-[9px] font-mono px-1.5 py-0.2 bg-[#064E3B] text-[#10B981] border border-[#10B981]/30 font-bold">
+            GOTOVO
+          </span>
+        </div>
+        <div className="flex items-center space-x-2">
+          <ObrtIcon name="core-gear-q" size={16} glow />
+          <h3 className="font-semibold text-xs text-white">Vektorski Pečati</h3>
+        </div>
+        <p className="text-[11px] text-[var(--text-secondary)] leading-relaxed">
+          Dubrovački SVG set (20 ikona), 5-slojni Orlando reljef i dinamički favicon.
         </p>
       </div>
     </div>

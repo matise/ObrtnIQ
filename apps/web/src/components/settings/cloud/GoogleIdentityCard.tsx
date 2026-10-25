@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   LogIn,
   LogOut,
@@ -20,15 +20,25 @@ export const GoogleIdentityCard: React.FC<GoogleIdentityCardProps> = ({
   const loggerAuth = appLogger.scope('SETTINGS:GOOGLE');
   const [customClientIdInput, setCustomClientIdInput] = useState(googleAuth.clientId);
 
+  useEffect(() => {
+    loggerAuth.info('Učitana kartica: Google Identity & Kriptografsko Sidro', {
+      prijavljen: !!googleAuth.identity,
+      email: googleAuth.identity?.email || 'Nema aktivne sesije',
+      customClientIdKonfiguriran: googleAuth.hasCustomClientId,
+    });
+  }, []);
+
   const handleGoogleLogin = async () => {
     loggerAuth.info('Korisnik kliknuo na gumb [Prijavi se putem Google računa]');
-    loggerAuth.debug('Provjera preduvjeta za Google OAuth 2.0 prijavu', {
+    loggerAuth.info('Provjera preduvjeta za Google OAuth 2.0 prijavu...', {
       hasCustomClientId: googleAuth.hasCustomClientId,
       clientIdConfigured: Boolean(googleAuth.clientId),
+      origin: typeof window !== 'undefined' ? window.location.origin : 'unknown',
     });
 
     if (!googleAuth.hasCustomClientId) {
       loggerAuth.warn('Google prijava obustavljena: nije konfiguriran prilagođeni Google Client ID');
+      loggerAuth.info('Savjet: Unesite Client ID u Naprednim postavkama ispod ili kliknite "Isprobaj Demo Prijavu" za trenutni rad bez konfiguracije.');
       alert(
         'Za prijavu stvarnim Google računom potrebno je unijeti vaš besplatni Google Cloud Client ID u "Naprednim postavkama" ispod.\n\nZa trenutno testiranje svih mogućnosti (kripto-sidro, AES-256 enkripcija, Drive sync) bez konfiguracije kliknite "Isprobaj Demo Prijavu"!'
       );
@@ -36,7 +46,7 @@ export const GoogleIdentityCard: React.FC<GoogleIdentityCardProps> = ({
     }
 
     const t0 = performance.now();
-    loggerAuth.info('Otvaram Google OAuth 2.0 popup prozor za autorizaciju korisnika...');
+    loggerAuth.info('Pokrećem Google OAuth autorizacijski servis (useGoogleAuth.login)...');
     try {
       await googleAuth.login();
       const trajanjeMs = Math.round(performance.now() - t0);
@@ -55,34 +65,46 @@ export const GoogleIdentityCard: React.FC<GoogleIdentityCardProps> = ({
   };
 
   const handleGoogleLogout = () => {
-    loggerAuth.info('Korisnik kliknuo Odjava s Google računa', {
-      odjavljeniKorisnik: googleAuth.identity?.email,
+    const userEmail = googleAuth.identity?.email;
+    loggerAuth.info('Započinjem odjavu s Google računa...', {
+      odjavljeniKorisnik: userEmail,
     });
     googleAuth.logout();
-    loggerAuth.debug('Google sesija poništena i uklonjena iz radnog stanja');
+    loggerAuth.info('Google sesija uspješno poništena i uklonjena iz radnog stanja aplikacije.');
   };
 
   const handleGoogleDemoLogin = async () => {
-    loggerAuth.info('Korisnik kliknuo Demo prijavu Google računa');
-    loggerAuth.debug('Aktiviram simulirani offline profil s determinističkim Google Sub sidrom');
+    loggerAuth.info('Korisnik kliknuo na gumb [Isprobaj Demo Prijavu]');
+    loggerAuth.info('Aktiviram simulirani offline profil s determinističkim Google Sub sidrom...');
     await googleAuth.loginDemo();
-    loggerAuth.info('Demo prijava uspješno aktivirana - kripto-sidro spremno');
+    loggerAuth.info('Demo prijava uspješno aktivirana - determinističko kripto-sidro spremno za AES-256 enkripciju!', {
+      email: 'obrtnik.demo@gmail.com',
+      sub: '108392174981273981273',
+    });
   };
 
   const handleGoogleRefreshToken = async () => {
     const t0 = performance.now();
-    loggerAuth.info('Korisnik zatražio ručno osvježavanje OAuth pristupnog tokena');
-    loggerAuth.debug('Status tokena prije obnavljanja', {
-      remainingMinutes: googleAuth.tokenRemainingMinutes,
+    loggerAuth.info('Korisnik zatražio ručno osvježavanje OAuth pristupnog tokena...', {
+      preostaloMinutaPrije: googleAuth.tokenRemainingMinutes,
     });
-    await googleAuth.refreshAccessToken();
+    const noviToken = await googleAuth.refreshAccessToken();
     const trajanjeMs = Math.round(performance.now() - t0);
-    loggerAuth.info('Ručno osvježavanje OAuth pristupnog tokena dovršeno', { trajanjeMs });
+    if (noviToken) {
+      loggerAuth.info('OAuth pristupni token uspješno osvježen!', {
+        trajanjeMs,
+        novoPreostaloMinuta: googleAuth.tokenRemainingMinutes,
+      });
+    } else {
+      loggerAuth.warn('Osvježavanje OAuth pristupnog tokena nije uspjelo (potrebna ponovna prijava)', {
+        trajanjeMs,
+      });
+    }
   };
 
   const handleSaveClientId = () => {
     const trimmed = (customClientIdInput || '').trim();
-    loggerAuth.debug('Započinjem spremanje prilagođenog Google Client ID-a', {
+    loggerAuth.info('Započinjem provjeru i spremanje prilagođenog Google Client ID-a...', {
       duljinaZnakova: trimmed.length,
       postavljen: Boolean(trimmed),
     });
@@ -96,18 +118,17 @@ export const GoogleIdentityCard: React.FC<GoogleIdentityCardProps> = ({
 
     const validation = googleAuthService.validateClientIdFormat(trimmed);
     if (!validation.valid) {
-      loggerAuth.warn('Uneseni Google Client ID ima neispravan format', {
+      loggerAuth.warn('Uneseni Google Client ID ima neispravan format!', {
         upozorenje: validation.message,
       });
     } else {
-      loggerAuth.info('Format unesenog Google Client ID-a je ispravan');
+      loggerAuth.info('Format unesenog Google Client ID-a je valjan.');
     }
 
-    loggerAuth.verbose('Ažuriram Google Client ID u trajnom spremniku', {
+    googleAuth.setClientId(trimmed);
+    loggerAuth.info('Google Client ID uspješno spremljen u trajnu konfiguraciju aplikacije!', {
       prefix: trimmed.slice(0, 15) + '...',
     });
-    googleAuth.setClientId(trimmed);
-    loggerAuth.info('Google Client ID uspješno spremljen u konfiguraciju');
     alert('Google Client ID spremljen.');
   };
 

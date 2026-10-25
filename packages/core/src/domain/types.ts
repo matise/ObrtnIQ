@@ -264,3 +264,15 @@ export interface ZigoChatPoruka {
   kreirano: string;         // ISO datum
 }
 
+export type ZigoMemoryKategorija = 'identitet' | 'posao' | 'preferenca' | 'pravilo' | 'osobno';
+
+export interface ZigoUserMemory {
+  id: string;                      // npr. "mem-ime" ili UUID
+  kategorija: ZigoMemoryKategorija;
+  kljuc: string;                   // npr. "ime_korisnika", "glavni_klijent", "omiljeni_radni_sati"
+  vrijednost: string;              // npr. "Matija", "ACME Studio", "radi noću"
+  izvor: 'izricito_korisnik' | 'spontano_nauceno';
+  pouzdanost: number;              // 0.0 do 1.0
+  azurirano: string;               // ISO datum
+}
+

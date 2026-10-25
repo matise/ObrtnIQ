@@ -1,12 +1,9 @@
 import { useState, useMemo, useEffect } from 'react';
 import { 
-  Terminal, 
   X, 
   Download, 
   Trash2, 
   Search, 
-  AlertCircle, 
-  AlertTriangle, 
   ChevronRight, 
   ChevronDown,
   Copy,
@@ -15,10 +12,13 @@ import {
   Code,
   Bug,
   Eye,
-  EyeOff
+  EyeOff,
+  Zap
 } from 'lucide-react';
 import { LogLevel, LogEntry } from '@obrtniq/core';
+import { appLogger } from '../services/logger';
 import { useSystemLogs } from '../hooks/useSystemLogs';
+import { ObrtIcon, ObrtBadge } from './icons';
 
 interface SystemLogDrawerProps {
   isOpen: boolean;
@@ -46,6 +46,15 @@ export function SystemLogDrawer({ isOpen, onClose }: SystemLogDrawerProps) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [showVendorFrames, setShowVendorFrames] = useState<Record<string, boolean>>({});
+
+  const emitTestLog = () => {
+    appLogger.scope('DIAGNOSTIKA:TEST').info('Uspješan testni zapis u sustavni dnevnik!', {
+      vrijeme: new Date().toLocaleTimeString('hr-HR'),
+      timestamp: new Date().toISOString(),
+      modul: 'DIAGNOSTIKA',
+      status: 'OK',
+    });
+  };
 
   // Automatski proširi najnoviju grešku kad se panel otvori zbog greške
   useEffect(() => {
@@ -116,12 +125,12 @@ export function SystemLogDrawer({ isOpen, onClose }: SystemLogDrawerProps) {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-x-0 bottom-0 z-50 bg-[var(--bg-canvas)] border-t border-[var(--border-strong)] shadow-2xl flex flex-col h-[420px] max-h-[85vh] transition-all no-print font-mono text-xs">
+    <div className="fixed inset-x-0 bottom-0 z-[60] bg-[var(--bg-canvas)] border-t border-[var(--border-strong)] shadow-2xl flex flex-col h-[420px] max-h-[85vh] transition-all no-print font-mono text-xs">
       {/* 1. Top Header Bar */}
       <div className="px-4 py-2 bg-[var(--bg-surface)] border-b border-[var(--border-subtle)] flex items-center justify-between gap-3">
         <div className="flex items-center space-x-3">
           <div className="flex items-center space-x-2 text-white">
-            <Terminal className="w-4 h-4 text-[var(--accent-primary)]" />
+            <ObrtIcon name="telemetry-terminal" size={16} glow />
             <span className="font-mono text-xs font-bold uppercase tracking-wider">
               Sustavni Dnevnik &bull; Telemetrija &amp; Call Stack
             </span>
@@ -130,12 +139,12 @@ export function SystemLogDrawer({ isOpen, onClose }: SystemLogDrawerProps) {
           <div className="flex items-center space-x-1.5 text-[11px] font-mono">
             {errorCount > 0 && (
               <span className="px-2 py-0.5 bg-[#EF4444]/20 border border-[#EF4444]/40 text-[#EF4444] font-bold flex items-center gap-1 animate-pulse">
-                <AlertCircle className="w-3 h-3" /> {errorCount}
+                <ObrtIcon name="signal-error" size={12} /> {errorCount}
               </span>
             )}
             {warnCount > 0 && (
               <span className="px-2 py-0.5 bg-[#F59E0B]/20 border border-[#F59E0B]/40 text-[#F59E0B] font-bold flex items-center gap-1">
-                <AlertTriangle className="w-3 h-3" /> {warnCount}
+                <ObrtIcon name="signal-warning" size={12} /> {warnCount}
               </span>
             )}
             <span className="text-[var(--text-muted)] text-[10px] hidden sm:inline">
@@ -176,6 +185,17 @@ export function SystemLogDrawer({ isOpen, onClose }: SystemLogDrawerProps) {
               <option value="VERBOSE">VERBOSE</option>
             </select>
           </div>
+
+          {/* Emit Test Log Button */}
+          <button
+            type="button"
+            onClick={emitTestLog}
+            title="Pošalji trenutni testni zapis u dnevnik (provjera telemetrije)"
+            className="px-2 py-1 bg-[var(--bg-elevated)] hover:bg-[var(--accent-primary)] hover:text-black text-[var(--accent-primary)] border border-[var(--border-subtle)] text-[11px] font-mono flex items-center gap-1 transition-colors cursor-pointer"
+          >
+            <Zap className="w-3 h-3 fill-current" />
+            <span className="hidden sm:inline">Test</span>
+          </button>
 
           {/* Export JSON Button */}
           <button
@@ -317,8 +337,43 @@ export function SystemLogDrawer({ isOpen, onClose }: SystemLogDrawerProps) {
       {/* 3. Main Log Console Stream */}
       <div className="flex-1 overflow-y-auto p-3 space-y-1 select-text bg-[var(--bg-canvas)]">
         {filteredLogs.length === 0 ? (
-          <div className="h-full flex items-center justify-center text-[var(--text-muted)] text-xs">
-            Nema zapisa koji odgovaraju odabranim filterima.
+          <div className="h-full flex flex-col items-center justify-center text-[var(--text-muted)] text-xs p-6 text-center space-y-2">
+            {logs.length === 0 ? (
+              <>
+                <ObrtBadge name="telemetry-terminal" size={44} colorMode="steel" className="opacity-40 mb-1" />
+                <p className="font-semibold text-slate-300">Spremnik sustavnog dnevnika je prazan (0 unosa)</p>
+                <p className="max-w-md text-[11px] text-[var(--text-secondary)]">
+                  Dnevnik bilježi događaje u stvarnom vremenu. Ako je &quot;Prag zapisa&quot; postavljen na <code className="text-[var(--accent-primary)] font-bold">{activeLevel}</code>, zapisi niže razine se ne spremaju. Pokrenite neku radnju (izdavanje računa, spremanje postavki, Google operacije) ili promijenite prag zapisa.
+                </p>
+                <button
+                  type="button"
+                  onClick={emitTestLog}
+                  className="mt-2 px-3 py-1.5 bg-[var(--accent-primary)] hover:opacity-90 text-black font-bold text-xs font-mono flex items-center gap-1.5 cursor-pointer shadow-lg transition-all"
+                >
+                  <Zap className="w-3.5 h-3.5 fill-current" />
+                  <span>Pošalji testni zapis u dnevnik</span>
+                </button>
+              </>
+            ) : (
+              <>
+                <Filter className="w-8 h-8 text-[var(--text-muted)] opacity-40 mb-1" />
+                <p className="font-semibold text-slate-300">Nema zapisa koji odgovaraju odabranim filterima</p>
+                <p className="text-[11px] text-[var(--text-secondary)]">
+                  U memorijskom spremniku nalazi se ukupno <strong className="text-white">{logs.length}</strong> zapisa, ali niti jedan ne zadovoljava trenutne filtre (Razina: <code>{filterLevel}</code>, Modul: <code>{filterContext}</code>{searchQuery ? `, Pretraga: "${searchQuery}"` : ''}).
+                </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setFilterLevel('ALL');
+                    setFilterContext('ALL');
+                    setSearchQuery('');
+                  }}
+                  className="mt-2 px-3 py-1 bg-[var(--bg-elevated)] hover:bg-[var(--bg-subtle)] border border-[var(--border-subtle)] text-white text-[11px] font-mono cursor-pointer transition-colors"
+                >
+                  Poništi filtre (Prikaži sve zapise)
+                </button>
+              </>
+            )}
           </div>
         ) : (
           filteredLogs.map((entry) => {

@@ -10,6 +10,8 @@ export type SettingsTabId = 'osnovno' | 'poslovanje' | 'memorandum' | 'backup' |
 export interface SettingsDrawerProps {
   isOpen: boolean;
   onClose: () => void;
+  onToggleLogDrawer?: () => void;
+  isLogDrawerOpen?: boolean;
   obrtProfileHook: UseObrtProfileReturn;
   googleAuthHook?: UseGoogleAuthReturn;
   driveSyncHook?: UseGoogleDriveSyncReturn;

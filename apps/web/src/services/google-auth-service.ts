@@ -673,10 +673,11 @@ class GoogleAuthService {
   public async loadGisScript(): Promise<void> {
     if (this.scriptLoaded || (typeof window !== 'undefined' && window.google?.accounts)) {
       this.scriptLoaded = true;
+      appLogger.scope('AUTH:GOOGLE:SDK').info('Google Identity Services (GIS) SDK je dostupan i spreman u radnoj memoriji.');
       return;
     }
 
-    appLogger.scope('AUTH:GOOGLE:SDK').debug('Učitavam vanjski Google Identity Services (GIS) SDK...');
+    appLogger.scope('AUTH:GOOGLE:SDK').info('Preuzimam vanjski Google Identity Services (GIS) SDK sa službenog poslužitelja (accounts.google.com/gsi/client)...');
     return new Promise((resolve, reject) => {
       const script = document.createElement('script');
       script.src = 'https://accounts.google.com/gsi/client';
@@ -684,11 +685,11 @@ class GoogleAuthService {
       script.defer = true;
       script.onload = () => {
         this.scriptLoaded = true;
-        appLogger.scope('AUTH:GOOGLE:SDK').info('Google Identity Services SDK uspješno učitan (accounts.google.com/gsi/client).');
+        appLogger.scope('AUTH:GOOGLE:SDK').info('Google Identity Services SDK uspješno preuzet i inicijaliziran (window.google.accounts).');
         resolve();
       };
       script.onerror = () => {
-        appLogger.scope('AUTH:GOOGLE:SDK').error('Neuspjelo učitavanje Google Identity Services SDK-a (mrežna greška).');
+        appLogger.scope('AUTH:GOOGLE:SDK').error('Neuspjelo učitavanje Google Identity Services SDK-a (mrežna greška). Provjerite internetsku vezu.');
         reject(new Error('Neuspjelo učitavanje Google Identity Services SDK-a. Provjerite internetsku vezu.'));
       };
       document.head.appendChild(script);
@@ -699,12 +700,13 @@ class GoogleAuthService {
    * Pokreće interaktivni Google OAuth 2.0 flow za dohvat tokena i korisničkog profila
    */
   public async requestLogin(): Promise<{ identity: GoogleAuthIdentity; accessToken: string }> {
-    appLogger.scope('AUTH:GOOGLE:LOGIN').info('Započinjem interaktivnu Google OAuth 2.0 prijavu...');
+    const loggerLogin = appLogger.scope('AUTH:GOOGLE:LOGIN');
+    loggerLogin.info('Faza 1/5: Započinjem interaktivnu Google OAuth 2.0 prijavu...');
     await this.loadGisScript();
 
     if (!window.google?.accounts?.oauth2) {
-      const err = new Error('Google Identity SDK nije inicijaliziran.');
-      appLogger.scope('AUTH:GOOGLE:LOGIN').error(err.message);
+      const err = new Error('Google Identity SDK nije inicijaliziran u window.google.accounts.oauth2.');
+      loggerLogin.error(err.message);
       throw err;
     }
 
@@ -712,7 +714,7 @@ class GoogleAuthService {
       const err = new Error(
         'Nije postavljen Google Cloud Client ID. Za trenutno testiranje kliknite "Isprobaj Demo Prijavu", ili unesite svoj Client ID u Naprednim postavkama.'
       );
-      appLogger.scope('AUTH:GOOGLE:LOGIN').warn(err.message);
+      loggerLogin.warn(err.message);
       throw err;
     }
 
@@ -724,9 +726,10 @@ class GoogleAuthService {
       'https://www.googleapis.com/auth/drive.appdata'
     ].join(' ');
 
-    appLogger.scope('AUTH:GOOGLE:LOGIN').debug('Konfiguriran Google token client', {
+    loggerLogin.info('Faza 2/5: Konfiguriran Google token client', {
       clientIdPrefix: clientId.slice(0, 15) + '...',
-      scopes,
+      scopes: ['openid', 'email', 'profile', 'drive.appdata'],
+      origin: typeof window !== 'undefined' ? window.location.origin : 'unknown',
     });
 
     return new Promise((resolve, reject) => {
@@ -735,10 +738,15 @@ class GoogleAuthService {
           client_id: clientId,
           scope: scopes,
           callback: async (response) => {
+            loggerLogin.info('Faza 4/5: Zaprimljen odgovor iz Google skočnog prozora (Popup callback)', {
+              imaAccessToken: Boolean(response.access_token),
+              imaGresku: Boolean(response.error),
+            });
+
             if (response.error || !response.access_token) {
               const rawErr = response.error || 'Prijava je otkazana ili neuspjela.';
               const diagnosis = this.diagnoseAuthError(rawErr);
-              appLogger.scope('AUTH:GOOGLE:LOGIN').warn('Google prijava neuspjela ili otkazana:', {
+              loggerLogin.warn('Google prijava neuspjela ili otkazana:', {
                 error: rawErr,
                 kod: diagnosis.code,
                 poruka: diagnosis.userMessage,
@@ -751,13 +759,14 @@ class GoogleAuthService {
             const accessToken = response.access_token;
             const expiresIn = response.expires_in || 3600;
 
-            appLogger.scope('AUTH:GOOGLE:LOGIN').info('Google OAuth access token uspješno zaprimljen u callbacku.', {
+            loggerLogin.info('Google OAuth access token uspješno zaprimljen u callbacku!', {
               expiresInSec: expiresIn,
+              tipTokena: (response as any).token_type || 'Bearer',
             });
 
             try {
               // Dohvati korisničke podatke (sub, email, name, picture)
-              appLogger.scope('AUTH:GOOGLE:USERINFO').debug('Dohvaćam korisnički profil s Google UserInfo endpointa...');
+              appLogger.scope('AUTH:GOOGLE:USERINFO').info('Faza 5/5: Šaljem zahtjev za dohvat profila na Google UserInfo endpoint (https://www.googleapis.com/oauth2/v3/userinfo)...');
               const userInfoRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
                 headers: { Authorization: `Bearer ${accessToken}` },
               });
@@ -772,6 +781,12 @@ class GoogleAuthService {
               }
 
               const userInfo = await userInfoRes.json();
+              appLogger.scope('AUTH:GOOGLE:USERINFO').info('Korisnički profil uspješno preuzet s Google poslužitelja!', {
+                email: userInfo.email,
+                name: userInfo.name,
+                subSidro: userInfo.sub,
+              });
+
               const identity: GoogleAuthIdentity = {
                 provider: 'GOOGLE',
                 googleSub: userInfo.sub,
@@ -787,16 +802,13 @@ class GoogleAuthService {
                 expiresAt: Date.now() + expiresIn * 1000 - 60000, // 1 min buffer
               };
 
+              loggerLogin.info('Pohranjujem Google identitet i kriptografsko sidro u lokalni spremnik preglednika...');
               this.saveSession(identity, tokens);
-              appLogger.scope('AUTH:GOOGLE:LOGIN').info('Korisnik uspješno prijavljen putem Google računa!', {
-                email: identity.email,
-                ime: identity.name,
-                googleSub: identity.googleSub,
-              });
+              loggerLogin.info(`Google autorizacija u potpunosti uspješna za korisnika: ${identity.email}! Kripto-sidro i Drive spremni.`);
 
               resolve({ identity, accessToken });
             } catch (err: any) {
-              appLogger.scope('AUTH:GOOGLE:LOGIN').error('Greška pri dohvaćanju i obradi profila korisnika:', {
+              loggerLogin.error('Greška pri dohvaćanju i obradi profila korisnika:', {
                 error: err?.message,
               });
               reject(err);
@@ -804,10 +816,11 @@ class GoogleAuthService {
           },
         });
 
-        appLogger.scope('AUTH:GOOGLE:LOGIN').debug('Otvaram Google OAuth popup prozor za odabir računa...');
+        appLogger.scope('AUTH:GOOGLE:POPUP').info('Faza 3/5: Otvaram Google OAuth 2.0 skočni prozor za odabir računa... (Provjerite blokira li preglednik Pop-up prozor)');
         client.requestAccessToken();
+        appLogger.scope('AUTH:GOOGLE:POPUP').info('Google Identity Services preuzeo kontrolu nad skočnim prozorom, čekam autorizaciju...');
       } catch (err: any) {
-        appLogger.scope('AUTH:GOOGLE:LOGIN').error('Greška pri inicijalizaciji requestAccessToken:', {
+        loggerLogin.error('Greška pri inicijalizaciji requestAccessToken:', {
           error: err?.message,
         });
         reject(err);

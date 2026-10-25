@@ -4,6 +4,7 @@ import { CloudDiagnosticsCard } from '../cloud/CloudDiagnosticsCard';
 import { GoogleIdentityCard } from '../cloud/GoogleIdentityCard';
 import { GoogleDriveSyncCard } from '../cloud/GoogleDriveSyncCard';
 import { GeminiSettingsCard } from '../cloud/GeminiSettingsCard';
+import { TavilySettingsCard } from '../cloud/TavilySettingsCard';
 import { FirebaseSettingsCard } from '../cloud/FirebaseSettingsCard';
 
 export const CloudAiTab: React.FC<CloudAiTabProps> = ({
@@ -35,7 +36,10 @@ export const CloudAiTab: React.FC<CloudAiTabProps> = ({
         gemini={gemini}
       />
 
-      {/* 4. Firebase / Firestore (Opcionalna Priprema) */}
+      {/* 4. Tavily AI Search (Web Istraživanje Propisa RH - HITL) */}
+      <TavilySettingsCard />
+
+      {/* 5. Firebase / Firestore (Opcionalna Priprema) */}
       <FirebaseSettingsCard />
     </div>
   );

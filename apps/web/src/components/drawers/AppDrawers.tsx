@@ -118,6 +118,8 @@ export const AppDrawers: React.FC<AppDrawersProps> = ({
       <SettingsDrawer
         isOpen={drawers.isSettingsDrawerOpen}
         onClose={() => drawers.setIsSettingsDrawerOpen(false)}
+        onToggleLogDrawer={drawers.toggleLogDrawer}
+        isLogDrawerOpen={drawers.isLogDrawerOpen}
         obrtProfileHook={obrtProfileHook}
         googleAuthHook={googleAuthHook}
         driveSyncHook={driveSyncHook}

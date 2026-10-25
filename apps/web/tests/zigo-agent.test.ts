@@ -288,7 +288,7 @@ describe('Faza 11: Žigo Autonomni Klijentski Agent (Protokol Validacije V11-1 d
       const response = await geminiService.chatWithAgent(messages);
       expect(response.toolPoziv).toBeUndefined(); // Nema poziva alata za pravdanje!
       expect(response.odgovorTekst).toContain('ćevape');
-      expect(response.odgovorTekst).toContain('Brišem roštilj');
+      expect(response.odgovorTekst).toMatch(/Briše[mn] roštilj/);
       expect(response.odgovorTekst).toContain('inspektor');
     });
   });

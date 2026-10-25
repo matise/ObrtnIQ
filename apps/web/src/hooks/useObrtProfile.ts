@@ -24,10 +24,14 @@ export function useObrtProfile(): UseObrtProfileReturn {
       const spremljen = await dexieStorage.obrt.getProfil();
       if (spremljen) {
         setProfil(spremljen);
+        appLogger.scope('PROFILE:LOAD').info(`Profil obrta "${spremljen.naziv}" uspješno učitan iz baze`, {
+          oib: spremljen.oib,
+        });
       } else {
         // Ako u bazi nema profila, inicijaliziramo ga sa zadanim postavkama
         await dexieStorage.obrt.saveProfil(DEFAULT_OBRT_PROFIL);
         setProfil(DEFAULT_OBRT_PROFIL);
+        appLogger.scope('PROFILE:LOAD').info('Inicijaliziran zadani profil obrta.');
       }
     } catch (err: any) {
       appLogger.scope('PROFILE:LOAD').error('Greška pri učitavanju profila obrta:', {

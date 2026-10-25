@@ -213,6 +213,109 @@ describe('SettingsDrawer Modularizacija i Arhitektura', () => {
     expect(logEvents[1].level).toBe('DEBUG');
     expect(logEvents[2].level).toBe('WARN');
   });
+
+  it('SD-15: Veza između Settings logera i SystemLog spremnika/povijesti (sinkronizacija i konteksti)', () => {
+    appLogger.clear();
+    const settingsLogger = appLogger.scope('SETTINGS');
+    const googleLogger = appLogger.scope('SETTINGS:GOOGLE');
+    const profileLogger = appLogger.scope('SETTINGS:PROFILE');
+
+    // Emisija događaja iz različitih pod-modula postavki
+    settingsLogger.info('Otvoren prozor postavki obrta', { aktivniTab: 'cloud' });
+    settingsLogger.info('Otvoren tab postavki: [cloud]');
+    googleLogger.info('Korisnik kliknuo na gumb [Prijavi se putem Google računa]');
+    profileLogger.info('Profil obrta uspješno spremljen u Dexie bazu');
+
+    const history = appLogger.getHistory();
+    expect(history.length).toBe(4);
+
+    // Provjera da se iz contexta ispravno izvlači primarni modul 'SETTINGS'
+    const primaryModules = new Set(history.map((entry) => entry.context.split(':')[0]));
+    expect(primaryModules.has('SETTINGS')).toBe(true);
+
+    // Provjera filtriranja iz SystemLogDrawer logike
+    const settingsLogs = history.filter((entry) => entry.context.startsWith('SETTINGS'));
+    expect(settingsLogs.length).toBe(4);
+  });
+
+  it('SD-16: Simulacija potpunog Google Auth tijeka iz SettingsDrawera puni SystemLogDrawer buffer s INFO zapisima', () => {
+    appLogger.clear();
+    const originalLevel = appLogger.level;
+    appLogger.setLevel('INFO'); // Testiramo zadani INFO stupanj
+
+    const googleLogger = appLogger.scope('SETTINGS:GOOGLE');
+    const hookLogger = appLogger.scope('AUTH:HOOK');
+    const authServiceLogger = appLogger.scope('AUTH:GOOGLE:LOGIN');
+
+    // 1. Korisnik klikne na Google prijavu u sučelju postavki
+    googleLogger.info('Korisnik kliknuo na gumb [Prijavi se putem Google računa]');
+    googleLogger.info('Provjera preduvjeta za Google OAuth 2.0 prijavu...', { hasCustomClientId: true });
+
+    // 2. useGoogleAuth poziva servis
+    hookLogger.info('useGoogleAuth.login: Započinjem interaktivni postupak Google OAuth prijave...');
+
+    // 3. Google servis prolazi faze
+    authServiceLogger.info('Faza 1/5: Započinjem interaktivnu Google OAuth 2.0 prijavu...');
+    authServiceLogger.info('Faza 2/5: Konfiguriran Google token client');
+    authServiceLogger.info('Faza 4/5: Zaprimljen odgovor iz Google skočnog prozora (Popup callback)');
+
+    // 4. Uspješan završetak
+    hookLogger.info('useGoogleAuth.login: Google prijava u potpunosti dovršena! Korisnik: test@example.com');
+    googleLogger.info('Google OAuth prijava uspješno dovršena!', { email: 'test@example.com' });
+
+    const history = appLogger.getHistory();
+    expect(history.length).toBe(8);
+
+    // Svi zapisi moraju biti na INFO razini
+    expect(history.every((entry) => entry.level === 'INFO')).toBe(true);
+
+    // Testiranje filtriranja po pretrazi "Google" kakvo koristi SystemLogDrawer
+    const searchMatches = history.filter(
+      (entry) =>
+        entry.context.toLowerCase().includes('google') ||
+        entry.message.toLowerCase().includes('google')
+    );
+    expect(searchMatches.length).toBe(8);
+
+    appLogger.setLevel(originalLevel);
+  });
+
+  it('SD-17: Pretraga i filtriranje po stupnjevima u SystemLogDraweru točno pronalazi i filtrira greške iz postavki', () => {
+    appLogger.clear();
+    const originalLevel = appLogger.level;
+    appLogger.setLevel('INFO');
+
+    const googleLogger = appLogger.scope('SETTINGS:GOOGLE');
+
+    googleLogger.info('Korisnik kliknuo na gumb [Prijavi se putem Google računa]');
+    googleLogger.warn('Google prijava obustavljena: nije konfiguriran prilagođeni Google Client ID');
+    googleLogger.error('Google OAuth prijava nije uspjela u popup prozoru:', new Error('Popup blocked'));
+
+    const history = appLogger.getHistory();
+    expect(history.length).toBe(3);
+
+    // Filtar: samo ERROR
+    const errorLogs = history.filter((e) => e.level === 'ERROR');
+    expect(errorLogs.length).toBe(1);
+    expect(errorLogs[0].message).toContain('nije uspjela u popup prozoru');
+    expect(errorLogs[0].error?.message).toBe('Popup blocked');
+
+    // Filtar: samo WARN
+    const warnLogs = history.filter((e) => e.level === 'WARN');
+    expect(warnLogs.length).toBe(1);
+    expect(warnLogs[0].message).toContain('nije konfiguriran');
+
+    // Filtar: pretraga po riječi "popup"
+    const query = 'popup';
+    const queryMatches = history.filter(
+      (e) =>
+        e.message.toLowerCase().includes(query) ||
+        (e.error && e.error.message.toLowerCase().includes(query))
+    );
+    expect(queryMatches.length).toBe(1);
+
+    appLogger.setLevel(originalLevel);
+  });
 });
 
 

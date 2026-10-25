@@ -1,0 +1,124 @@
+/* ObrtnIQ Sharp Icon System - Micro-Animations & Dynamic SVG Layers (Faza 12) */
+
+.obrt-icon {
+  display: inline-block;
+  vertical-align: middle;
+  flex-shrink: 0;
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), filter 0.2s ease;
+  user-select: none;
+}
+
+/* 1. Rotacija zupčanika na hover ili u tijeku obrade */
+.obrt-icon:hover .obrt-anim-gear,
+.obrt-icon-loading .obrt-anim-gear {
+  transform-origin: center;
+  animation: obrt-spin 8s linear infinite;
+}
+
+@keyframes obrt-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* 2. Pulsiranje neonskih kiber-vodova */
+.obrt-icon .obrt-anim-pulse {
+  animation: obrt-glow-breathe 2.8s ease-in-out infinite;
+}
+
+@keyframes obrt-glow-breathe {
+  0%, 100% {
+    opacity: 0.65;
+    filter: drop-shadow(0 0 1px var(--icon-layer-accent));
+  }
+  50% {
+    opacity: 1;
+    filter: drop-shadow(0 0 4px var(--icon-layer-accent));
+  }
+}
+
+/* 3. Blagi uzgon mača na hover */
+.obrt-icon:hover .obrt-anim-sword {
+  transform: translateY(-2px);
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* 4. Dinamički trzaj strelice rasta na hover */
+.obrt-icon:hover .obrt-anim-arrow {
+  transform: translate(1px, -1.5px);
+  transition: transform 0.2s ease-out;
+}
+
+/* 5. Radarsko pulsiranje za greške i alarme */
+.obrt-icon-error .obrt-anim-radar,
+.obrt-icon-warning .obrt-anim-radar {
+  transform-origin: center;
+  animation: obrt-radar-pulse 1.8s cubic-bezier(0.24, 0, 0.38, 1) infinite;
+}
+
+@keyframes obrt-radar-pulse {
+  0% {
+    transform: scale(0.9);
+    opacity: 1;
+  }
+  70% {
+    transform: scale(1.18);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1.18);
+    opacity: 0;
+  }
+}
+
+/* Slojevi unutar SVG-a */
+.obrt-layer-base {
+  fill: var(--icon-layer-base);
+  stroke: var(--icon-layer-base-border);
+  stroke-width: 1.5;
+}
+
+.obrt-layer-metal {
+  fill: var(--icon-layer-metal);
+}
+
+.obrt-layer-metal-dark {
+  fill: var(--icon-layer-metal-dark);
+}
+
+.obrt-layer-accent {
+  fill: var(--icon-layer-accent);
+}
+
+.obrt-layer-gold {
+  fill: var(--icon-layer-gold);
+}
+
+.obrt-layer-gold-light {
+  fill: var(--icon-layer-gold-light);
+}
+
+.obrt-layer-stroke {
+  stroke: var(--icon-layer-stroke);
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.obrt-layer-glow {
+  fill: var(--icon-layer-cyan);
+  filter: drop-shadow(0 0 2px var(--icon-layer-cyan));
+}
+
+/* Pristupačnost za korisnike koji preferiraju smanjene kretnje */
+@media (prefers-reduced-motion: reduce) {
+  .obrt-icon:hover .obrt-anim-gear,
+  .obrt-icon-loading .obrt-anim-gear,
+  .obrt-icon .obrt-anim-pulse,
+  .obrt-icon:hover .obrt-anim-sword,
+  .obrt-icon:hover .obrt-anim-arrow,
+  .obrt-icon-error .obrt-anim-radar,
+  .obrt-icon-warning .obrt-anim-radar {
+    animation: none !important;
+    transition: none !important;
+  }
+}

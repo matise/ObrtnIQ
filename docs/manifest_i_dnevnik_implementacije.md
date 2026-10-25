@@ -355,6 +355,153 @@ export interface LogEntry {
 * **TypeScript & Vite build**: `npm run build` završava s kodom 0.
 * **Lokalni dev server**: Radi stabilno na `http://localhost:5173/` (HTTP 200).
 
+---
+
+## 10. Dnevnik Implementacije: FAZA 12 – Vektorski Sustav Ikona, Orlando Pečati i Dinamičko Temiranje
+* **Dokument:** [`docs/plan_implementacije_faza_12.md`](file:///d:/Documents/Robot%20Hand%20Made/ObrtnIQ/docs/plan_implementacije_faza_12.md)
+* **Status:** 🟢 ZAVRŠENO (100% Prolaznost Gate-Check Protokola V12-1 do V12-6)
+
+### 10.1. Pregled Implementiranih Komponenti
+1. **Slojevita Arhitektura & CSS Tokeni (`index.css`, `icons.css`)**:
+   - Uveden 5-slojni kompozitni model (`base`, `metal`, `accent`, `gold`, `glow`/`stroke`) u `:root` i za monokromatsku temu `[data-theme="carbon"]`.
+   - Definirane CSS varijable: `--icon-layer-base`, `--icon-layer-base-border`, `--icon-layer-metal`, `--icon-layer-metal-dark`, `--icon-layer-accent`, `--icon-layer-gold`, `--icon-layer-gold-light`, `--icon-layer-stroke`, `--icon-layer-glow`, `--icon-layer-cyan`.
+   - Implementirane micro-animacije: rotirajući zupčanik (`.obrt-anim-gear`), pulsirajući vodovi i dioda (`.obrt-anim-pulse`), pomak mača (`.obrt-anim-sword`), rast grafikona (`.obrt-anim-arrow`) i radarski puls alarma (`.obrt-anim-radar`).
+   - Ugrađena puna podrška za smanjeno kretanje (`@media (prefers-reduced-motion: reduce)`).
+
+2. **Vektorski Registar Ikona (`registry.tsx`, `types.ts`)**:
+   - Implementirano svih 20 vektorskih ikona visoke preciznosti (SVG 48x48) prema priloženim referencama viteza Orlanda i Dubrovačke Republike:
+     - **4 Brending Amblema**: `app-seal` (glavni pečat s dubrovačkim laktom pod 90°, mačem, Q krunom/mozgom i kulom Minčeta), `zigo-emblem` (kiber-pečat sa štitom, mačem, munjom i sidrom), `orlando-knight` (Orlandov reljef s mačem i štitom), `core-gear-q` (mikročip jezgra sa slovom Q).
+     - **11 Domenskih Modula**: `invoice-document` (račun s operacijama + - * = i euro kovanicom), `crypto-vault` (sef s kiber-vodovima), `kpr-tower` (kula Minčeta s grafom rasta prometa), `b2b-partners` (Vrata od Pila s rukovanjem), `catalog-pricing` (etiketa cijene s KPD zupčanikom), `fiscal-quill` (guščje pero s pečatom ovjere), `legal-scales` (vaga pravde s dukatima), `obrt-tools` (čekić i dubrovačko ravnalo), `bell-deadline` (zvono sa satom i kalendarom), `shield-security` (štit s ključem i vodovima), `storno-trash` (industrijska kanta sa zupčanicima).
+     - **5 Telemetrijskih i Signalnih Indikatora**: `signal-error` (crveni alarmni štit s radarom), `signal-warning` (jantarni trokut sa sirenom), `signal-success` (smaragdni štit s kvačicom), `signal-info` (čelični krug s plavim neonom), `telemetry-terminal` (konzola dnevnika s promptom `>_` i treperećim kursorom).
+
+3. **React Komponente (`ObrtIcon`, `ObrtBadge`, `ObrtEmblem`, `index.ts`)**:
+   - `ObrtIcon.tsx`: Univerzalni SVG renderer s podrškom za dinamičke CSS stilove, varijante (`glyph`, `badge`, `monochrome`, `raw`), `colorMode` preslikavanje i WAI-ARIA pristupačnost (`role="img"` uz `aria-label` ili `role="presentation"` uz `aria-hidden="true"`).
+   - `ObrtBadge.tsx`: Kružni medaljon klesanog kamena sa Slike 1 (`ObrtIQ_Icons01.png`), dvostrukim prstenom, reljefom i interaktivnim hover stanjima.
+   - `ObrtEmblem.tsx`: Ceremonijalni pečat sa Slika 2 i 3 s vanjskim rotirajućim prstenom meandra/labirinta i auričnim sjajem.
+
+4. **Dinamički SVG Favicon Sustav (`useDynamicFavicon.ts`, `favicon.svg`)**:
+   - Kreiran nativni vektorski favicon `apps/web/public/favicon.svg`.
+   - Razvijena React kuka `useDynamicFavicon()` koja generira inline SVG Data URI za `<link rel="icon">` u zaglavlju dokumenta:
+     - Automatski rotira nijansu ikone u kartici preglednika u skladu s aktivnom temom (`--theme-hue`).
+     - Prebacuje se u upečatljiv crveni alarm (`#EF4444`) u slučaju neuhvaćenih grešaka u aplikaciji.
+   - Integrirana u korijenski `App.tsx`.
+
+5. **Integracija u Korisničko Sučelje**:
+   - `AppHeader.tsx`: Glavni logo zamijenjen ceremonijalnim `app-seal` badgeom; navigacijski gumbi opremljeni animiranim ikonama `invoice-document`, `kpr-tower`, `fiscal-quill`, `catalog-pricing`, `b2b-partners`, `obrt-tools` i `zigo-emblem`.
+   - `PhaseOverviewGrid.tsx`: Svih 11 postojećih kartica ažurirano odgovarajućim `ObrtIcon` simbolima, te dodana kartica **FAZA 12** ("Vektorski Pečati", status GOTOVO) čime je mreža postigla savršenih 12 kartica.
+   - `SettingsTabsNav.tsx`: 5 navigacijskih tabova u postavkama opremljeno semantičkim ikonama (`obrt-tools`, `invoice-document`, `fiscal-quill`, `crypto-vault`, `shield-security`).
+   - `FloatingZigoWidget.tsx`: Integriran `ObrtEmblem` s Orlandovim amblemom, reaktivnim rotirajućim prstenom i statusnom iskrom.
+   - `SystemLogDrawer.tsx`: Zaglavlje, brojači grešaka/upozorenja i prazno stanje opremljeni `telemetry-terminal`, `signal-error` i `signal-warning` ikonama.
+
+### 10.2. Verifikacija i Testna Pokrivenost
+* **Testni scenariji (`apps/web/tests/icon-system.test.ts`)**:
+  - `IS-01`: Cjelovitost registra (svih 20 ikona, 4 amblema, 11 modula, 5 signala, viewBox `0 0 48 48`).
+  - `IS-02`: Vektorska arhitektura i renderiranje (ispravnost vraćenih React SVG čvorova za glyph i badge varijante).
+  - `IS-03`: `ObrtIcon` komponenta i CSS mapiranje (dimenzije, custom accentColor, semantički colorMode, isAnimated, ARIA atributi).
+  - `IS-04`: `ObrtBadge` kružni kameni medaljon (proporcije, klik događaj, glow efekt).
+  - `IS-05`: `ObrtEmblem` ceremonijalni pečat (rotirajući prsten, proporcije, dječji elementi).
+  - `IS-06`: Dinamički Favicon generator (SVG struktura, hue mapiranje i prebacivanje na crveni alarm).
+* **Ukupno automatskih testova**: **30 testnih datoteka, 208/208 testova prolazi** (100% prolaznost na cijelom monorepou).
+* **TypeScript & Vite build**: `tsc -b && vite build` uspješno generira produkcijski paket bez ijedne greške.
+
+---
+
+## 11. Faza 13: Žigo Omni-Copilot & Sustav Svjesnosti Konteksta (Real-Time Eyes-on-Glass)
+
+### 11.1. Arhitektonska Preobrazba i Realizacija
+Preobrazba agenta Žiga iz pasivnog modala u aktivnog kognitivnog kopilota (po uzoru na Google Gemini u Gmailu/Driveu/Docsima i Microsoft Copilot u Edgeu):
+1. **Omni-Context Sabirnica (`useLiveScreenContext.ts`, `zigo-context-builder.ts`, `zigo-context.ts`)**:
+   - Strukturirani snimak stanja ekrana u stvarnom vremenu (`LiveScreenContextSnapshot`):
+     - **Aktivni pogled:** `InvoiceDesk`, `KprDrawer`, `SettingsDrawer`, `SystemLogDrawer`, `FiscalDrawer`, itd.
+     - **Stanje radnog računa:** Kupac, OIB s MOD 11 provjerom, stavke s cijenama i količinama, KPD 2025 klasifikacija, ukupni iznos.
+     - **Orlandov financijski radar:** KPR promet tekuće godine, udaljenost do poreznog praga od 40.000 € i izračun probija li aktivni račun limit!
+     - **Telemetrija sustava:** Stanje mreže, Google Drive sinkronizacija, pretplata na `appLogger` za praćenje najnovijih sistemskih grešaka.
+2. **Usklađivanje sa Specifikacijom i Dubrovačkom Fonologijom (`gemini-service.ts`)**:
+   - Implementiran sistemski prompt točno prema [`zigo_specifikacija_i_sistemski_prompt.md`](file:///d:/Documents/Robot%20Hand%20Made/ObrtnIQ/docs/zigo_specifikacija_i_sistemski_prompt.md).
+   - Neutralizacija nazala: završno `-m` obavezno prelazi u `-n` (*gledan, vidin, radin, nêmân, znan, ostavljan, brišen*).
+   - Očuvanje glasa `h` (*harač, hladno, hrana*).
+   - Autohtoni leksik (*gosparu, preša, spêndza, šesan, rabota, duka, harač, fjaka*).
+   - Obavezna trodijelna struktura svakog odgovora: **1. Opservacija -> 2. Dijagnoza -> 3. Žigin Rez (Akcija)**.
+   - Sva 4 few-shot scenarija (kašnjenje naplate 90 dana, pad CIS servera/Napoleon, privatni roštilj/ćevapi test, prag od 40k €).
+3. **Korisničko Sučelje Copilota (`ZigoCopilotPanel.tsx`, `ZigoChatDrawer.tsx`, `FloatingZigoWidget.tsx`)**:
+   - **Dvojni način rada:**
+     - *Docked Sidecar način:* Usidreni desni panel uz `InvoiceDesk` (46% unosa / 32% pregled / 22% kopilot) za istovremeni rad na računu bez zatvaranja chata.
+     - *Floating Drawer način:* Skočna ladica s pozadinskim blur preklapanjem za brze upite i manje ekrane.
+   - **"Orlando motri" statusna traka (Eyes-on-Glass):** Živi indikator na vrhu kopilota koji prikazuje trenutno promatrani dokument, stanje OIB-a i praga.
+   - **Dinamički kontekstualni čipovi:** Automatski generirani akcijski prijedlozi temeljeni na stanju forme (`[⚠️ Probijanje praga 40k!]`, `[🔍 Provjeri OIB kupca]`, `[🏷️ Dodijeli KPD 2025 šifre]`, `[🗡️ Žigo, presijeci]`, `[🌙 Fjaka: Odmori]`).
+4. **Proširenje Alata (`zigo-tools-dispatcher.ts`)**:
+   - `auto_ispuni_kpd_sifre`: Automatska dodjela KPD 2025 šifri stavkama na radnoj plohi.
+   - `provjeri_i_ispravi_oib`: Validacija i popravak OIB-a prema ISO 7064 MOD 11,10.
+   - `simuliraj_utjecaj_na_prag`: Simulacija prelaska paušalnog limita od 40.000 €.
+   - `prebaci_datum_u_iducu_godinu`: Postavljanje datuma izdavanja i isporuke na 02.01. iduće godine.
+   - `aktiviraj_fjaku`: Stoički anti-burnout podsjetnik za rad vikendom kasno u noć.
+5. **Verifikacija i Testna Pokrivenost**:
+   - Novi testni paket `apps/web/tests/zigo-omni-copilot.test.ts` s 10 cjelovitih testnih scenarija.
+   - **Ukupno testova u repozitoriju:** **31 testna datoteka, 220/220 testova prolazi (100% prolaznost)**.
+   - Produkcijski paket `npm run build` uspješno kompajliran i verificiran.
+
+---
+
+## 12. Faza 13.1: Stiliziranje Odgovora Agenta i Detaljno Logiranje AI Sustava po Razinama
+
+### 12.1. Stiliziranje i Vizualna Hijerarhija Odgovora (`ZigoMessageContent.tsx`, `ZigoCopilotPanel.tsx`)
+1. **Dizajn sekcija prema dubrovačkom arhetipu Digitalnog Orlanda**:
+   - Umjesto monotonog sirovog markdown teksta s neparsiranom zvjezdicom `**Opservacija:**`, implementiran je namjenski parser i komponenta [ZigoMessageContent.tsx](file:///d:/Documents/Robot%20Hand%20Made/ObrtnIQ/apps/web/src/components/ZigoMessageContent.tsx):
+     - **1. Opservacija (`opservacija`)**:
+       - Zlatno-kameni medaljon zaglavlja s ikonom `Compass`, oznakom `1. Opservacija • Dubrovački osvrt` i bedžom `MIROVANJE`.
+       - Kartica s pozadinskim zlatnim gradijentom (`border-l-[#d4af37]`), topla antička estetika, elegantna serif kurzivna tipografija (`font-serif italic text-[#f4ebd0]`).
+     - **2. Dijagnoza (`dijagnoza`)**:
+       - Tehničko-operativno plavo zaglavlje s ikonom `Activity`, oznakom `2. Dijagnoza • Stanje papira & propisa` i bedžom `FISKALNI RADAR`.
+       - Kartica s hladnim čeličnim gradijentom (`border-l-[#38bdf8]`), sans-serif tipografija visoke čitljivosti (`text-gray-200`).
+       - Automatski stilizirani inline kod bedževi za porezne zone i KPD šifre (npr. `` `DOMACI_B2B` ``, `` `62.01.11` ``).
+     - **3. Žigin Rez (`rez`)**:
+       - Odlučni smaragdno-zeleni kontejner akcije s ikonom `Sword`, oznakom `3. Žigin Rez • Kirurški rez & akcija` i pulzirajućim bedžom `PULS 60`.
+       - Smaragdni rub (`border-l-[#10b981]`) i jasan kontrast za ključne korake.
+       - Automatski konvertor tipkovničkih prečaca: prečaci poput `**F2**`, `**Enter**` ili `**Esc**` renderiraju se kao interaktivni hardverski keycap elementi (`<kbd>`).
+     - **Trijažne sekcije**: Podrška za `1. ŠTO GORI (<24h)` (crveni alarm), `2. ŠTO ČEKA` (jantarno odgađanje), i `3. AKCIJA SAD` (zelena promptna akcija).
+2. **Inline Markdown Formatter**:
+   - Bez vanjskih teških ovisnosti, podržava tipkovničke prečace (`<kbd>`), kodne blokove (<code>), masni tekst (<strong>) i kurziv (<em>).
+
+### 12.2. Detaljno Logiranje AI Agent Sustava po Razinama (`ERROR`, `WARN`, `INFO`, `DEBUG`, `VERBOSE`)
+Implementirana je duboka observabilnost kroz sve slojeve agentnog ekosustava:
+1. **Opseg `AI:CONTEXT` / `AI:CONTEXT:LIVE`**:
+   - `DEBUG`: Logira snimak stanja ekrana (aktivni ekran, partner, OIB valjanost, broj stavki, ukupni iznos, KPR YTD promet, porezni prag, status ugroze).
+   - `VERBOSE`: Logira kompletan `LiveScreenContextSnapshot` JSON objekt.
+2. **Opseg `AI:PROMPT`**:
+   - `DEBUG`: Logira model, duljinu sistemske upute u znakovima, broj poruka u povijesti, broj deklariranih alata, prisutnost privitaka.
+   - `VERBOSE`: Logira cjelokupni sastavljeni prompt s injektiranim stanjem ekrana i povijesti poruka.
+3. **Opseg `AI:GEMINI:REQ` & `AI:GEMINI:RES`**:
+   - `INFO`: Logira model, slanje HTTP zahtjeva, latenciju u milisekundama, statusni kod poslužitelja (npr. 200 OK) i detekciju poziva alata.
+   - `VERBOSE`: Logira puni JSON zahtjeva i sirovi Google API kandidat odgovor.
+4. **Opseg `AI:GEMINI:ERROR`**:
+   - `ERROR`: Logira točne HTTP greške i poruke poslužitelja ako dođe do pada API-ja.
+   - `WARN`: Logira automatsko prebacivanje na lokalni stoički heuristički fallback.
+5. **Opseg `AI:HEURISTIC`**:
+   - `DEBUG`: Logira ulazni korisnički tekst, detektirana stanja ekrana i evaluaciju heurističkih pravila.
+   - `INFO`: Logira točno koje je od 13 heurističkih pravila okinuto (npr. *#1 Ćevapi test*, *#2 Prag 40k ugroza*, *#3 Neispravan OIB*, *#4 KPD šifriranje*, *#5 Žigin Rez*, *#6 Fjaka Mode*, itd.).
+   - `VERBOSE`: Logira cjeloviti generirani odgovor i parametre pripremljenog alata.
+6. **Opseg `AI:KPD`**:
+   - `INFO`: Pokretanje analize i preporučena 6-znamenkasta KPD 2025 šifra.
+   - `DEBUG`: Odabrani način (Gemini API vs lokalni katalog).
+   - `VERBOSE`: Puni JSON s obrazloženjem i cijenom.
+7. **Opseg `AGENT:TOOL:<IME_ALATA>`**:
+   - `INFO`: Pokretanje i uspješan dovršetak svakog alata s mjerenjem trajanja (`trajanjeMs`).
+   - `DEBUG`: Validacija ulaznih parametara i adresarske provjere.
+   - `VERBOSE`: Detaljni podaci izračuna, MOD 11 znamenke i ažurirane stavke.
+8. **Opseg `AGENT:CHAT` & `AGENT:SESSION`**:
+   - `INFO`: Slanje korisničkih poruka, generiranje odgovora agenta.
+   - `DEBUG`: Tranzicije stanja razmišljanja (`isThinking: true -> false`), automatsko imenovanje sesija.
+   - `VERBOSE`: Spremljeni entiteti u Dexie.js bazu podataka.
+
+### 12.3. Verifikacija i Testna Pokrivenost
+- Novi testni paketi:
+  - `apps/web/tests/zigo-message-content.test.ts` (4 testa: provjera raščlanjivanja odgovora iz korisničke slike, trijažni uvod, opće poruke, inline tipkovnički prečaci `**F2**` i kodovi).
+  - `apps/web/tests/zigo-leveled-logging.test.ts` (4 testa: provjera emisije log zapisa po razinama za `AI:CONTEXT`, `AI:HEURISTIC`, `AI:KPD`, `AGENT:TOOL`, te `WARN`/`ERROR` u slučaju pada).
+- **Ukupno automatskih testova u repozitoriju**: **33 testne datoteke, 228/228 testova prolazi (100% prolaznost)**.
+- **Produkcijski bundle**: `tsc -b && vite build` prolazi za 4.29 sekundi bez ikakvih TypeScript grešaka.
+
+
+
 
 
 

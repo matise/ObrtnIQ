@@ -5,6 +5,7 @@ import {
   CheckCircle2,
   RotateCcw,
   Save,
+  Terminal,
 } from 'lucide-react';
 import type { ObrtProfil } from '@obrtniq/core';
 import { useGoogleAuth } from '../hooks/useGoogleAuth';
@@ -24,6 +25,8 @@ export type { SettingsDrawerProps, SettingsTabId } from './settings/types';
 export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({
   isOpen,
   onClose,
+  onToggleLogDrawer,
+  isLogDrawerOpen,
   obrtProfileHook,
   googleAuthHook,
   driveSyncHook,
@@ -62,7 +65,7 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({
   if (!isOpen) return null;
 
   const handleTabChange = (tab: SettingsTabId) => {
-    logger.debug('Korisnik promijenio tab postavki', { prethodniTab: activeTab, noviTab: tab });
+    logger.info(`Otvoren tab postavki: [${tab}]`, { prethodniTab: activeTab, noviTab: tab });
     setActiveTab(tab);
   };
 
@@ -189,13 +192,30 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({
                 </p>
               </div>
             </div>
-            <button
-              type="button"
-              onClick={onClose}
-              className="p-1.5 text-[var(--text-muted)] hover:text-white hover:bg-[var(--bg-elevated)] transition-colors cursor-pointer"
-            >
-              <X className="w-5 h-5" />
-            </button>
+            <div className="flex items-center space-x-1.5">
+              {onToggleLogDrawer && (
+                <button
+                  type="button"
+                  onClick={onToggleLogDrawer}
+                  title={isLogDrawerOpen ? 'Zatvori Sustavni Dnevnik' : 'Otvori Sustavni Dnevnik (Real-time telemetrija)'}
+                  className={`px-2 py-1 transition-colors cursor-pointer flex items-center gap-1 text-[11px] font-mono border ${
+                    isLogDrawerOpen 
+                      ? 'bg-[var(--accent-primary)] text-black border-[var(--accent-primary)] font-bold' 
+                      : 'text-[var(--text-muted)] hover:text-white hover:bg-[var(--bg-elevated)] border-[var(--border-subtle)]'
+                  }`}
+                >
+                  <Terminal className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Dnevnik</span>
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={onClose}
+                className="p-1.5 text-[var(--text-muted)] hover:text-white hover:bg-[var(--bg-elevated)] transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
           </div>
 
           {/* Navigation Tabs */}

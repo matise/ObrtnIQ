@@ -1,5 +1,5 @@
 import React from 'react';
-import { Building2, CreditCard, Image as ImageIcon, Shield, Cloud } from 'lucide-react';
+import { ObrtIcon } from '../icons';
 import type { SettingsTabsNavProps } from './types';
 
 export const SettingsTabsNav: React.FC<SettingsTabsNavProps> = ({
@@ -18,7 +18,7 @@ export const SettingsTabsNav: React.FC<SettingsTabsNavProps> = ({
             : 'border-transparent text-[var(--text-muted)] hover:text-white'
         }`}
       >
-        <Building2 className="w-4 h-4" />
+        <ObrtIcon name="obrt-tools" size={16} glow={activeTab === 'osnovno'} />
         <span className="hidden sm:inline">1. Osnovni Podaci</span>
         <span className="sm:hidden">1. Osnovno</span>
       </button>
@@ -32,7 +32,7 @@ export const SettingsTabsNav: React.FC<SettingsTabsNavProps> = ({
             : 'border-transparent text-[var(--text-muted)] hover:text-white'
         }`}
       >
-        <CreditCard className="w-4 h-4" />
+        <ObrtIcon name="invoice-document" size={16} glow={activeTab === 'poslovanje'} />
         <span className="hidden sm:inline">2. Račun &amp; Poslovni Prostor</span>
         <span className="sm:hidden">2. Račun</span>
       </button>
@@ -46,7 +46,7 @@ export const SettingsTabsNav: React.FC<SettingsTabsNavProps> = ({
             : 'border-transparent text-[var(--text-muted)] hover:text-white'
         }`}
       >
-        <ImageIcon className="w-4 h-4" />
+        <ObrtIcon name="fiscal-quill" size={16} glow={activeTab === 'memorandum'} />
         <span>3. Memorandum</span>
       </button>
 
@@ -59,7 +59,7 @@ export const SettingsTabsNav: React.FC<SettingsTabsNavProps> = ({
             : 'border-transparent text-[var(--text-muted)] hover:text-white'
         }`}
       >
-        <Shield className="w-4 h-4 text-[#10B981]" />
+        <ObrtIcon name="crypto-vault" size={16} glow={activeTab === 'backup'} />
         <span>4. Trezor</span>
       </button>
 
@@ -72,7 +72,7 @@ export const SettingsTabsNav: React.FC<SettingsTabsNavProps> = ({
             : 'border-transparent text-[var(--text-muted)] hover:text-white'
         }`}
       >
-        <Cloud className="w-4 h-4 text-[#4285F4]" />
+        <ObrtIcon name="shield-security" size={16} glow={activeTab === 'cloud'} />
         <span>5. Google &amp; AI</span>
         {isGoogleAuthenticated && (
           <span className="w-1.5 h-1.5 rounded-full bg-[#10B981] absolute top-2 right-2" title="Prijavljen na Google" />

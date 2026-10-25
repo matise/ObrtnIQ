@@ -24,7 +24,7 @@ export const ThemeSelector: React.FC = () => {
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center space-x-2 bg-[#140F24] hover:bg-[#1E1635] border border-[#261B3D] hover:border-[#433068] px-2.5 py-1.5 transition-colors font-mono text-xs rounded-none cursor-pointer"
+        className="h-10 flex items-center space-x-2 bg-[#140F24] hover:bg-[#1E1635] border border-[#261B3D] hover:border-[#433068] px-3 transition-colors font-mono text-xs rounded-none cursor-pointer"
         title="Promijeni temu sučelja"
       >
         <span

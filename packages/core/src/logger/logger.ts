@@ -107,14 +107,28 @@ export class CoreLogger implements ILogger {
   private listeners: Set<LogListener> = new Set();
   private scopedLoggers: Map<string, IScopedLogger> = new Map();
   private idCounter: number = 0;
+  private cachedHistory: LogEntry[] | null = null;
 
   constructor(defaultLevel: LogLevel = 'INFO', bufferCapacity: number = 500) {
     this.level = defaultLevel;
     this.ringBuffer = new RingBuffer<LogEntry>(bufferCapacity);
   }
 
+  private notifyListeners(entry?: LogEntry): void {
+    this.listeners.forEach((listener) => {
+      try {
+        listener(entry as LogEntry);
+      } catch (err) {
+        console.error('Greška u listeneru logera:', err);
+      }
+    });
+  }
+
   setLevel(level: LogLevel): void {
-    this.level = level;
+    if (this.level !== level) {
+      this.level = level;
+      this.notifyListeners();
+    }
   }
 
   isLevelEnabled(level: LogLevel): boolean {
@@ -170,17 +184,12 @@ export class CoreLogger implements ILogger {
       error: parseError(error),
     };
 
-    // Spremi u cirkularni memorijski spremnik
+    // Spremi u cirkularni memorijski spremnik i ažuriraj stabilnu referencu povijesti
     this.ringBuffer.push(entry);
+    this.cachedHistory = this.ringBuffer.toArray();
 
-    // Obavijesti pretplatnike
-    this.listeners.forEach((listener) => {
-      try {
-        listener(entry);
-      } catch (err) {
-        console.error('Greška u listeneru logera:', err);
-      }
-    });
+    // Obavijesti sve pretplatnike
+    this.notifyListeners(entry);
 
     return entry;
   }
@@ -206,11 +215,16 @@ export class CoreLogger implements ILogger {
   }
 
   getHistory(): LogEntry[] {
-    return this.ringBuffer.toArray();
+    if (!this.cachedHistory) {
+      this.cachedHistory = this.ringBuffer.toArray();
+    }
+    return this.cachedHistory;
   }
 
   clear(): void {
     this.ringBuffer.clear();
+    this.cachedHistory = [];
+    this.notifyListeners();
   }
 }
 

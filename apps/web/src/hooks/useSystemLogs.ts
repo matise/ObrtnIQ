@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useSyncExternalStore } from 'react';
 import { LogEntry, LogLevel } from '@obrtniq/core';
 import { appLogger, exportDiagnosticLog } from '../services/logger';
 import { 
@@ -7,32 +7,38 @@ import {
   onAutoOpenTriggered 
 } from '../services/global-error-trap';
 
+const emptyLogsSnapshot: LogEntry[] = [];
+
 export function useSystemLogs() {
-  const [logs, setLogs] = useState<LogEntry[]>(() => appLogger.getHistory());
-  const [activeLevel, setActiveLevelState] = useState<LogLevel>(() => appLogger.level);
+  // 1. Reaktivni snapshot sinkroniziran izravno s CoreLoggerom (bez propuštanja render ciklusa)
+  const logs = useSyncExternalStore(
+    useCallback((onStoreChange) => appLogger.subscribe(onStoreChange), []),
+    useCallback(() => appLogger.getHistory(), []),
+    () => emptyLogsSnapshot
+  );
+
+  const activeLevel = useSyncExternalStore(
+    useCallback((onStoreChange) => appLogger.subscribe(onStoreChange), []),
+    useCallback(() => appLogger.level, []),
+    () => 'INFO' as LogLevel
+  );
+
   const [autoOpenOnError, setAutoOpenState] = useState<boolean>(() => getAutoOpenOnError());
   const [lastErrorEntry, setLastErrorEntry] = useState<LogEntry | null>(null);
 
   useEffect(() => {
-    // 1. Pretplata na nove log zapise
-    const unsubscribeLogs = appLogger.subscribe(() => {
-      setLogs(appLogger.getHistory());
-    });
-
-    // 2. Pretplata na auto-open signal
+    // Pretplata na auto-open signal u slučaju neuhvaćene greške
     const unsubscribeAutoOpen = onAutoOpenTriggered((errorEntry) => {
       setLastErrorEntry(errorEntry);
     });
 
     return () => {
-      unsubscribeLogs();
       unsubscribeAutoOpen();
     };
   }, []);
 
   const setLogLevel = useCallback((level: LogLevel) => {
     appLogger.setLevel(level);
-    setActiveLevelState(level);
   }, []);
 
   const setAutoOpen = useCallback((enabled: boolean) => {
@@ -42,7 +48,6 @@ export function useSystemLogs() {
 
   const clearLogs = useCallback(() => {
     appLogger.clear();
-    setLogs([]);
     setLastErrorEntry(null);
   }, []);
 

@@ -9,6 +9,7 @@ import type {
   VrstaDokumenta,
   ZigoChatSesija,
   ZigoChatPoruka,
+  ZigoUserMemory,
   IObrtnIQStorage,
   IObrtRepository,
   IPartnerRepository,
@@ -26,6 +27,7 @@ export class ObrtnIQDexieDatabase extends Dexie {
   naplatePromet!: Table<NaplataPromet, string>;
   chatSesije!: Table<ZigoChatSesija, string>;
   chatPoruke!: Table<ZigoChatPoruka, string>;
+  userMemories!: Table<ZigoUserMemory, string>;
 
   constructor() {
     super('ObrtnIQ_DB');
@@ -42,8 +44,12 @@ export class ObrtnIQDexieDatabase extends Dexie {
       chatPoruke: 'id, sesijaId, uloga, kreirano',
     });
 
+    this.version(3).stores({
+      userMemories: 'id, kategorija, kljuc, azurirano',
+    });
+
     this.on('ready', () => {
-      appLogger.scope('STORAGE:DEXIE').info('Dexie.js IndexedDB baza uspješno otvorena (ObrtnIQ_DB v2).');
+      appLogger.scope('STORAGE:DEXIE').info('Dexie.js IndexedDB baza uspješno otvorena (ObrtnIQ_DB v3).');
     });
   }
 }
@@ -258,6 +264,38 @@ class DexieChatRepository implements IChatRepository {
   }
 }
 
+export class DexieMemoryRepository {
+  async getAll(): Promise<ZigoUserMemory[]> {
+    const list = await db.userMemories.toArray();
+    return list.sort((a, b) => new Date(b.azurirano).getTime() - new Date(a.azurirano).getTime());
+  }
+
+  async getById(id: string): Promise<ZigoUserMemory | null> {
+    const item = await db.userMemories.get(id);
+    return item || null;
+  }
+
+  async getByKey(kljuc: string): Promise<ZigoUserMemory | null> {
+    const item = await db.userMemories.where('kljuc').equals(kljuc).first();
+    return item || null;
+  }
+
+  async save(memory: ZigoUserMemory): Promise<void> {
+    await db.userMemories.put({
+      ...memory,
+      azurirano: memory.azurirano || new Date().toISOString(),
+    });
+  }
+
+  async delete(id: string): Promise<void> {
+    await db.userMemories.delete(id);
+  }
+
+  async clear(): Promise<void> {
+    await db.userMemories.clear();
+  }
+}
+
 export class DexieObrtnIQStorage implements IObrtnIQStorage {
   public obrt = new DexieObrtRepository();
   public partneri = new DexiePartnerRepository();
@@ -265,9 +303,10 @@ export class DexieObrtnIQStorage implements IObrtnIQStorage {
   public dokumenti = new DexieDokumentRepository();
   public kpr = new DexieKprRepository();
   public chat = new DexieChatRepository();
+  public memorija = new DexieMemoryRepository();
 
   async clearAll(): Promise<void> {
-    await db.transaction('rw', [db.obrtProfil, db.partneri, db.artikli, db.dokumenti, db.naplatePromet, db.chatSesije, db.chatPoruke], async () => {
+    await db.transaction('rw', [db.obrtProfil, db.partneri, db.artikli, db.dokumenti, db.naplatePromet, db.chatSesije, db.chatPoruke, db.userMemories], async () => {
       await db.obrtProfil.clear();
       await db.partneri.clear();
       await db.artikli.clear();
@@ -275,6 +314,7 @@ export class DexieObrtnIQStorage implements IObrtnIQStorage {
       await db.naplatePromet.clear();
       await db.chatSesije.clear();
       await db.chatPoruke.clear();
+      await db.userMemories.clear();
     });
   }
 

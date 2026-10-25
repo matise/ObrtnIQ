@@ -23,11 +23,18 @@ import { useGoogleAuth } from './hooks/useGoogleAuth';
 import { useGoogleDriveSync } from './hooks/useGoogleDriveSync';
 import { useGeminiAssistant } from './hooks/useGeminiAssistant';
 import { useZigoAgent } from './hooks/useZigoAgent';
+import { useLiveScreenContext } from './hooks/useLiveScreenContext';
 import { FloatingZigoWidget } from './components/FloatingZigoWidget';
 import { ZigoChatDrawer } from './components/ZigoChatDrawer';
+import { ZigoCopilotPanel } from './components/ZigoCopilotPanel';
 import { onAutoOpenTriggered } from './services/global-error-trap';
+import { appLogger } from './services/logger';
+import { useDynamicFavicon } from './hooks/useDynamicFavicon';
 
 export default function App() {
+  // 0. Dinamički SVG Favicon u tabu preglednika sinkroniziran s temom (Faza 12)
+  useDynamicFavicon();
+
   // 1. Aplikacijski engine, profili i hooks
   const stats = useAppStats();
   const drawers = useAppDrawers();
@@ -46,8 +53,54 @@ export default function App() {
     onStatsUpdate: stats.refreshAll,
   });
 
+  // 1.5. Sustav svjesnosti stanja ekrana u stvarnom vremenu (Omni-Context Bus za Žiga)
+  const liveScreenContext = useLiveScreenContext({
+    openDrawers: {
+      isKprDrawerOpen: drawers.isKprDrawerOpen,
+      isSettingsDrawerOpen: drawers.isSettingsDrawerOpen,
+      isLogDrawerOpen: drawers.isLogDrawerOpen,
+      isFiscalDrawerOpen: drawers.isFiscalDrawerOpen,
+      isPartnerDrawerOpen: drawers.isPartnerDrawerOpen,
+      isArticleDrawerOpen: drawers.isArticleDrawerOpen,
+      isDocDrawerOpen: drawers.isDocDrawerOpen,
+    },
+    form: {
+      partnerNaziv: form.partnerNaziv,
+      oib: form.oib,
+      isOibValid: form.isOibValid,
+      iban: form.iban,
+      isIbanValid: form.isIbanValid,
+      taxZone: form.taxZone,
+      nacinPlacanja: form.nacinPlacanja,
+      datumIzdavanja: workflow.datumIzdavanja,
+      datumDospijeca: workflow.datumDospijeca,
+      datumIsporuke: workflow.datumIsporuke,
+    },
+    items: {
+      items: items.items,
+      ukupniIznos: items.ukupniIznos,
+    },
+    workflow: {
+      docType: workflow.docType,
+      docStatus: workflow.docStatus,
+      brojDokumenta: workflow.brojDokumenta,
+    },
+    stats: {
+      kprTotalEur: stats.totalKprNaplaceno,
+    },
+    googleAuth: {
+      isAuthenticated: googleAuthHook.isAuthenticated,
+      identity: googleAuthHook.identity,
+    },
+    geminiAssistant: {
+      model: geminiHook.model,
+      hasKey: !!geminiHook.apiKey,
+    },
+  });
+
   // Autonomni klijentski agent: Žigo (Digitalni Orlando)
   const zigoAgent = useZigoAgent({
+    liveContext: liveScreenContext.snapshot,
     toolsContext: {
       form: {
         partnerNaziv: form.partnerNaziv,
@@ -75,6 +128,12 @@ export default function App() {
         isFormSubmittable: workflow.isFormSubmittable,
         handleIssueDocument: workflow.handleIssueDocument,
         handleStorno: workflow.handleStorno,
+        datumIzdavanja: workflow.datumIzdavanja,
+        setDatumIzdavanja: workflow.setDatumIzdavanja,
+        datumDospijeca: workflow.datumDospijeca,
+        setDatumDospijeca: workflow.setDatumDospijeca,
+        datumIsporuke: workflow.datumIsporuke,
+        setDatumIsporuke: workflow.setDatumIsporuke,
       },
       drawers: {
         setIsKprDrawerOpen: drawers.setIsKprDrawerOpen,
@@ -91,6 +150,14 @@ export default function App() {
       drawers.setIsLogDrawerOpen(true);
     });
   }, [drawers.setIsLogDrawerOpen]);
+
+  // Inicijalna telemetrija montiranja radne površine
+  useEffect(() => {
+    appLogger.scope('APP:READY').info('Glavno sučelje ObrtnIQ spremno za rad', {
+      modul: 'InvoiceDesk',
+      fiskalizacijaUBL: '2.1',
+    });
+  }, []);
 
   const [mobileTab, setMobileTab] = useState<'desk' | 'preview'>('desk');
 
@@ -179,23 +246,27 @@ export default function App() {
           onChange={setMobileTab}
         />
 
-        {/* Workspace: Full-Width Split-Screen Layout (58% Input Desk / 42% Live Invoice Preview) */}
+        {/* Workspace: Full-Width Split-Screen Layout with optional Docked Copilot (Edge Copilot / Gemini in Workspace style) */}
         <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 w-full items-start">
-          {/* Radna Ploha Unosa (Input Desk - 58%) */}
-          <InvoiceDesk
-            className={mobileTab === 'preview' ? 'hidden xl:block' : 'block'}
-            form={form}
-            items={items}
-            workflow={workflow}
-            onOpenAddressBook={() => drawers.setIsPartnerDrawerOpen(true)}
-            onOpenArticleCatalog={() => drawers.setIsArticleDrawerOpen(true)}
-            onSaveItemToCatalog={handleSaveItemToCatalog}
-            geminiAssistant={geminiHook}
-          />
+          {/* Radna Ploha Unosa (Input Desk) */}
+          <div className={zigoAgent.isDocked ? 'xl:col-span-5' : 'xl:col-span-7'}>
+            <InvoiceDesk
+              className={mobileTab === 'preview' ? 'hidden xl:block' : 'block'}
+              form={form}
+              items={items}
+              workflow={workflow}
+              onOpenAddressBook={() => drawers.setIsPartnerDrawerOpen(true)}
+              onOpenArticleCatalog={() => drawers.setIsArticleDrawerOpen(true)}
+              onSaveItemToCatalog={handleSaveItemToCatalog}
+              geminiAssistant={geminiHook}
+            />
+          </div>
 
-          {/* Živi A4 Real-Time Preview (42%) */}
+          {/* Živi A4 Real-Time Preview */}
           <div
-            className={`printable-invoice-wrapper xl:col-span-5 bg-[var(--bg-surface)] border border-[var(--border-strong)] p-5 space-y-4 sticky top-20 shadow-xl transition-colors ${
+            className={`printable-invoice-wrapper ${
+              zigoAgent.isDocked ? 'xl:col-span-4' : 'xl:col-span-5'
+            } bg-[var(--bg-surface)] border border-[var(--border-strong)] p-5 space-y-4 sticky top-20 shadow-xl transition-colors ${
               mobileTab === 'desk' ? 'hidden xl:block' : 'block'
             }`}
           >
@@ -226,6 +297,19 @@ export default function App() {
               fiskalizacijaStatus={workflow.fiskalizacijaStatus}
             />
           </div>
+
+          {/* 3. Usidreni Sidecar Copilot (Docked Companion Mode) */}
+          {zigoAgent.isDocked && (
+            <div className="hidden xl:block xl:col-span-3 sticky top-20 h-[calc(100vh-140px)] shadow-2xl border border-[#b89758]/50 overflow-hidden">
+              <ZigoCopilotPanel
+                agent={zigoAgent}
+                liveContext={liveScreenContext}
+                isDocked={true}
+                onToggleDock={zigoAgent.toggleDock}
+                onClose={() => zigoAgent.setIsDocked(false)}
+              />
+            </div>
+          )}
         </div>
 
         {/* Documentation & Manifest Reference */}
@@ -256,11 +340,12 @@ export default function App() {
       <FloatingZigoWidget
         isThinking={zigoAgent.isThinking}
         isOpen={zigoAgent.isDrawerOpen}
+        isDocked={zigoAgent.isDocked}
         onClick={zigoAgent.toggleDrawer}
         onQuickRez={zigoAgent.aktivirajRez}
       />
 
-      <ZigoChatDrawer agent={zigoAgent} />
+      <ZigoChatDrawer agent={zigoAgent} liveContext={liveScreenContext} />
     </div>
   );
 }
