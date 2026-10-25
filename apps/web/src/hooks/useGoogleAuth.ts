@@ -19,7 +19,7 @@ export interface UseGoogleAuthReturn {
   login: () => Promise<void>;
   logout: () => void;
   loginDemo: () => void;
-  getAccessToken: () => Promise<string | null>;
+  getAccessToken: (forceRefresh?: boolean) => Promise<string | null>;
   refreshAccessToken: () => Promise<string | null>;
   runFullHealthCheck: () => Promise<GoogleAuthFullHealthReport>;
   diagnoseError: (err: any) => GoogleAuthErrorDiagnosis;
@@ -163,16 +163,18 @@ export function useGoogleAuth(): UseGoogleAuthReturn {
     logger.info('useGoogleAuth.logout: Korisnik je uspješno odjavljen, stanje je resetirano.');
   }, [identity]);
 
-  const getAccessToken = useCallback(async (): Promise<string | null> => {
-    logger.info('useGoogleAuth.getAccessToken: Provjera dostupnosti važećeg OAuth tokena...');
-    const tokens = googleAuthService.getStoredTokens();
-    if (tokens) {
-      logger.info('useGoogleAuth.getAccessToken: Važeći token pronađen u lokalnom spremniku.');
-      return tokens.accessToken;
+  const getAccessToken = useCallback(async (forceRefresh = false): Promise<string | null> => {
+    logger.info('useGoogleAuth.getAccessToken: Provjera dostupnosti važećeg OAuth tokena...', { forceRefresh });
+    if (!forceRefresh) {
+      const tokens = googleAuthService.getStoredTokens();
+      if (tokens) {
+        logger.info('useGoogleAuth.getAccessToken: Važeći token pronađen u lokalnom spremniku.');
+        return tokens.accessToken;
+      }
     }
-    // Ako nema aktivnog tokena, a korisnik je prijavljen:
+    // Ako nema aktivnog tokena ili je zatraženo prisilno osvježavanje, a korisnik je prijavljen:
     if (identity) {
-      logger.info('useGoogleAuth.getAccessToken: Token nije u predmemoriji ili je istekao, pokušavam tiho obnavljanje...');
+      logger.info('useGoogleAuth.getAccessToken: Token nije u predmemoriji, istekao je ili je zatraženo osvježavanje, pokušavam tiho obnavljanje...');
       // 1. Prvo pokušaj tiho (silent) pozadinsko obnavljanje
       const silentToken = await googleAuthService.requestSilentToken();
       if (silentToken) {

@@ -18,6 +18,10 @@ out/
 *.key
 *.cer
 *.crt
+service-account*.json
+*credentials*.json
+gcp-*.json
+*obrtiq-*.json
 
 # Editor & OS files
 .vscode/

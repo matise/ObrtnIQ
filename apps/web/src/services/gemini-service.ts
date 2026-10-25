@@ -3,6 +3,7 @@ import type { ZigoChatPoruka } from '@obrtniq/core';
 import type { LiveScreenContextSnapshot } from '../types/zigo-context';
 import { formatContextForSystemPrompt } from './zigo-context-builder';
 import { zigoMemoryService } from './zigo-memory-service';
+import { getAppClientApiKey } from './app-client-credentials';
 
 export interface KpdRecommendation {
   kpdSifra: string;
@@ -333,8 +334,11 @@ export const ZIGO_FUNCTION_DECLARATIONS = [
 
 class GeminiService {
   public getStoredApiKey(): string {
-    if (typeof localStorage === 'undefined') return '';
-    return localStorage.getItem(STORAGE_KEY_GEMINI_KEY) || '';
+    if (typeof localStorage !== 'undefined') {
+      const stored = localStorage.getItem(STORAGE_KEY_GEMINI_KEY);
+      if (stored && stored.trim()) return stored.trim();
+    }
+    return getAppClientApiKey();
   }
 
   public setStoredApiKey(key: string): void {

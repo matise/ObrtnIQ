@@ -187,5 +187,43 @@ describe('GoogleDriveService: Sinkronizacija i Upravljanje Arhivama', () => {
         })
       );
     });
+
+    it('GD-11: listBackups strukturirano parsira 401 Unauthorized grešku i vraća jasan opis', async () => {
+      const mockFetch = vi.fn().mockResolvedValue({
+        ok: false,
+        status: 401,
+        statusText: 'Unauthorized',
+        json: async () => ({
+          error: {
+            message: 'Invalid Credentials',
+            code: 401,
+          },
+        }),
+      });
+      vi.stubGlobal('fetch', mockFetch);
+
+      await expect(googleDriveService.listBackups(realToken)).rejects.toThrow(
+        /401 Unauthorized.*Invalid Credentials/
+      );
+    });
+
+    it('GD-12: uploadBackup strukturirano parsira 401 Unauthorized grešku', async () => {
+      const mockFetch = vi.fn().mockResolvedValue({
+        ok: false,
+        status: 401,
+        statusText: 'Unauthorized',
+        json: async () => ({
+          error: {
+            message: 'Request is missing required authentication credential.',
+            code: 401,
+          },
+        }),
+      });
+      vi.stubGlobal('fetch', mockFetch);
+
+      await expect(
+        googleDriveService.uploadBackup(realToken, 'content', 'test.obrtniq')
+      ).rejects.toThrow(/401 Unauthorized/);
+    });
   });
 });

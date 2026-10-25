@@ -20,4 +20,6 @@ export * from './domain/fiskalizacija';
 export * from './domain/ubl-eracun';
 export * from './domain/certificate-vault';
 export * from './domain/kpr-csv';
+export * from './domain/voice';
+export * from './domain/audio-transport';
 export { default as FiscalProxyWorker } from './proxy/worker';

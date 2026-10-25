@@ -587,6 +587,11 @@ class GoogleAuthService {
     });
   }
 
+  public clearStoredTokens(): void {
+    localStorage.removeItem(STORAGE_KEY_TOKENS);
+    appLogger.scope('AUTH:GOOGLE:TOKENS').info('Pohranjeni Google pristupni token uklonjen iz lokalne pohrane radi obnove.');
+  }
+
   /**
    * Tiho (silent) obnavlja Google OAuth access token bez otvaranja popup prozora (prompt: '')
    */
@@ -635,15 +640,18 @@ class GoogleAuthService {
             scope: scopes,
             callback: (response) => {
               if (response.access_token) {
-                const expiresIn = GOOGLE_TOKEN_VALIDITY_SECONDS;
+                // GIS vraća stvarni expires_in u sekundama (obično 3599 s = 1 sat).
+                const expiresIn = (typeof response.expires_in === 'number' && response.expires_in > 0)
+                  ? response.expires_in
+                  : GOOGLE_TOKEN_VALIDITY_SECONDS;
                 const tokens: GoogleAuthTokens = {
                   accessToken: response.access_token,
                   expiresAt: Date.now() + expiresIn * 1000 - 60000,
                 };
                 this.saveSession(identity, tokens);
-                appLogger.scope('AUTH:GOOGLE:SILENT').info('Google token uspješno tiho obnovljen u pozadini (vrijedi 6h).', {
+                appLogger.scope('AUTH:GOOGLE:SILENT').info('Google token uspješno tiho obnovljen u pozadini.', {
                   expiresInSec: expiresIn,
-                  trajanjeSati: expiresIn / 3600,
+                  trajanjeMinuta: Math.floor(expiresIn / 60),
                 });
                 resolve(response.access_token);
               } else {
@@ -763,11 +771,14 @@ class GoogleAuthService {
             }
 
             const accessToken = response.access_token;
-            const expiresIn = GOOGLE_TOKEN_VALIDITY_SECONDS;
+            // GIS vraća expiresIn u sekundama (obično 3599 s = 1 sat).
+            const expiresIn = (typeof response.expires_in === 'number' && response.expires_in > 0)
+              ? response.expires_in
+              : GOOGLE_TOKEN_VALIDITY_SECONDS;
 
-            loggerLogin.info('Google OAuth access token uspješno zaprimljen u callbacku (sesija 6h)!', {
+            loggerLogin.info('Google OAuth access token uspješno zaprimljen u callbacku!', {
               expiresInSec: expiresIn,
-              trajanjeSati: expiresIn / 3600,
+              trajanjeMinuta: Math.floor(expiresIn / 60),
               tipTokena: (response as any).token_type || 'Bearer',
             });
 

@@ -8,6 +8,7 @@ import {
 } from '@obrtniq/core';
 import { dexieStorage } from '../storage/dexie-db';
 import { googleDriveService, type DriveBackupFile } from '../services/google-drive-service';
+import { googleAuthService } from '../services/google-auth-service';
 import { appLogger } from '../services/logger';
 
 export interface UseGoogleDriveSyncReturn {
@@ -25,7 +26,8 @@ const STORAGE_KEY_LAST_SYNC = 'obrtniq_drive_last_sync';
 
 export function useGoogleDriveSync(
   identity: GoogleAuthIdentity | null,
-  getAccessToken: () => Promise<string | null>
+  getAccessToken: (forceRefresh?: boolean) => Promise<string | null>,
+  refreshAccessToken?: () => Promise<string | null>
 ): UseGoogleDriveSyncReturn {
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncStatus, setSyncStatus] = useState<'IDLE' | 'SYNCING' | 'SUCCESS' | 'ERROR'>('IDLE');
@@ -35,27 +37,67 @@ export function useGoogleDriveSync(
   const [error, setError] = useState<string | null>(null);
   const [driveBackups, setDriveBackups] = useState<DriveBackupFile[]>([]);
 
+  /**
+   * Izvršava operaciju nad Google Driveom, a u slučaju 401 Unauthorized greške
+   * automatski čisti nevažeći token, obnavlja ga i ponavlja operaciju jednom.
+   */
+  const executeWithTokenRetry = useCallback(async <T>(
+    operation: (token: string) => Promise<T>
+  ): Promise<T> => {
+    let token = await getAccessToken();
+    if (!token) {
+      throw new Error('Nema valjanog Google tokena autorizacije. Prijavite se ponovno.');
+    }
+
+    try {
+      return await operation(token);
+    } catch (err: any) {
+      const errMsg = err?.message || '';
+      // Ako je greška 401 Unauthorized, token je istekao ili nevažeći
+      if (errMsg.includes('401') || errMsg.toLowerCase().includes('unauthorized') || errMsg.includes('nevažeći')) {
+        appLogger.scope('DRIVE:RETRY').warn('Detektiran 401 Unauthorized. Čistim nevažeći token i pokušavam obnavljanje...');
+        googleAuthService.clearStoredTokens();
+
+        // Pokušaj tiho ili interaktivno osvježavanje tokena
+        const refreshedToken = refreshAccessToken
+          ? await refreshAccessToken()
+          : await getAccessToken(true);
+
+        if (refreshedToken) {
+          appLogger.scope('DRIVE:RETRY').info('Pristupni token uspješno obnovljen. Ponavljam Google Drive operaciju...');
+          return await operation(refreshedToken);
+        }
+
+        throw new Error('Google prijava je istekla (401). Molimo kliknite "Obnovi prijavu" kako biste ponovno autorizirali pristup Google Driveu.');
+      }
+      throw err;
+    }
+  }, [getAccessToken, refreshAccessToken]);
+
   const refreshDriveBackups = useCallback(async () => {
     if (!identity) {
       setDriveBackups([]);
+      setError(null);
       return;
     }
 
     try {
-      const token = await getAccessToken();
-      if (!token) return;
-      const list = await googleDriveService.listBackups(token);
+      const list = await executeWithTokenRetry((token) => googleDriveService.listBackups(token));
       setDriveBackups(list);
+      setError(null);
     } catch (err: any) {
-      appLogger.scope('DRIVE:HOOK').warn('Osvježavanje popisa backupa nije uspjelo:', { error: err?.message });
+      const msg = err?.message || 'Osvježavanje popisa backupa nije uspjelo.';
+      appLogger.scope('DRIVE:HOOK').warn('Osvježavanje popisa backupa nije uspjelo:', { error: msg });
+      setError(msg);
     }
-  }, [identity, getAccessToken]);
+  }, [identity, executeWithTokenRetry]);
 
   useEffect(() => {
     if (identity) {
       refreshDriveBackups();
     } else {
       setDriveBackups([]);
+      setError(null);
     }
   }, [identity, refreshDriveBackups]);
 
@@ -72,11 +114,6 @@ export function useGoogleDriveSync(
       setSyncStatus('SYNCING');
       setError(null);
 
-      const token = await getAccessToken();
-      if (!token) {
-        throw new Error('Nema valjanog Google tokena autorizacije. Prijavite se ponovno.');
-      }
-
       // 1. Kreiraj lokalni snapshot baze
       const snapshot = await createBackupSnapshot(dexieStorage);
 
@@ -88,7 +125,9 @@ export function useGoogleDriveSync(
       const timeStr = new Date().toTimeString().slice(0, 5).replace(/:/g, '');
       const filename = `obrtniq_cloud_${dateStr}_${timeStr}.obrtniq`;
 
-      await googleDriveService.uploadBackup(token, JSON.stringify(encrypted, null, 2), filename);
+      await executeWithTokenRetry((token) =>
+        googleDriveService.uploadBackup(token, JSON.stringify(encrypted, null, 2), filename)
+      );
 
       const now = new Date().toISOString();
       setLastSyncTime(now);
@@ -112,7 +151,7 @@ export function useGoogleDriveSync(
     } finally {
       setIsSyncing(false);
     }
-  }, [identity, getAccessToken, refreshDriveBackups]);
+  }, [identity, executeWithTokenRetry, refreshDriveBackups]);
 
   /**
    * Preuzima sigurnosnu kopiju s Google Drivea, dekriptira i atomski obnavlja lokalnu bazu
@@ -127,13 +166,10 @@ export function useGoogleDriveSync(
       setSyncStatus('SYNCING');
       setError(null);
 
-      const token = await getAccessToken();
-      if (!token) {
-        throw new Error('Nema valjanog Google tokena autorizacije.');
-      }
-
-      // 1. Preuzmi sadržaj datoteke s Drivea
-      const content = await googleDriveService.downloadBackup(token, fileId);
+      // 1. Preuzmi sadržaj datoteke s Drivea uz automatski retry na 401
+      const content = await executeWithTokenRetry((token) =>
+        googleDriveService.downloadBackup(token, fileId)
+      );
 
       // 2. Dekriptiraj pomoću Google Sub-a (kripto sidro)
       const decrypted = await decryptBackupWithGoogleSub(content, identity.googleSub, userPin);

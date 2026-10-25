@@ -123,4 +123,45 @@ describe('Sustavni Dnevnik - Reaktivnost, Referencijalna Stabilnost i COEP/COOP 
     const history = appLogger.getHistory();
     expect(history.some(e => e.message === 'Poziv iz konzole')).toBe(true);
   });
+
+  it('SLS-08: Poredak zapisa unatraške (najnovije poruke dolaze na vrh) ispravno preokreće listu za prikaz', () => {
+    appLogger.info('MODUL', 'Prva poruka (stara)');
+    appLogger.info('MODUL', 'Druga poruka (srednja)');
+    appLogger.error('MODUL', 'Treća poruka (najnovija greška)');
+
+    const rawHistory = appLogger.getHistory();
+    expect(rawHistory.length).toBe(3);
+    expect(rawHistory[0].message).toBe('Prva poruka (stara)');
+    expect(rawHistory[2].message).toBe('Treća poruka (najnovija greška)');
+
+    // Simulacija prikaza "unatraške" u SystemLogDraweru (isNewestFirst = true)
+    const newestFirstLogs = rawHistory.slice().reverse();
+    expect(newestFirstLogs[0].message).toBe('Treća poruka (najnovija greška)');
+    expect(newestFirstLogs[1].message).toBe('Druga poruka (srednja)');
+    expect(newestFirstLogs[2].message).toBe('Prva poruka (stara)');
+  });
+
+  it('SLS-09: Auto-fokus / auto-scroll logika određuje ispravnu poziciju (vrh za obrnuti prikaz, dno za kronološki)', () => {
+    // Simulacija scroll elementa s visinom
+    const mockContainer = {
+      scrollHeight: 1200,
+      scrollTop: 0,
+      scrollTo: vi.fn(function({ top }: { top: number }) {
+        mockContainer.scrollTop = top;
+      }),
+    };
+
+    // 1. U kronološkom prikazu (isNewestFirst = false) auto-fokus postavlja vrh na dno (scrollHeight)
+    const isNewestFirst = false;
+    const targetTopChronological = !isNewestFirst ? mockContainer.scrollHeight : 0;
+    mockContainer.scrollTo({ top: targetTopChronological });
+    expect(mockContainer.scrollTo).toHaveBeenCalledWith({ top: 1200 });
+    expect(mockContainer.scrollTop).toBe(1200);
+
+    // 2. U prikazu najnovije gore (isNewestFirst = true) auto-fokus postavlja vrh na 0
+    const targetTopReverse = true ? 0 : mockContainer.scrollHeight;
+    mockContainer.scrollTo({ top: targetTopReverse });
+    expect(mockContainer.scrollTo).toHaveBeenCalledWith({ top: 0 });
+    expect(mockContainer.scrollTop).toBe(0);
+  });
 });

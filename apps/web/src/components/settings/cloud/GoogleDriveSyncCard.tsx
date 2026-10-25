@@ -82,9 +82,33 @@ export const GoogleDriveSyncCard: React.FC<GoogleDriveSyncCardProps> = ({
       </div>
 
       {driveSync.error && (
-        <div className="p-2.5 bg-[#7F1D1D]/40 border border-[#EF4444] text-[#EF4444] text-xs font-mono flex items-center gap-2">
-          <AlertTriangle className="w-4 h-4 flex-shrink-0" />
-          <span>{driveSync.error}</span>
+        <div className="p-2.5 bg-[#7F1D1D]/40 border border-[#EF4444] text-[#EF4444] text-xs font-mono flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4 flex-shrink-0" />
+            <span>{driveSync.error}</span>
+          </div>
+          <div className="flex items-center gap-2 flex-shrink-0">
+            {(driveSync.error.includes('401') || driveSync.error.includes('istek') || driveSync.error.includes('autorizir')) && (
+              <button
+                type="button"
+                onClick={() => googleAuth.login()}
+                className="px-2.5 py-1 bg-[#EF4444] hover:bg-[#DC2626] text-white font-bold text-[11px] font-mono flex items-center gap-1 cursor-pointer transition-all shadow-sm"
+              >
+                <RefreshCw className="w-3 h-3" />
+                Obnovi prijavu
+              </button>
+            )}
+            {driveSync.error.includes('enable it by visiting') && (
+              <a
+                href={driveSync.error.match(/https:\/\/[^\s]+/)?.[0] || 'https://console.cloud.google.com/apis/library/drive.googleapis.com'}
+                target="_blank"
+                rel="noreferrer"
+                className="px-2.5 py-1 bg-[#2563EB] hover:bg-[#1D4ED8] text-white font-bold text-[11px] font-mono flex items-center gap-1 transition-all"
+              >
+                Aktiviraj Drive API
+              </a>
+            )}
+          </div>
         </div>
       )}
 

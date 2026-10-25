@@ -25,7 +25,17 @@ class GoogleDriveService {
       });
 
       if (!res.ok) {
-        throw new Error(`Google Drive API greška (${res.status}): ${res.statusText}`);
+        let errorDetails = '';
+        try {
+          const errData = await res.json();
+          errorDetails = errData.error?.message || JSON.stringify(errData.error || errData);
+        } catch {
+          errorDetails = res.statusText || 'Nepoznata greška';
+        }
+        if (res.status === 401) {
+          throw new Error(`Google Drive API greška (401 Unauthorized): Pristupni token je istekao ili nevažeći. ${errorDetails}`.trim());
+        }
+        throw new Error(`Google Drive API greška (${res.status}): ${errorDetails}`);
       }
 
       const data = await res.json();
@@ -80,7 +90,17 @@ class GoogleDriveService {
       });
 
       if (!res.ok) {
-        throw new Error(`Neuspjelo slanje arhive na Google Drive (${res.status}): ${res.statusText}`);
+        let errorDetails = '';
+        try {
+          const errData = await res.json();
+          errorDetails = errData.error?.message || JSON.stringify(errData.error || errData);
+        } catch {
+          errorDetails = res.statusText || 'Nepoznata greška';
+        }
+        if (res.status === 401) {
+          throw new Error(`Neuspjelo slanje arhive na Google Drive (401 Unauthorized): Pristupni token je istekao ili nevažeći. ${errorDetails}`.trim());
+        }
+        throw new Error(`Neuspjelo slanje arhive na Google Drive (${res.status}): ${errorDetails}`);
       }
 
       const file = await res.json();
@@ -113,7 +133,17 @@ class GoogleDriveService {
       });
 
       if (!res.ok) {
-        throw new Error(`Neuspjelo preuzimanje backupa s Google Drivea (${res.status}): ${res.statusText}`);
+        let errorDetails = '';
+        try {
+          const errData = await res.json();
+          errorDetails = errData.error?.message || JSON.stringify(errData.error || errData);
+        } catch {
+          errorDetails = res.statusText || 'Nepoznata greška';
+        }
+        if (res.status === 401) {
+          throw new Error(`Neuspjelo preuzimanje backupa s Google Drivea (401 Unauthorized): Pristupni token je istekao ili nevažeći. ${errorDetails}`.trim());
+        }
+        throw new Error(`Neuspjelo preuzimanje backupa s Google Drivea (${res.status}): ${errorDetails}`);
       }
 
       return await res.text();

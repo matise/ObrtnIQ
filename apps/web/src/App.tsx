@@ -45,7 +45,11 @@ export default function App() {
   const partnersHook = usePartners();
   const articlesHook = useArticles();
   const googleAuthHook = useGoogleAuth();
-  const driveSyncHook = useGoogleDriveSync(googleAuthHook.identity, googleAuthHook.getAccessToken);
+  const driveSyncHook = useGoogleDriveSync(
+    googleAuthHook.identity,
+    googleAuthHook.getAccessToken,
+    googleAuthHook.refreshAccessToken
+  );
   const geminiHook = useGeminiAssistant();
 
   const workflow = useInvoiceWorkflow({

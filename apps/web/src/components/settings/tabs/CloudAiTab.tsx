@@ -4,6 +4,7 @@ import { CloudDiagnosticsCard } from '../cloud/CloudDiagnosticsCard';
 import { GoogleIdentityCard } from '../cloud/GoogleIdentityCard';
 import { GoogleDriveSyncCard } from '../cloud/GoogleDriveSyncCard';
 import { GeminiSettingsCard } from '../cloud/GeminiSettingsCard';
+import { GoogleSttSettingsCard } from '../cloud/GoogleSttSettingsCard';
 import { TavilySettingsCard } from '../cloud/TavilySettingsCard';
 import { FirebaseSettingsCard } from '../cloud/FirebaseSettingsCard';
 
@@ -36,10 +37,13 @@ export const CloudAiTab: React.FC<CloudAiTabProps> = ({
         gemini={gemini}
       />
 
-      {/* 4. Tavily AI Search (Web Istraživanje Propisa RH - HITL) */}
+      {/* 4. Google Cloud Speech-to-Text V2 (Glasovni Asistent Žigo & Chirp 2 BYOK) */}
+      <GoogleSttSettingsCard />
+
+      {/* 5. Tavily AI Search (Web Istraživanje Propisa RH - HITL) */}
       <TavilySettingsCard />
 
-      {/* 5. Firebase / Firestore (Opcionalna Priprema) */}
+      {/* 6. Firebase / Firestore (Opcionalna Priprema) */}
       <FirebaseSettingsCard />
     </div>
   );

@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { 
   X, 
   Download, 
@@ -13,12 +13,17 @@ import {
   Bug,
   Eye,
   EyeOff,
-  Zap
+  Zap,
+  ArrowDownUp,
+  Focus
 } from 'lucide-react';
 import { LogLevel, LogEntry } from '@obrtniq/core';
 import { appLogger } from '../services/logger';
 import { useSystemLogs } from '../hooks/useSystemLogs';
 import { ObrtIcon, ObrtBadge } from './icons';
+
+const STORAGE_KEY_LOG_ORDER = 'obrtniq_log_order_newest_first';
+const STORAGE_KEY_AUTO_SCROLL = 'obrtniq_log_auto_scroll';
 
 interface SystemLogDrawerProps {
   isOpen: boolean;
@@ -47,6 +52,80 @@ export function SystemLogDrawer({ isOpen, onClose }: SystemLogDrawerProps) {
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [showVendorFrames, setShowVendorFrames] = useState<Record<string, boolean>>({});
 
+  // Poredak zapisa: zadano unatraške (najnovije poruke dolaze na vrh)
+  const [isNewestFirst, setIsNewestFirst] = useState<boolean>(() => {
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY_LOG_ORDER);
+      return stored !== null ? stored === 'true' : true;
+    } catch {
+      return true;
+    }
+  });
+
+  const toggleOrder = () => {
+    setIsNewestFirst((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem(STORAGE_KEY_LOG_ORDER, String(next));
+      } catch {
+        // no-op
+      }
+      return next;
+    });
+  };
+
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+  // Auto-fokus / Auto-scroll stanje: zadano uključeno
+  const [autoScroll, setAutoScroll] = useState<boolean>(() => {
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY_AUTO_SCROLL);
+      return stored !== null ? stored === 'true' : true;
+    } catch {
+      return true;
+    }
+  });
+
+  const toggleAutoScroll = () => {
+    setAutoScroll((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem(STORAGE_KEY_AUTO_SCROLL, String(next));
+      } catch {
+        // no-op
+      }
+      return next;
+    });
+  };
+
+  const scrollToFocus = useCallback((smooth = false) => {
+    const el = scrollContainerRef.current;
+    if (!el) return;
+
+    if (!isNewestFirst) {
+      // Kronološki prikaz: zadnje poruke su na samom dnu
+      el.scrollTo({
+        top: el.scrollHeight,
+        behavior: smooth ? 'smooth' : 'auto',
+      });
+    } else {
+      // Najnovije gore: zadnje poruke su na samom vrhu
+      el.scrollTo({
+        top: 0,
+        behavior: smooth ? 'smooth' : 'auto',
+      });
+    }
+  }, [isNewestFirst]);
+
+  // Kada se promijeni poredak, otvori panel ili zaprimi nova poruka, automatski pozicioniraj
+  useEffect(() => {
+    if (!isOpen || !autoScroll) return;
+    const rafId = requestAnimationFrame(() => {
+      scrollToFocus(false);
+    });
+    return () => cancelAnimationFrame(rafId);
+  }, [isOpen, logs.length, isNewestFirst, autoScroll, scrollToFocus]);
+
   const emitTestLog = () => {
     appLogger.scope('DIAGNOSTIKA:TEST').info('Uspješan testni zapis u sustavni dnevnik!', {
       vrijeme: new Date().toLocaleTimeString('hr-HR'),
@@ -63,9 +142,9 @@ export function SystemLogDrawer({ isOpen, onClose }: SystemLogDrawerProps) {
     }
   }, [isOpen, lastErrorEntry]);
 
-  // Filtriranje zapisa po razini, kontekstu i tekstu
+  // Filtriranje zapisa po razini, kontekstu i tekstu te poredak (najnovije na vrhu)
   const filteredLogs = useMemo(() => {
-    return logs.filter((entry) => {
+    const list = logs.filter((entry) => {
       // 1. Filter razine
       if (filterLevel !== 'ALL' && entry.level !== filterLevel) {
         return false;
@@ -89,7 +168,10 @@ export function SystemLogDrawer({ isOpen, onClose }: SystemLogDrawerProps) {
       }
       return true;
     });
-  }, [logs, filterLevel, filterContext, searchQuery]);
+
+    // Ako je uključen obrnuti redoslijed (zadano), najnoviji unosi dolaze na vrh
+    return isNewestFirst ? list.slice().reverse() : list;
+  }, [logs, filterLevel, filterContext, searchQuery, isNewestFirst]);
 
   // Brojači za tabove
   const counts = useMemo(() => {
@@ -148,13 +230,47 @@ export function SystemLogDrawer({ isOpen, onClose }: SystemLogDrawerProps) {
               </span>
             )}
             <span className="text-[var(--text-muted)] text-[10px] hidden sm:inline">
-              ({logs.length}/500 unosa)
+              ({logs.length}/500 unosa &bull; {isNewestFirst ? 'najnovije gore' : 'kronološki'})
             </span>
           </div>
         </div>
 
         {/* Level Selector, Auto-Open Switch & Actions */}
         <div className="flex items-center space-x-2.5">
+          {/* Poredak zapisa: Najnovije na vrhu (unatraške) / Kronološki */}
+          <button
+            type="button"
+            onClick={toggleOrder}
+            title={
+              isNewestFirst 
+                ? 'Poredak: Zadnje poruke dolaze na vrh (unatraške). Kliknite za kronološki prikaz.' 
+                : 'Poredak: Najstarije poruke na vrhu (kronološki). Kliknite za prikaz najnovijih na vrhu.'
+            }
+            className="px-2 py-1 bg-[var(--bg-canvas)] hover:bg-[var(--bg-surface)] text-[var(--accent-primary)] hover:text-white border border-[var(--border-subtle)] text-[11px] font-mono flex items-center gap-1.5 transition-colors cursor-pointer select-none"
+          >
+            <ArrowDownUp className="w-3.5 h-3.5" />
+            <span className="hidden md:inline">{isNewestFirst ? 'Najnovije gore' : 'Kronološki'}</span>
+          </button>
+
+          {/* Auto-Fokus / Auto-Scroll Preklopnik */}
+          <button
+            type="button"
+            onClick={toggleAutoScroll}
+            title={
+              autoScroll
+                ? 'Auto-fokus uključen: lista automatski prati najnovije poruke (na dno u kronološkom, na vrh u obrnutom prikazu). Kliknite za isključivanje.'
+                : 'Auto-fokus isključen: lista se ne pomiče automatski kod novih poruka. Kliknite za uključivanje.'
+            }
+            className={`px-2 py-1 text-[11px] font-mono flex items-center gap-1.5 transition-colors cursor-pointer select-none border ${
+              autoScroll
+                ? 'bg-[var(--accent-primary)]/15 text-[var(--accent-primary)] border-[var(--accent-primary)]/40 font-semibold'
+                : 'bg-[var(--bg-canvas)] text-[var(--text-muted)] border-[var(--border-subtle)] hover:text-white'
+            }`}
+          >
+            <Focus className="w-3.5 h-3.5" />
+            <span className="hidden md:inline">{autoScroll ? 'Auto-fokus: ON' : 'Auto-fokus: OFF'}</span>
+          </button>
+
           {/* Auto-Open on Error Toggle */}
           <label 
             className="flex items-center space-x-1.5 text-[11px] font-mono text-[var(--text-secondary)] hover:text-white cursor-pointer select-none bg-[var(--bg-canvas)] px-2 py-1 border border-[var(--border-subtle)]"
@@ -335,7 +451,10 @@ export function SystemLogDrawer({ isOpen, onClose }: SystemLogDrawerProps) {
       </div>
 
       {/* 3. Main Log Console Stream */}
-      <div className="flex-1 overflow-y-auto p-3 space-y-1 select-text bg-[var(--bg-canvas)]">
+      <div 
+        ref={scrollContainerRef}
+        className="flex-1 overflow-y-auto p-3 space-y-1 select-text bg-[var(--bg-canvas)]"
+      >
         {filteredLogs.length === 0 ? (
           <div className="h-full flex flex-col items-center justify-center text-[var(--text-muted)] text-xs p-6 text-center space-y-2">
             {logs.length === 0 ? (

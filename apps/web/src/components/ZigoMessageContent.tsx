@@ -5,8 +5,10 @@ import {
   Sword, 
   Flame, 
   Clock, 
-  ArrowRight
+  ArrowRight,
+  Volume2
 } from 'lucide-react';
+import { useAudioTransport } from '../context/AudioTransportContext';
 
 export type ZigoSectionType = 
   | 'opservacija' 
@@ -29,6 +31,7 @@ interface ZigoMessageContentProps {
   tekst: string;
   isUser?: boolean;
   className?: string;
+  messageId?: string;
 }
 
 /**
@@ -253,7 +256,19 @@ export const ZigoMessageContent: React.FC<ZigoMessageContentProps> = ({
   tekst,
   isUser = false,
   className = '',
+  messageId,
 }) => {
+  // Siguran dohvat audio transporta (ako je unutar Providera)
+  let activeItem: any = null;
+  let audioStatus = 'idle';
+  try {
+    const transport = useAudioTransport();
+    activeItem = transport.activeItem;
+    audioStatus = transport.status;
+  } catch {
+    // Tihi fallback ako se komponenta renderira u izoliranim testovima
+  }
+
   // Ako je poruka korisnička, renderiraj je jednostavno i elegantno
   if (isUser) {
     return (
@@ -269,12 +284,20 @@ export const ZigoMessageContent: React.FC<ZigoMessageContentProps> = ({
   return (
     <div className={`space-y-2 font-sans text-[12px] ${className}`}>
       {sections.map((sec, idx) => {
+        const isSpeaking =
+          !!messageId &&
+          activeItem?.messageId === messageId &&
+          activeItem?.sectionIndex === idx &&
+          (audioStatus === 'playing' || audioStatus === 'paused');
+
         // 1. Opservacija (Dubrovački aristokratski osvrt i stoički mir)
         if (sec.type === 'opservacija') {
           return (
             <div
               key={idx}
-              className="relative bg-gradient-to-r from-[#211f18]/95 via-[#1a1915]/85 to-[#141412]/95 border-l-[3px] border-l-[#d4af37] border-y border-r border-[#b89758]/30 rounded-r-md p-3 shadow-md my-1.5"
+              className={`relative bg-gradient-to-r from-[#211f18]/95 via-[#1a1915]/85 to-[#141412]/95 border-l-[3px] border-l-[#d4af37] border-y border-r border-[#b89758]/30 rounded-r-md p-3 shadow-md my-1.5 transition-all duration-300 ${
+                isSpeaking ? 'ring-2 ring-[#ffd700] shadow-[0_0_18px_rgba(255,215,0,0.35)] bg-[#2a261c]' : ''
+              }`}
             >
               <div className="flex items-center justify-between pb-1.5 mb-2 border-b border-[#b89758]/20">
                 <div className="flex items-center gap-1.5">
@@ -287,6 +310,12 @@ export const ZigoMessageContent: React.FC<ZigoMessageContentProps> = ({
                   {sec.subtitle && (
                     <span className="text-[9px] text-[#b89758] font-serif italic">
                       • {sec.subtitle}
+                    </span>
+                  )}
+                  {isSpeaking && (
+                    <span className="flex items-center gap-1 text-[9px] font-mono text-[#ffd700] animate-pulse ml-1">
+                      <Volume2 size={11} />
+                      <span>Govori...</span>
                     </span>
                   )}
                 </div>
@@ -306,7 +335,9 @@ export const ZigoMessageContent: React.FC<ZigoMessageContentProps> = ({
           return (
             <div
               key={idx}
-              className="relative bg-gradient-to-r from-[#141b25]/95 via-[#161a22]/85 to-[#121419]/95 border-l-[3px] border-l-[#38bdf8] border-y border-r border-[#38bdf8]/30 rounded-r-md p-3 shadow-md my-1.5"
+              className={`relative bg-gradient-to-r from-[#141b25]/95 via-[#161a22]/85 to-[#121419]/95 border-l-[3px] border-l-[#38bdf8] border-y border-r border-[#38bdf8]/30 rounded-r-md p-3 shadow-md my-1.5 transition-all duration-300 ${
+                isSpeaking ? 'ring-2 ring-[#ffd700] shadow-[0_0_18px_rgba(255,215,0,0.35)] bg-[#192230]' : ''
+              }`}
             >
               <div className="flex items-center justify-between pb-1.5 mb-2 border-b border-[#38bdf8]/20">
                 <div className="flex items-center gap-1.5">
@@ -319,6 +350,12 @@ export const ZigoMessageContent: React.FC<ZigoMessageContentProps> = ({
                   {sec.subtitle && (
                     <span className="text-[9px] text-[#7dd3fc]/80 font-mono">
                       • {sec.subtitle}
+                    </span>
+                  )}
+                  {isSpeaking && (
+                    <span className="flex items-center gap-1 text-[9px] font-mono text-[#ffd700] animate-pulse ml-1">
+                      <Volume2 size={11} />
+                      <span>Govori...</span>
                     </span>
                   )}
                 </div>
@@ -338,7 +375,9 @@ export const ZigoMessageContent: React.FC<ZigoMessageContentProps> = ({
           return (
             <div
               key={idx}
-              className="relative bg-gradient-to-r from-[#0b241b]/95 via-[#0d1e18]/85 to-[#0a1713]/95 border-l-[3px] border-l-[#10b981] border-y border-r border-[#10b981]/35 rounded-r-md p-3 shadow-md my-1.5"
+              className={`relative bg-gradient-to-r from-[#0b241b]/95 via-[#0d1e18]/85 to-[#0a1713]/95 border-l-[3px] border-l-[#10b981] border-y border-r border-[#10b981]/35 rounded-r-md p-3 shadow-md my-1.5 transition-all duration-300 ${
+                isSpeaking ? 'ring-2 ring-[#ffd700] shadow-[0_0_18px_rgba(255,215,0,0.35)] bg-[#102b21]' : ''
+              }`}
             >
               <div className="flex items-center justify-between pb-1.5 mb-2 border-b border-[#10b981]/25">
                 <div className="flex items-center gap-1.5">
@@ -351,6 +390,12 @@ export const ZigoMessageContent: React.FC<ZigoMessageContentProps> = ({
                   {sec.subtitle && (
                     <span className="text-[9px] text-[#6ee7b7]/80 font-mono">
                       • {sec.subtitle}
+                    </span>
+                  )}
+                  {isSpeaking && (
+                    <span className="flex items-center gap-1 text-[9px] font-mono text-[#ffd700] animate-pulse ml-1">
+                      <Volume2 size={11} />
+                      <span>Govori...</span>
                     </span>
                   )}
                 </div>

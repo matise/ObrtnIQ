@@ -16,10 +16,14 @@ appLogger.scope('SYSTEM:BOOT').info('ObrtnIQ sustav uspješno pokrenut (v3.0 Loc
   timestamp: new Date().toISOString(),
 });
 
+import { AudioTransportProvider } from './context/AudioTransportContext';
+
 ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
   <React.StrictMode>
     <AppErrorBoundary>
-      <App />
+      <AudioTransportProvider>
+        <App />
+      </AudioTransportProvider>
     </AppErrorBoundary>
   </React.StrictMode>
 );

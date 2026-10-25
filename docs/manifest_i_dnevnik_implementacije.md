@@ -500,8 +500,226 @@ Implementirana je duboka observabilnost kroz sve slojeve agentnog ekosustava:
 - **Ukupno automatskih testova u repozitoriju**: **33 testne datoteke, 228/228 testova prolazi (100% prolaznost)**.
 - **Produkcijski bundle**: `tsc -b && vite build` prolazi za 4.29 sekundi bez ikakvih TypeScript grešaka.
 
+---
 
+## 13. Dnevnik Implementacije: FAZA 14 & 15 — Dvosmjerni Glasovni Sustav Žiga (100% In-Browser STT & TTS Narator)
 
+### 13.1. Faza 14: Žigo Glasovni Bedem (In-Browser STT & Akustički Leksikalni Normalizator)
+- **100% In-Browser & Zero-Server:** Uklonjeni su svi vanjski poslužitelji, proxyji i Python skripte; glasovno uzorkovanje odvija se kroz Web Speech API (`hr-HR`).
+- **Leksikalni normalizator ([`packages/core/src/domain/voice.ts`](file:///d:/Documents/Robot%20Hand%20Made/ObrtnIQ/packages/core/src/domain/voice.ts)):**
+  - Funkcija `normalizeZigoVoiceTranscript` u manje od milisekunde normalizira fonetski razdvojene kratice:
+    `k p r` -> `KPR`, `z.k.i.` -> `ZKI`, `j i r` -> `JIR`, `o i b` -> `OIB`, `p o s d` -> `PO-SD`, `e-racun` -> `e-Račun`, `prag od 40000 eura` -> `prag od 40.000 €`, `žigo presjeci` -> `Žigo, presijeci`.
+- **UI Komponenta ([`apps/web/src/components/ZigoVoiceBar.tsx`](file:///d:/Documents/Robot%20Hand%20Made/ObrtnIQ/apps/web/src/components/ZigoVoiceBar.tsx)):**
+  - Prikaz transkripcije uživo s crvenom tipkom STOP za trenutačni abort govora i dumanja.
+  - Integrirano u `ZigoCopilotPanel.tsx` preko ikone mikrofona.
 
+### 13.2. Faza 15: Žigo Glasovni Narator & Centralizirani Audio Transport (In-Browser TTS)
+- **Domenski parser naracije ([`packages/core/src/domain/audio-transport.ts`](file:///d:/Documents/Robot%20Hand%20Made/ObrtnIQ/packages/core/src/domain/audio-transport.ts)):**
+  - `cleanTextForSpeech`: Čisti Markdown sintaksu i fonetski optimizira akronime (KPR -> "K P R", OIB -> "O I B", € -> "eura").
+  - `prepareMessageForNarration`: Raščlanjuje trodijelni odgovor Žiga na semantičke elemente (1. Opservacija, 2. Dijagnoza, 3. Žigin Rez).
+- **Master Audio Transport ([`apps/web/src/context/AudioTransportContext.tsx`](file:///d:/Documents/Robot%20Hand%20Made/ObrtnIQ/apps/web/src/context/AudioTransportContext.tsx)):**
+  - **Invarijanta jednog govornika:** Ni u jednom trenutku se glasovi ne preklapaju; `speechSynthesis.cancel()` prekida prethodni govor prije novog.
+  - Podrška za globalni STOP, PAUZU, NASTAVAK, MUTE i SKIP.
+  - **Auto-Read način rada:** Automatsko čitanje novih odgovora asistenta, trajno spremljeno u `localStorage`.
+  - **Akustička zaštita mikrofona:** Čim se uključi mikrofon (STT), audio narator se trenutačno gasi (`stop()`) radi sprječavanja eha.
+- **UI Kontrolna Traka ([`apps/web/src/components/ZigoGlobalAudioTransport.tsx`](file:///d:/Documents/Robot%20Hand%20Made/ObrtnIQ/apps/web/src/components/ZigoGlobalAudioTransport.tsx)):**
+  - Master traka sa statusom, tekstualnim isječkom i kontrolama.
+- **Isticanje elemenata u poruci ([`apps/web/src/components/ZigoMessageContent.tsx`](file:///d:/Documents/Robot%20Hand%20Made/ObrtnIQ/apps/web/src/components/ZigoMessageContent.tsx)):**
+  - Sekcija koja se u tom trenutku čita vizualno dobiva jantarni sjaj (`ring-2 ring-[#ffd700]`).
+- **Gumb za čitanje po poruci:**
+  - Svaka poruka ima tipku `Poslušaj` u zaglavlju s dinamičkim stanjem i animacijom.
 
+### 13.3. Testna Verifikacija
+- Dodani testovi:
+  - `packages/core/tests/voice.test.ts` (6 testova)
+  - `packages/core/tests/audio-transport.test.ts` (8 testova)
+  - `apps/web/tests/zigo-voice.test.ts` (8 testova)
+  - `apps/web/tests/zigo-audio-transport.test.ts` (5 testova)
+- **Cjelokupni suite:** Svi testovi prolaze zeleno (100% prolaznost).
+- **Produkcijski bundle:** `npm run build` prolazi bez ikakvih grešaka.
 
+---
+
+## 14. Dnevnik Implementacije: FAZA 16 — Google Cloud Speech-to-Text V2 Postavke (BYOK, Dual-Mode Auth & Hibridni STT)
+
+### 14.1. Domenski Sloj i Validacija (`packages/core/src/domain/voice.ts`)
+- Definiran konfiguracijski model `ZigoSttConfig`, tip motora `ZigoSttEngine` (`'browser'` | `'gcp_stt_v2'`) i način autorizacije `GcpSttAuthMode` (`'service_account'` | `'api_key'`).
+- `DEFAULT_ZIGO_STT_CONFIG`: Početne vrijednosti s pregledničkim motorom, Service Account načinom, modelom `chirp_2` i regijom `eu`.
+- `parseServiceAccountJson`: Pomoćna funkcija za sigurno parsiranje i provjeru Service Account JSON datoteka (`type: "service_account"`, `project_id`, `private_key`, `client_email`).
+- `validateGcpSttConfig`: Statička provjera formata API ključa (`AIza...`), Service Account JSON-a, GCP Project ID-ja (regex 6-30 znakova) i lokacije.
+
+### 14.2. Klijentski Servis (`apps/web/src/services/google-stt-service.ts`)
+- Upravljanje lokalnom pohranom u pregledniku (`localStorage: obrtniq_stt_config`) prema Zero-Server BYOK načelu.
+- `testConnection`: Podržava provjeru Service Account ključa (verifikacija potpisa i projekta) ili direktni REST poziv prema `https://speech.googleapis.com/v2/projects/{projectId}/locations/{location}/recognizers?key={apiKey}` s mjerenjem latencije i detaljnom dijagnostikom (200 OK, 400 API_KEY_INVALID, 403 SERVICE_DISABLED s poveznicom za aktivaciju).
+
+### 14.3. Korisničko Sučelje (`apps/web/src/components/settings/cloud/GoogleSttSettingsCard.tsx`)
+- Izbornik motora (Preglednički Web Speech API vs. Google Cloud STT V2).
+- **Dual-Mode Prekidač**:
+  - `🔑 Service Account JSON`: Drag-and-drop / file upload `.json` ključa s automatskim popunjavanjem Project ID-ja i Client Emaila.
+  - `⚡ Klasični API Key`: Polje za unos ključa s okom za prikaz/skrivanje i jasnom napomenom o ograničenjima REST protokola naspram streaminga.
+- Polja za lokaciju (`eu`), model (`chirp_2`, `latest_short`, `chirp`, `long`).
+- Preklopnik naprednih postavki za Recognizer ID, Audio format indikator (`Linear PCM 16kHz Mono`) i Phrase Adaptation dubrovačkog/fiskalnog leksika.
+- Ugrađen interaktivni vodič u 3 koraka s deep-linkovima na GCP konzolu.
+- Gumbi "Testiraj STT vezu" i "Spremi STT postavke".
+- **Status Naratora & Audio Transport Kontrole:**
+  - Prikaz statusa naratora uživo (`ŽIGO GOVORI` s pulsirajućim indikatorom, `PAUZIRANO`, `MIROVANJE (IDLE)`).
+  - Brojač aktivnog reda čekanja (npr. `2 / 3`), status zvuka (`Utišano` / `Aktivno`), status automatskog čitanja (`ON` / `OFF`) i tekstualni isječak trenutnog govora.
+  - Akcijski gumbi: "Pošalji Testnu Naraciju na Transport" (3-dijelna strukturirana orlandovska poruka), "Očisti Transport", Mute preklopnik i Auto-čitaj preklopnik.
+- **Automatsko Čišćenje i Rekreacija Transporta pri Promjeni Konfiguracije:**
+  - Svaka promjena STT motora, promjena načina autorizacije, upload Service Account JSON-a, spremanje postavki ili povratak na tvorničke postavke automatski poziva `clearQueue()` i `reloadVoices()`.
+  - Time se trenutno zaustavlja prethodni govor, prazni transportna lista i rekreira sinkronizacija s promijenjenom konfiguracijom.
+- Integrirano u `CloudAiTab.tsx` unutar `SettingsDrawer.tsx`.
+
+### 14.4. Testna Verifikacija
+- Dodani i prošireni testovi:
+  - `packages/core/tests/voice.test.ts` (12 testova — prošireno za Service Account i API Key validaciju)
+  - `apps/web/tests/google-stt-settings.test.ts` (10 testova — provjera pohrane, statičke validacije, oba auth načina i svih HTTP statusa)
+  - `apps/web/tests/zigo-audio-transport.test.ts` (8 testova — provjera `clearQueue()`, rekreacije transporta i parsiranja testne naracije)
+- **Cjelokupni suite**: **20 testnih datoteka, 178/178 testova prolazi (100%)**.
+- **Produkcijski bundle**: `npm run build` prolazi za 4.66 sekundi bez grešaka.
+
+---
+
+## 15. Dnevnik Implementacije: Google Drive API 401 Dijagnostika & Automatski Token Retry Mehanizam
+
+### 15.1. Uzrok Problema (Root Cause Analysis)
+- **Istek OAuth tokena na poslužitelju:** Google OAuth access tokeni izdani preko browser GIS biblioteke (`initTokenClient`) imaju strog životni vijek od **1 sat (3599 sekundi)**. Zbog lokalne konstante od 6 sati, klijentski kod nije prepoznavao istek nakon 60 minuta te je slao istekli token, što je Google Drive API odbijao s `HTTP 401 Unauthorized`.
+- **Prazan statusText u HTTP/2 protokolu:** Zbog RFC 7540 specifikacije, moderni preglednici ne prosljeđuju statusne poruke preko HTTP/2 (`statusText: ""`), pa je zapis greške u logeru glasio `Google Drive API greška (401): ` bez tijela odgovora.
+- **Nedostatak oporavka od greške (Fail-recovery gap):** Kada bi nastupio 401, stari istekli token ostajao je spremljen u `localStorage`, a klijent nije automatski pokušavao tiho obnavljanje niti uklanjao nevažeći token.
+
+### 15.2. Rješenje i Implementacija
+1. **Dinamički `expires_in`:** `googleAuthService` sada prioritetno koristi stvarni `response.expires_in` (3599 s) koji vraća Google, osiguravajući da pozadinski liveness interval na vrijeme (prije minute 55) tiho obnovi token u pozadini.
+2. **Čišćenje isteklih tokena (`clearStoredTokens`):** Dodana funkcija koja uklanja nevažeći token čim se detektira 401.
+3. **Automatski Retry mehanizam (`executeWithTokenRetry` u `useGoogleDriveSync`):** Sve operacije prema Driveu (`listBackups`, `uploadBackup`, `downloadBackup`) automatski presreću 401 grešku, prazne nevažeći token, pozivaju tiho/novo osvježavanje i ponavljaju operaciju jednom transparentno.
+4. **Strukturirano parsiranje grešaka u `googleDriveService`:** Ekstrakcija JSON polja `error.message` iz odgovora Google poslužitelja.
+5. **Akcijski gumbi u UI sučelju (`GoogleDriveSyncCard`):** U slučaju trajno nevažeće sesije, korisnik direktno u kartici dobiva gumb `[Obnovi prijavu]` ili poveznicu za aktivaciju Google Drive API-ja.
+
+### 15.3. Testna Verifikacija
+- Dodani testovi: `apps/web/tests/google-drive.test.ts` (GD-11, GD-12 za strukturirano parsiranje 401 greške).
+- **Cjelokupni suite:** **20 testnih datoteka, 180/180 testova prolazi (100%)**.
+- **Produkcijski bundle:** `npm run build` prolazi bez ikakvih grešaka.
+
+---
+
+## 16. Dnevnik Implementacije: Obrnuti Poredak Sustavnog Dnevnika (Zadnje Poruke na Vrh / Newest First)
+
+### 16.1. Korisnički Zahtjev i Motivacija
+- Korisnik je zatražio da sustavni dnevnik ide "unatraške" kako bi najnovije poruke (posebice novonastale greške i statusi) bile odmah vidljive na samom vrhu panela, bez potrebe za ručnim skrolanjem do dna dugačkog popisa od 500 unosa.
+
+### 16.2. Implementirano Rješenje ([`SystemLogDrawer.tsx`](file:///d:/Documents/Robot%20Hand%20Made/ObrtnIQ/apps/web/src/components/SystemLogDrawer.tsx))
+1. **Zadani poredak: Najnovije poruke dolaze na vrh (`isNewestFirst = true`):**
+   - Popis `filteredLogs` se sada reverzira (`list.slice().reverse()`) tako da je indeks 0 najnoviji događaj.
+   - Kada se pojavi greška (`lastErrorEntry`), ona se automatski proširuje na samom vrhu bez ikakvog skrolanja.
+2. **Korisnički preklopnik poretka:**
+   - Dodan gumb `[Najnovije gore / Kronološki]` s ikonom `ArrowDownUp` u gornju traku kontrola.
+   - Korisnik jednim klikom može prebaciti između obrnutog i klasičnog kronološkog prikaza.
+   - Odabir se trajno pamti u `localStorage: obrtniq_log_order_newest_first`.
+3. **Auto-Fokus / Auto-Scroll Preklopnik & Skrolanje na dno:**
+   - Dodan preklopnik `[Auto-fokus: ON / OFF]` s ikonom `Focus` u gornjoj traci (trajno spremljen u `localStorage: obrtniq_log_auto_scroll`).
+   - Kada je auto-fokus uključen:
+     - Pri prebacivanju s "najnovije gore" na "kronološki", lista se automatski pozicionira na sam **dno** (`scrollHeight`) gdje se nalaze najnoviji unosi.
+     - Prilikom primitka svakog novog log zapisa (`logs.length`), lista se u kronološkom načinu rada automatski skrola na dno, a u načinu rada "najnovije gore" ostaje pozicionirana na vrhu.
+     - Ako korisnik želi pregledavati starije unose bez ometanja novih zapisa, može jednim klikom isključiti `Auto-fokus`.
+4. **Ažurirani brojač:**
+   - Zaglavlje prikazuje točan status: `({logs.length}/500 unosa • najnovije gore)`.
+
+### 16.3. Testna Verifikacija
+- Dodani testovi:
+  - `SLS-08`: provjera ispravnosti reverziranja liste za prikaz najnovijih poruka na vrhu.
+  - `SLS-09`: provjera izračuna pozicije auto-fokus scrollanja (vrh za obrnuti prikaz, dno za kronološki prikaz).
+- **Cjelokupni suite:** **20 testnih datoteka, 188/188 testova prolazi (100%)**.
+- **Produkcijski bundle:** `npm run build` prolazi bez grešaka.
+
+---
+
+## 17. Dnevnik Implementacije: Žigo Muški Bariton (Orlando) & Napredna TTS Sinteza Govora
+
+### 17.1. Korisnički Zahtjev i Motivacija
+- Korisnik je izričito zatražio refokusiranje na TTS sustav Žiga, eliminaciju piskutavog/ženskog zvuka standardnog web naratora ("nećemo se praviti da je Žiga pičkica ni da zvuči ovako"), promjenu glasa u zrelog muškarca viteškog karaktera (Orlando), analizu problema u sustavu te izradu plana za popravke i nadogradnje.
+
+### 17.2. Detektirani Problemi u Sustavu
+1. **Abecedni bias u Windows jezičnom paketu:**
+   - Na Windows 10/11 instaliran je `Microsoft Gabrijela` (ženski) i `Microsoft Matej` (muški).
+   - Inicijalni selektor `list.find(v => v.lang.startsWith('hr'))` uvijek je odabirao Gabrijelu jer je "G" ispred "M".
+2. **Neprirodna frekvencija tona (Pitch):**
+   - Vrijednost `pitch: 0.92` na ženskom glasu zvučala je groteskno, umjesto viteškog baritona.
+3. **Asinkrono učitavanje glasova u Chromiumu:**
+   - `speechSynthesis.getVoices()` pri inicijalnom renderu vraća `[]`, što je uzrokovalo pad na generičke ženske glasove sustava ako se izgovor pokrene rano.
+4. **Chromium 15-sekundni SpeechSynthesis Bug:**
+   - U preglednicima baziranim na Chromiumu, izgovori duži od 15 sekundi tiho se zamrzavaju bez okidanja `onend` događaja.
+
+### 17.3. Implementirano Rješenje
+1. **Domenski model i heuristika prioritizacije muških glasova ([`packages/core/src/domain/audio-transport.ts`](file:///d:/Documents/Robot%20Hand%20Made/ObrtnIQ/packages/core/src/domain/audio-transport.ts)):**
+   - Implementirane funkcije `classifyVoice()` i `selectBestMasculineVoice()`.
+   - Ljestvica bodovanja:
+     - Korisnički odabir (`preferredURI`): +10.000 bodova (apsolutni prioritet).
+     - Hrvatski muški glas (`Matej`, `Ivan`, `Luka`): +2.000 bodova.
+     - Hrvatski neutralni glas (`Google hrvatski`): +1.400 bodova.
+     - Južnoslavenski muški glas (`Nikola`, `Stefan`, `Filip`): +1.200 bodova.
+     - Hrvatski ženski glas (`Gabrijela`): +900 bodova (uz automatsko spuštanje pitcha na 0.78).
+     - Globalni muški glas (`David`, `George`, `Mark`): +300 bodova.
+2. **Globalni Audio Transport Context ([`apps/web/src/context/AudioTransportContext.tsx`](file:///d:/Documents/Robot%20Hand%20Made/ObrtnIQ/apps/web/src/context/AudioTransportContext.tsx)):**
+   - Dodani state i perzistencija za: `availableVoices`, `selectedVoiceURI`, `voicePitch`, `voiceRate` i `currentVoice`.
+   - Zadani stoički parametri: `pitch: 0.86`, `rate: 0.94` (`DEFAULT_ZIGO_VOICE_CONFIG`).
+   - Implementiran periodički heartbeat watchdog svakih 10s (`pause() / resume()`) koji neutralizira Chromium 15s freeze bug.
+3. **UI Kontrole za Glas u Postavkama ([`GoogleSttSettingsCard.tsx`](file:///d:/Documents/Robot%20Hand%20Made/ObrtnIQ/apps/web/src/components/settings/cloud/GoogleSttSettingsCard.tsx)):**
+   - Prikaz statusa aktivnog sintetizatora (`[MUŠKI BARITON (ORLANDO)]`, `[HRVATSKI (hr-HR)]` ili žuto upozorenje za ženski glas s uputom za instalaciju `Microsoft Mateja` u Windowsima).
+   - Dropdown selektor svih instaliranih glasova na računalu s jasnim oznakama.
+   - Slajderi za Pitch (0.60 - 1.20) i Rate (0.75 - 1.25) s tipkom za trenutno vraćanje na viteške postavke.
+4. **Prošireni leksički normalizator:**
+   - Podrška za valute/cente (`125,50 €` ➔ `125 i 50 centi`), postotke (`25%` ➔ `25 posto`) i akronime (`PDV`, `HZZO`, `FINA`, `IBAN`, `FRO`, `EP`).
+
+### 17.4. Verifikacija
+- Dodano 6 novih jediničnih testova u [`zigo-audio-transport.test.ts`](file:///d:/Documents/Robot%20Hand%20Made/ObrtnIQ/apps/web/tests/zigo-audio-transport.test.ts).
+- Cjelokupni testni suite: **20 datoteka, 188/188 testova prolazi (100%)**.
+- Produkcijski paket: `npm run build` izgrađen čisto u 13.43s.
+
+---
+
+## 18. Dnevnik Implementacije: Google Cloud Text-to-Speech (TTS) Primarni Motor, Testiranje/Debugiranje & Hibridni Fallback
+
+### 18.1. Korisnički Zahtjev
+- Primarno koristiti **Google Cloud Text-to-Speech API** za sintezu Žigovog glasa (WaveNet bariton).
+- Zadržati lokalne opcije (Microsoft Matej / lokalni preglednički Web Speech) kao trenutačni, automatski **fallback** u slučaju greške, offline rada ili prekoračenja kvote.
+- Implementirati mogućnost **debugiranja i testiranja** Google TTS API-ja izravno iz sučelja (mjerenje latencije, provjera prava, trenutna reprodukcija audio uzorka).
+
+### 18.2. Arhitektura i Rješenje (100% In-Browser & Zero-Server)
+1. **Google Cloud Text-to-Speech REST Servis ([`apps/web/src/services/google-tts-service.ts`](file:///d:/Documents/Robot%20Hand%20Made/ObrtnIQ/apps/web/src/services/google-tts-service.ts)):**
+   - Izravni poziv na Google REST endpoint `https://texttospeech.googleapis.com/v1/text:synthesize?key=AIza...`.
+   - **BYOK dijeljenje ključa:** Ako je uključen `useSttApiKey: true`, servis automatski koristi isti GCP API ključ iz Speech-to-Text konfiguracije bez potrebe za dvostrukim unosom.
+   - **In-Memory Audio Caching:** Svi sintetizirani audio blobi spremaju se u memorijski `Map` po ključu `(voiceName, rate, pitch, text)` kako se ne bi ponovno trošila GCP kvota i novac za identične rečenice.
+   - **Audio dekodiranje:** Base64 `audioContent` se dekodira u binarni Blob (`audio/mp3`) i pretvara u lokalni URL (`URL.createObjectURL(blob)`).
+   - **Dohvaćanje glasova:** Metoda `fetchVoices()` za dinamički pregled svih dostupnih Google WaveNet/Neural glasova na projektu.
+2. **Globalni Hibridni Audio Transport ([`apps/web/src/context/AudioTransportContext.tsx`](file:///d:/Documents/Robot%20Hand%20Made/ObrtnIQ/apps/web/src/context/AudioTransportContext.tsx)):**
+   - Ako je motor postavljen na `google_cloud` i API je konfiguriran, `speakCurrentItem()` šalje tekst na Google Cloud TTS.
+   - Audio se reproducira putem HTML5 Audio elementa s potpunom sinkronizacijom master kontrola (STOP, Pauza, Nastavak, Mute, Preskakanje).
+   - **Besprijekoran Fallback:** Ako Google TTS baci bilo kakvu grešku (npr. HTTP 403, prekid interneta, nevaljan ključ) ili `audio.onerror` detektira problem, sustav istog trenutka aktivira `fallbackToWebSpeech()` s muškim baritonom `Microsoft Matej`.
+3. **UI Postavke, Debugiranje i Testiranje ([`apps/web/src/components/settings/cloud/GoogleSttSettingsCard.tsx`](file:///d:/Documents/Robot%20Hand%20Made/ObrtnIQ/apps/web/src/components/settings/cloud/GoogleSttSettingsCard.tsx)):**
+   - Preklopnik između Google Cloud TTS i Lokalnog preglednika / Microsofta.
+   - Odabir glasa: `hr-HR-Wavenet-B` (muški bariton), `hr-HR-Wavenet-A` (ženski Wavenet), `hr-HR-Standard-A` i južnoslavenske opcije.
+   - Gumb *"Testiraj i Debugiraj Google TTS Vezu"*:
+     - Mjeri mrežnu latenciju u milisekundama.
+     - Prikazuje status uspješnosti ili točan opis greške (uz poveznicu na GCP Marketplace za aktivaciju ako je HTTP 403).
+     - Odmah reproducira sintetizirani audio uzorak viteza Orlanda u zvučnicima.
+4. **Validacija postavki ([`packages/core/src/domain/audio-transport.ts`](file:///d:/Documents/Robot%20Hand%20Made/ObrtnIQ/packages/core/src/domain/audio-transport.ts)):**
+5. **Prioritizacija Web Client API ključa aplikacije ([`app-client-credentials.ts`](file:///d:/Documents/Robot%20Hand%20Made/ObrtnIQ/apps/web/src/services/app-client-credentials.ts)):**
+   - Ako je u okruženju (`.env`) zadan aplikacijski Web Client API ključ (`VITE_GOOGLE_CLIENT_API_KEY` ili `VITE_GOOGLE_API_KEY`), aplikacija ga **prvo i automatski** koristi za Google TTS i STT V2 bez potrebe za ručnim kopiranjem u polja za unos.
+   - Podržan i Google OAuth 2.0 Web Client Bearer token (`Authorization: Bearer <token>`) ako je korisnik prijavljen sa svojim Google računom.
+   - Korisnik u sučelju vidi točan izvor aktivnog ključa (`Izvor: Aplikacijski Web Client API ključ (.env / sustav)`) te može unijeti vlastiti ključ za nadjačavanje ako to želi.
+
+### 18.3. Verifikacija
+- Testni suite: [`apps/web/tests/google-tts.test.ts`](file:///d:/Documents/Robot%20Hand%20Made/ObrtnIQ/apps/web/tests/google-tts.test.ts) proširen na **23 testa** (uključujući test za detekciju 403 `insufficient authentication scopes`).
+- **Cjelokupni monorepo testovi:** **21 testna datoteka, 211/211 testova prolazi (100%)**.
+- **Produkcijski bundle:** `npm run build` završen s 0 grešaka u 4.4 sekunde.
+
+---
+
+## 19. Sigurnosna analiza Google autentifikacije: API Ključ vs. OAuth Scopes
+
+### 19.1. Analiza problema `HTTP 403: Request had insufficient authentication scopes`
+- **Uzrok:** Kada u postavkama ili okruženju nije bio postavljen Google Cloud API ključ (`AIzaSy...`), sustav je posegnuo za OAuth tokenom prijavljenog korisnika (`ya29...`). Taj je token izdan isključivo s opsezima za Google Drive backup (`drive.appdata`) i korisnički profil (`openid`, `email`, `profile`), bez ovlasti nad Google Cloud Platformom.
+- **Dozvola korisnika (Consent):**
+  - **API ključ (`AIzaSy...`):** Korisnik **NE MORA** davati privolu. Ključ je vezan uz GCP projekt i autorizira Cloud TTS/STT pozive bez korisničkog popup ekrana.
+  - **OAuth prijava (`ya29...`):** Korisnik bi morao dati privolu za pristup Google Cloudu, što bi zahtijevalo verifikaciju aplikacije kod Googlea i korisnički GCP račun s uključenim billingom.
+- **Potreban scope za OAuth:** `https://www.googleapis.com/auth/cloud-platform`. Zbog osjetljivosti i rizika (traži pristup svim GCP resursima korisnika), **ne preporučuje se** dodavati ga na korisnički OAuth login.
+- **Zadani (Default) mehanizam:** **Google Cloud API ključ (`AIzaSy...`)** postavljen u `.env` (`VITE_GOOGLE_CLIENT_API_KEY`) s restrikcijom domene (`localhost` i web domena aplikacije) i restrikcijom API-ja (`Cloud Text-to-Speech API`).

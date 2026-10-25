@@ -18,14 +18,20 @@ import {
   Sparkles,
   BookMarked,
   BookmarkCheck,
+  Mic,
+  Volume2,
 } from 'lucide-react';
 import type { ZigoAttachment, ZigoUserMemory, ZigoMemoryKategorija } from '@obrtniq/core';
 import type { UseZigoAgentReturn } from '../hooks/useZigoAgent';
 import type { UseLiveScreenContextReturn } from '../hooks/useLiveScreenContext';
+import { useZigoVoice } from '../hooks/useZigoVoice';
+import { useAudioTransport } from '../context/AudioTransportContext';
 import { zigoMemoryService } from '../services/zigo-memory-service';
 import { getZigoThinkingPhrase } from '../services/zigo-context-builder';
 import { ZigoActionCard } from './ZigoActionCard';
 import { ZigoMessageContent } from './ZigoMessageContent';
+import { ZigoVoiceBar } from './ZigoVoiceBar';
+import { ZigoGlobalAudioTransport } from './ZigoGlobalAudioTransport';
 import { ObrtEmblem } from './icons';
 
 export interface ZigoCopilotPanelProps {
@@ -64,12 +70,56 @@ export const ZigoCopilotPanel: React.FC<ZigoCopilotPanelProps> = ({
   const [showSessionMenu, setShowSessionMenu] = useState(false);
   const [showDetailedContext, setShowDetailedContext] = useState(false);
   const [showTefter, setShowTefter] = useState(false);
+  const [showVoiceBar, setShowVoiceBar] = useState(false);
   const [memories, setMemories] = useState<ZigoUserMemory[]>([]);
   const [newMemoryKey, setNewMemoryKey] = useState('');
   const [newMemoryVal, setNewMemoryVal] = useState('');
   const [newMemoryCat, setNewMemoryCat] = useState<ZigoMemoryKategorija>('posao');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Siguran dohvat centraliziranog audio transporta
+  let audioTransport: any = null;
+  try {
+    audioTransport = useAudioTransport();
+  } catch {
+    // Tihi fallback u testovima
+  }
+
+  // Pamćenje posljednje automatski pročitane poruke
+  const lastAutoReadMsgIdRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!audioTransport || !audioTransport.autoRead || audioTransport.isMuted) return;
+    if (poruke.length === 0) return;
+
+    const lastMsg = poruke[poruke.length - 1];
+    if (lastMsg && lastMsg.uloga === 'assistant' && lastAutoReadMsgIdRef.current !== lastMsg.id) {
+      lastAutoReadMsgIdRef.current = lastMsg.id;
+      // Ne čitamo ako je tek kreirana sesija prije interakcije
+      if (lastMsg.tekst && !isThinking) {
+        audioTransport.playMessage(lastMsg.id, lastMsg.tekst);
+      }
+    }
+  }, [poruke, isThinking, audioTransport]);
+
+  // Inicijalizacija glasovnog asistenta (Web Speech API 100% u browseru)
+  const voice = useZigoVoice({
+    screenContext: {
+      currentScreen: snapshot?.aktivniEkran || 'InvoiceDesk',
+      totalRevenueYTD: snapshot?.financije?.kprPrometYtd || 0,
+      revenueLimit: snapshot?.financije?.porezniPragPausal || 40000,
+      unpaidInvoicesCount: 0,
+    },
+    onFinalTranscript: async (transcript) => {
+      if (transcript.trim()) {
+        await posaljiPoruku(transcript);
+      }
+    },
+    onStop: () => {
+      agent.zaustaviDumanje();
+    },
+  });
 
   const loadMemories = async () => {
     try {
@@ -504,7 +554,10 @@ export const ZigoCopilotPanel: React.FC<ZigoCopilotPanelProps> = ({
         </div>
       )}
 
-      {/* 4. Glavni prozor poruka */}
+      {/* 4. Centralizirana Master Audio Transport kontrolna traka */}
+      <ZigoGlobalAudioTransport />
+
+      {/* 5. Glavni prozor poruka */}
       <div className="flex-1 overflow-y-auto p-3 space-y-3 font-mono text-xs">
         {poruke.map((msg) => {
           const isUser = msg.uloga === 'user';
@@ -515,6 +568,47 @@ export const ZigoCopilotPanel: React.FC<ZigoCopilotPanelProps> = ({
                 <span>{isUser ? 'TI' : 'ŽIGO (ORLANDO)'}</span>
                 <span>•</span>
                 <span>{new Date(msg.kreirano).toLocaleTimeString('hr-HR', { hour: '2-digit', minute: '2-digit' })}</span>
+
+                {/* Gumb za čitanje pojedinačne Žigine poruke */}
+                {!isUser && audioTransport && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (
+                        audioTransport.activeItem?.messageId === msg.id &&
+                        (audioTransport.status === 'playing' || audioTransport.status === 'paused')
+                      ) {
+                        audioTransport.stop();
+                      } else {
+                        audioTransport.playMessage(msg.id, msg.tekst);
+                      }
+                    }}
+                    className={`ml-1 flex items-center gap-1 px-1.5 py-0.5 border text-[9px] font-mono cursor-pointer transition-all ${
+                      audioTransport.activeItem?.messageId === msg.id && audioTransport.status === 'playing'
+                        ? 'bg-[#ffd700]/20 text-[#ffd700] border-[#ffd700]/50 animate-pulse'
+                        : 'text-gray-400 hover:text-[#ffd700] bg-white/5 hover:bg-white/10 border-transparent'
+                    }`}
+                    title={
+                      audioTransport.activeItem?.messageId === msg.id && audioTransport.status === 'playing'
+                        ? 'Zaustavi izgovor ove poruke'
+                        : 'Poslušaj Žigov odgovor (Glasovni narator)'
+                    }
+                  >
+                    <Volume2
+                      size={11}
+                      className={
+                        audioTransport.activeItem?.messageId === msg.id && audioTransport.status === 'playing'
+                          ? 'text-[#ffd700]'
+                          : ''
+                      }
+                    />
+                    <span>
+                      {audioTransport.activeItem?.messageId === msg.id && audioTransport.status === 'playing'
+                        ? 'Govori...'
+                        : 'Poslušaj'}
+                    </span>
+                  </button>
+                )}
               </div>
 
               <div
@@ -543,8 +637,8 @@ export const ZigoCopilotPanel: React.FC<ZigoCopilotPanelProps> = ({
                   </div>
                 )}
 
-                {/* Tekst poruke sa stiliziranom trodijelnom strukturom */}
-                <ZigoMessageContent tekst={msg.tekst} isUser={isUser} />
+                {/* Tekst poruke sa stiliziranom trodijelnom strukturom i audio isticanjem */}
+                <ZigoMessageContent tekst={msg.tekst} isUser={isUser} messageId={msg.id} />
 
                 {/* Akcijska kartica ako poruka sadrži tool poziv ili rezultat */}
                 {(msg.toolPoziv || msg.toolRezultat) && (
@@ -621,6 +715,13 @@ export const ZigoCopilotPanel: React.FC<ZigoCopilotPanelProps> = ({
           </div>
         )}
 
+        {/* 100% In-Browser Glasovni Bedem */}
+        {showVoiceBar && (
+          <div className="pb-1">
+            <ZigoVoiceBar voice={voice} onClose={() => setShowVoiceBar(false)} />
+          </div>
+        )}
+
         <div className="flex items-center gap-2">
           {/* Skriveni input za datoteke */}
           <input
@@ -633,12 +734,42 @@ export const ZigoCopilotPanel: React.FC<ZigoCopilotPanelProps> = ({
           />
 
           <button
+            type="button"
             onClick={() => fileInputRef.current?.click()}
             disabled={isThinking}
             className="p-2 bg-[#252830] hover:bg-[#2e313b] border border-[var(--border-strong)] text-[#e0cfab] hover:text-[#ffd700] transition-colors disabled:opacity-50 cursor-pointer"
             title="Priloži račun, slip ili ugovor (slika ili PDF)"
           >
             <Paperclip className="w-4 h-4" />
+          </button>
+
+          {/* Gumb za glasovni unos (100% Web Speech API u pregledniku) */}
+          <button
+            type="button"
+            onClick={() => {
+              if (showVoiceBar && voice.isRecording) {
+                voice.stopListening();
+              } else if (!showVoiceBar) {
+                audioTransport?.stop();
+                setShowVoiceBar(true);
+                voice.startListening();
+              } else {
+                audioTransport?.stop();
+                voice.startListening();
+              }
+            }}
+            disabled={isThinking}
+            className={`p-2 border transition-all cursor-pointer ${
+              voice.isRecording
+                ? 'bg-red-950/80 border-red-500 text-red-400 animate-pulse'
+                : showVoiceBar
+                ? 'bg-[#b89758]/20 border-[#ffd700] text-[#ffd700]'
+                : 'bg-[#252830] hover:bg-[#2e313b] border-[var(--border-strong)] text-[#e0cfab] hover:text-[#ffd700]'
+            }`}
+            title={voice.isRecording ? 'Završi govor' : 'Glasovni unos (Web Speech API)'}
+            aria-label="Glasovni unos"
+          >
+            <Mic className="w-4 h-4" />
           </button>
 
           <input
