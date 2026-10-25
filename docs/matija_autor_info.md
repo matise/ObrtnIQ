@@ -73,14 +73,13 @@ Robot Hand Made je službeno registriran za ostale djelatnosti računalnog progr
 | Puni naziv | ROBOT HAND MADE, obrt za računalno programiranje, vl. Matija Miloslavić 5 |
 | Sjedište | Brašina, Pod Brašinom 48, 20207 Mlini (Dubrovnik) 4 |
 | Primarna djelatnost | Računalno programiranje (NKD 62.01) 6 |
-| Ključni suradnici | Ivana Tepšić 8 |
-| Fokus | 3D printanje, dizajn, vizualna umjetnost 8 |
+| Fokus | 3D printanje, parametarski dizajn, vizualna umjetnost i softver |
 
-Suradnja s Ivanom Tepšić unijela je novu dimenziju u Robot Hand Made. Kako navode medijski izvještaji, Ivana i Matija dijele viziju umjetnosti koja se ne stvara tradicionalnim alatima, već pomoću 3D printera.8 Njihov pristup podrazumijeva dizajniranje predmeta koji su istovremeno umjetnička djela i funkcionalni proizvodi. Ovaj "handmade" element u nazivu obrta je ironičan i dubok; on sugerira da, iako robot (3D printer) fizički izrađuje predmet, "ruka" i um programera su ti koji daju dušu i formu svakom komadu.
+Kroz autorski rad u Robot Hand Madeu, Miloslavić razvija viziju umjetnosti koja se stvara pomoću 3D printera, numerički vođenih alata i programerskog koda. Njegov pristup podrazumijeva dizajniranje predmeta koji su istovremeno umjetnička djela i funkcionalni proizvodi. Ovaj "handmade" element u nazivu obrta je ironičan i dubok; on sugerira da, iako robot (3D printer) fizički izrađuje predmet, "ruka" i um programera su ti koji daju dušu i formu svakom komadu.
 
 ## **Inovacije u 3D printanju i dizajnu**
 
-Unutar Robot Hand Madea, Miloslavić primjenjuje svoja programerska znanja za optimizaciju G-koda i razvoj prilagođenih modela. Rad s 3D printerima u Dubrovniku bio je pionirski pothvat. U gradu koji se stoljećima oslanjao na kamenoklesarstvo, uvođenje plastike, smola i drugih modernih materijala u kreativni proces predstavljalo je tehnološki skok. Njihova vizija uključuje izradu:
+Unutar Robot Hand Madea, Miloslavić primjenjuje svoja programerska znanja za optimizaciju G-koda i razvoj prilagođenih modela. Rad s 3D printerima u Dubrovniku bio je pionirski pothvat. U gradu koji se stoljećima oslanjao na kamenoklesarstvo, uvođenje plastike, smola i drugih modernih materijala u kreativni proces predstavljalo je tehnološki skok. Njegova vizija uključuje izradu:
 
 * Unikatnog nakita s kompleksnim geometrijskim strukturama.  
 * Dekorativnih predmeta za interijere inspiriranih organskim oblicima.  
@@ -138,5 +137,4 @@ Njegov rad u Brašini, pod brandom Robot Hand Made, ostaje svjetionik inovacije 
 > 5. ROBOT HAND MADE, obrt za računalno programiran \- CompanyWall Business, accessed on March 26, 2026, [https\://www\.companywall.hr/tvrtka/robot-hand-made-obrt-za-racunalno-programiranje-vl-matija-miloslavic-brasina-pod-brasinom-48/MMHwcLxD](https://www.companywall.hr/tvrtka/robot-hand-made-obrt-za-racunalno-programiranje-vl-matija-miloslavic-brasina-pod-brasinom-48/MMHwcLxD)  
 > 6. Computer programming services \- Croatia \| Kompass Business Directory \- Page23, accessed on March 26, 2026, [https\://lu.kompass.com/z/hr/a/computer-programming-services/5785004/page-23/](https://lu.kompass.com/z/hr/a/computer-programming-services/5785004/page-23/)  
 > 7. ROBOT HAND MADE, vl. Matija Miloslavić \- Poslovna.hr, accessed on March 26, 2026, [https\://www\.poslovna.hr/lite/robot-hand-made,-vl-matija-miloslavic/1586764/subjekti.aspx?lang=en](https://www.poslovna.hr/lite/robot-hand-made,-vl-matija-miloslavic/1586764/subjekti.aspx?lang=en)  
-> 8. Ivana i Matija \- Dubrovnik INsider, accessed on March 26, 2026, [https\://dubrovnikinsider.hr/tag/ivana-i-matija/](https://dubrovnikinsider.hr/tag/ivana-i-matija/)  
-> 9. UNIDU \| Sveučilište u Dubrovniku, accessed on March 26, 2026, [https\://www\.unidu.hr/](https://www.unidu.hr/)
+> 8. UNIDU \| Sveučilište u Dubrovniku, accessed on March 26, 2026, [https\://www\.unidu.hr/](https://www.unidu.hr/)
