@@ -315,3 +315,64 @@ ${stavkeTekst}
 ${s.posljednjaGreska ? `- Posljednja greška u sustavu: [${s.posljednjaGreska.scope || 'SYSTEM'}] "${s.posljednjaGreska.poruka}" (${s.posljednjaGreska.vrijeme})` : '- Nema aktivnih grešaka u sustavnom dnevniku.'}
 `;
 }
+
+/**
+ * Vraća autentičnu dubrovačku frazu razmišljanja ("Žigo duma...") dinamički povezanu
+ * s trenutnim stanjem ekrana, računom, pragom od 40k ili noćnim satima.
+ */
+export function getZigoThinkingPhrase(snapshot?: LiveScreenContextSnapshot): string {
+  if (!snapshot) return 'Žigo duma...';
+
+  // 1. Kritično probijanje paušalnog praga
+  if (snapshot.financije?.hoceLiProbitePrag) {
+    return 'Žigo duma kako spasit paušal od PDV-a...';
+  }
+
+  // 2. Neklasificirane stavke (nedostaje KPD 2025)
+  if (snapshot.racun?.imaNeklasificiranihStavki) {
+    return 'Žigo duma nad KPD šiframa stavki...';
+  }
+
+  // 3. Neispravan OIB kupca
+  if (snapshot.racun?.oib && !snapshot.racun?.isOibValid) {
+    return 'Žigo duma nad OIB-on kupca...';
+  }
+
+  // 4. Prema otvorenoj ladici / aktivnom ekranu
+  const otvorenaLadica = snapshot.otvoreniDraweri?.[0];
+  if (otvorenaLadica === 'KprDrawer' || snapshot.aktivniEkran === 'KprDrawer') {
+    return 'Žigo duma nad Knjigom prometa...';
+  }
+  if (otvorenaLadica === 'FiscalDrawer') {
+    return 'Žigo duma nad fiskalizacijon računa...';
+  }
+  if (otvorenaLadica === 'SettingsDrawer') {
+    return 'Žigo duma nad postavkama obrta...';
+  }
+  if (otvorenaLadica === 'SystemLogDrawer') {
+    return 'Žigo duma nad sistemskin zapisima...';
+  }
+  if (otvorenaLadica === 'PartnerDrawer') {
+    return 'Žigo duma nad popisom kupaca...';
+  }
+  if (otvorenaLadica === 'ArticleDrawer') {
+    return 'Žigo duma nad cjenikon i uslugama...';
+  }
+  if (otvorenaLadica === 'DocumentDrawer') {
+    return 'Žigo duma nad arhivon dokumenata...';
+  }
+
+  // 5. Prema radnom računu na plohi
+  if (snapshot.racun?.ukupniIznos && snapshot.racun.ukupniIznos > 0) {
+    return `Žigo duma nad računon od ${snapshot.racun.ukupniIznos.toFixed(2)} €...`;
+  }
+
+  // 6. Sitni noćni sati
+  if (snapshot.jeLiKasnoNoc) {
+    return 'Žigo duma u sitne noćne ure...';
+  }
+
+  // 7. Zadani kameni mir
+  return 'Žigo duma nad papirima...';
+}
+

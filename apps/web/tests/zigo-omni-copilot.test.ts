@@ -4,6 +4,7 @@ import {
   generateContextualChips,
   formatContextForSystemPrompt,
   PAUSALNI_PRAG_EUR,
+  getZigoThinkingPhrase,
 } from '../src/services/zigo-context-builder';
 import { geminiService } from '../src/services/gemini-service';
 import { executeZigoTool, type ZigoToolsContext } from '../src/services/zigo-tools-dispatcher';
@@ -357,6 +358,64 @@ describe('Faza 13: Žigo Omni-Copilot & Sustav Svjesnosti Konteksta', () => {
       expect(rez.uspjeh).toBe(true);
       expect(rez.poruka).toContain('Fjaka je aktivirana');
       expect(rez.poruka).toContain('Republika treba odmorne ljude');
+    });
+  });
+
+  describe('13.6 Dinamičke fraze razmišljanja ("Žigo duma...")', () => {
+    it('vraća kontekstnu frazu kad prijeti probijanje paušalnog praga', () => {
+      const snapshot = buildLiveScreenContextSnapshot({
+        items: { ukupniIznos: 5000 },
+        stats: { kprTotalEur: 38000 }, // 38k + 5k = 43k > 40k
+      });
+      const phrase = getZigoThinkingPhrase(snapshot);
+      expect(phrase).toBe('Žigo duma kako spasit paušal od PDV-a...');
+    });
+
+    it('vraća frazu za KPD šifre kad račun ima neklasificirane stavke', () => {
+      const snapshot = buildLiveScreenContextSnapshot({
+        items: {
+          items: [{ opis: 'Savjetovanje', kolicina: 1, cijena: 100, ukupno: 100, imaKpd: false }],
+        },
+      });
+      const phrase = getZigoThinkingPhrase(snapshot);
+      expect(phrase).toBe('Žigo duma nad KPD šiframa stavki...');
+    });
+
+    it('vraća frazu za OIB kad je OIB unesen ali nevaljan', () => {
+      const snapshot = buildLiveScreenContextSnapshot({
+        form: { oib: '11111111111', isOibValid: false },
+      });
+      const phrase = getZigoThinkingPhrase(snapshot);
+      expect(phrase).toBe('Žigo duma nad OIB-on kupca...');
+    });
+
+    it('vraća frazu povezanu s otvorenom ladicom Knjige prometa (KprDrawer)', () => {
+      const snapshot = buildLiveScreenContextSnapshot({
+        openDrawers: { KprDrawer: true },
+      });
+      const phrase = getZigoThinkingPhrase(snapshot);
+      expect(phrase).toBe('Žigo duma nad Knjigom prometa...');
+    });
+
+    it('vraća frazu povezanu s otvorenim postavkama (SettingsDrawer)', () => {
+      const snapshot = buildLiveScreenContextSnapshot({
+        openDrawers: { SettingsDrawer: true },
+      });
+      const phrase = getZigoThinkingPhrase(snapshot);
+      expect(phrase).toBe('Žigo duma nad postavkama obrta...');
+    });
+
+    it('vraća frazu za noćne sate kad nema aktivnih uzbuna', () => {
+      const noc = new Date('2026-10-25T02:30:00Z');
+      const snapshot = buildLiveScreenContextSnapshot({
+        currentDate: noc,
+      });
+      const phrase = getZigoThinkingPhrase(snapshot);
+      expect(phrase).toBe('Žigo duma u sitne noćne ure...');
+    });
+
+    it('vraća zadani kameni mir kad nema snapshot konteksta', () => {
+      expect(getZigoThinkingPhrase(undefined)).toBe('Žigo duma...');
     });
   });
 });

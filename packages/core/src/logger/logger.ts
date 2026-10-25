@@ -46,8 +46,8 @@ function parseError(err: unknown): LogEntryError | undefined {
   if (!err) return undefined;
   if (err instanceof Error) {
     return {
-      name: err.name,
-      message: err.message,
+      name: err.name || 'Error',
+      message: err.message || 'Nepoznata greška',
       stack: err.stack,
       frames: parseStackTrace(err.stack),
     };
@@ -59,6 +59,55 @@ function parseError(err: unknown): LogEntryError | undefined {
       frames: parseStackTrace(err),
     };
   }
+  if (typeof err === 'object') {
+    const obj = err as Record<string, any>;
+    const nested = obj.error;
+
+    // Ako je npr. API error objekt: { error: { message: "...", status: "..." } } ili { error: "..." }
+    const message =
+      typeof nested === 'string'
+        ? nested
+        : typeof nested?.message === 'string'
+        ? nested.message
+        : typeof obj.message === 'string'
+        ? obj.message
+        : undefined;
+
+    const name =
+      typeof obj.name === 'string'
+        ? obj.name
+        : typeof nested?.status === 'string'
+        ? nested.status
+        : typeof nested?.code === 'number'
+        ? `HTTP_${nested.code}`
+        : typeof obj.status === 'number'
+        ? `HTTP_${obj.status}`
+        : 'Error';
+
+    const stack = typeof obj.stack === 'string' ? obj.stack : undefined;
+
+    if (message) {
+      return {
+        name,
+        message,
+        stack,
+        frames: stack ? parseStackTrace(stack) : undefined,
+      };
+    }
+
+    try {
+      const serialized = JSON.stringify(err);
+      if (serialized && serialized !== '{}') {
+        return {
+          name: typeof obj.name === 'string' ? obj.name : 'ErrorDetails',
+          message: serialized,
+        };
+      }
+    } catch {
+      // Ignoriraj grešku serijalizacije
+    }
+  }
+
   return {
     name: 'UnknownError',
     message: String(err),

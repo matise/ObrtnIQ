@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import {
   X,
   Send,
+  Square,
   Paperclip,
   Trash2,
   Plus,
@@ -22,6 +23,7 @@ import type { ZigoAttachment, ZigoUserMemory, ZigoMemoryKategorija } from '@obrt
 import type { UseZigoAgentReturn } from '../hooks/useZigoAgent';
 import type { UseLiveScreenContextReturn } from '../hooks/useLiveScreenContext';
 import { zigoMemoryService } from '../services/zigo-memory-service';
+import { getZigoThinkingPhrase } from '../services/zigo-context-builder';
 import { ZigoActionCard } from './ZigoActionCard';
 import { ZigoMessageContent } from './ZigoMessageContent';
 import { ObrtEmblem } from './icons';
@@ -126,6 +128,11 @@ export const ZigoCopilotPanel: React.FC<ZigoCopilotPanelProps> = ({
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    if (e.key === 'Escape' && isThinking) {
+      e.preventDefault();
+      agent.zaustaviDumanje();
+      return;
+    }
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSend();
@@ -552,11 +559,23 @@ export const ZigoCopilotPanel: React.FC<ZigoCopilotPanelProps> = ({
           );
         })}
 
-        {/* Indikator razmišljanja */}
+        {/* Indikator razmišljanja sa stop gumbom */}
         {isThinking && (
-          <div className="flex items-center gap-2 p-2.5 bg-[#1c1d22] border border-[#ffd700]/40 text-[#ffd700] max-w-[80%] animate-pulse font-mono text-[11px]">
-            <Shield className="w-3.5 h-3.5 animate-spin text-[#ffd700]" />
-            <span>Mjerin Orlandovim lakton...</span>
+          <div className="flex items-center justify-between gap-3 p-2.5 bg-[#1c1d22] border border-[#ffd700]/40 text-[#ffd700] max-w-[85%] font-mono text-[11px] shadow-lg animate-pulse">
+            <div className="flex items-center gap-2 min-w-0">
+              <Shield className="w-3.5 h-3.5 animate-spin text-[#ffd700] shrink-0" />
+              <span className="truncate">{getZigoThinkingPhrase(snapshot)}</span>
+            </div>
+            <button
+              type="button"
+              onClick={agent.zaustaviDumanje}
+              className="shrink-0 px-2 py-0.5 bg-[#EF4444]/20 hover:bg-[#EF4444]/30 border border-[#EF4444]/60 hover:border-[#EF4444] text-[#EF4444] text-[10px] font-bold uppercase tracking-wider transition-colors cursor-pointer flex items-center gap-1 active:scale-95"
+              title="Zaustavi dumanje (Esc)"
+              aria-label="Zaustavi dumanje"
+            >
+              <Square className="w-2.5 h-2.5 fill-current" />
+              <span>Prekini</span>
+            </button>
           </div>
         )}
 
@@ -632,14 +651,27 @@ export const ZigoCopilotPanel: React.FC<ZigoCopilotPanelProps> = ({
             className="flex-1 bg-[#141518] border border-[#b89758]/40 focus:border-[#ffd700] px-3 py-2 text-xs font-mono text-white placeholder-gray-500 focus:outline-none transition-colors"
           />
 
-          <button
-            onClick={handleSend}
-            disabled={(!inputText.trim() && attachments.length === 0) || isThinking}
-            className="p-2 bg-[#b89758] hover:bg-[#d4af37] text-black font-bold border border-[#ffd700] transition-colors disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
-            title="Pošalji poruku (Enter)"
-          >
-            <Send className="w-4 h-4" />
-          </button>
+          {isThinking ? (
+            <button
+              type="button"
+              onClick={agent.zaustaviDumanje}
+              className="p-2 bg-[#EF4444]/25 hover:bg-[#EF4444]/40 text-[#EF4444] border border-[#EF4444] transition-all transform active:scale-95 cursor-pointer shadow-lg animate-pulse"
+              title="Zaustavi dumanje (Esc)"
+              aria-label="Zaustavi dumanje"
+            >
+              <Square className="w-4 h-4 fill-current" />
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={handleSend}
+              disabled={!inputText.trim() && attachments.length === 0}
+              className="p-2 bg-[#b89758] hover:bg-[#d4af37] text-black font-bold border border-[#ffd700] transition-colors disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+              title="Pošalji poruku (Enter)"
+            >
+              <Send className="w-4 h-4" />
+            </button>
+          )}
         </div>
       </div>
     </div>

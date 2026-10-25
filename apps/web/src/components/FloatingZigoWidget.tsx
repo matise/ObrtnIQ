@@ -3,6 +3,7 @@ import { ObrtEmblem, ObrtIcon } from './icons';
 
 export interface FloatingZigoWidgetProps {
   isThinking: boolean;
+  thinkingText?: string;
   isOpen: boolean;
   isDocked?: boolean;
   onClick: () => void;
@@ -11,6 +12,7 @@ export interface FloatingZigoWidgetProps {
 
 export const FloatingZigoWidget: React.FC<FloatingZigoWidgetProps> = ({
   isThinking,
+  thinkingText = 'Žigo duma...',
   isOpen,
   isDocked = false,
   onClick,
@@ -76,7 +78,7 @@ export const FloatingZigoWidget: React.FC<FloatingZigoWidgetProps> = ({
           <div className="bg-[#181a1f] text-[#f0e6d2] text-[11px] font-mono px-3 py-1.5 border border-[#b89758]/60 shadow-2xl rounded-none whitespace-nowrap">
             <span className="font-bold text-[#ffd700]">Žigo (Digitalni Orlando)</span>
             <span className="text-[10px] text-[var(--text-muted)] block">
-              {isThinking ? 'Analizira pod laktom...' : 'Klikni za razgovor'}
+              {isThinking ? thinkingText : 'Klikni za razgovor'}
             </span>
           </div>
         </div>

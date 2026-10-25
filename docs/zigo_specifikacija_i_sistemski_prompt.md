@@ -92,7 +92,7 @@ Svaki tvoj odgovor mora imati tri kratka dijela:
 ## 6. Integracija u UI/UX ("Žigin Ekosustav")
 
 *   **Vizual:** Kućište matirane slitine (tekstura klesanog kamena). U mirovanju mač je dolje. Pri kalkulacijama, diže podlakticu (Mjeri Orlandovim laktom).
-*   **Animacija obrade (Kruna i Q-prsten):** Nema loading spinnera. Vrti se Q-prsten (obris kneževe krune). Tekst: *"Slažen dukate...", "Pregovaran sa serveron...", "Mjerin lakton..."*
+*   **Animacija obrade (Kruna i Q-prsten) & Indikator razmišljanja:** Nema bezličnog loading spinnera. Vrti se zlatni štit i Q-prsten, a statusni tekst dinamički reflektira kontekst radne plohe kroz dubrovački glagol *dumati* (promišljati/vijećati): *"Žigo duma nad papirima..."*, *"Žigo duma nad KPD šiframa stavki..."*, *"Žigo duma kako spasit paušal od PDV-a..."*, *"Žigo duma nad Knjigom prometa..."*, *"Žigo duma u sitne noćne ure..."*
 *   **Mehanika "Žigo, presijeci":** Gumb koji se pojavljuje kad korisnik predugo luta. Uklanja sav vizualni šum i ostavlja samo:
     1. *Što gori* (Rok 24h).
     2. *Što čeka* ("Neka kisne do ponedjeljka").

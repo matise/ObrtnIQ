@@ -34,6 +34,7 @@ export interface UseZigoAgentReturn {
   odaberiSesiju: (sesijaId: string) => Promise<void>;
   obrisiSesiju: (sesijaId: string) => Promise<void>;
   posaljiPoruku: (tekst: string, privitci?: ZigoAttachment[]) => Promise<void>;
+  zaustaviDumanje: () => void;
   aktivirajRez: () => Promise<void>;
   izvrsiPripremljeniAlat: (toolPoziv: ZigoToolCall) => Promise<ZigoToolResult>;
   osvjezi: () => Promise<void>;
@@ -58,10 +59,35 @@ export function useZigoAgent(options: UseZigoAgentOptions = {}): UseZigoAgentRet
     liveContextRef.current = options.liveContext;
   }, [options.liveContext]);
 
+  // AbortController za zaustavljanje dumanja / mrežnih zahtjeva
+  const abortControllerRef = useRef<AbortController | null>(null);
+
   const loggerSession = appLogger.scope('AGENT:SESSION');
   const loggerChat = appLogger.scope('AGENT:CHAT');
   const loggerRez = appLogger.scope('AGENT:REZ');
   const loggerAction = appLogger.scope('AGENT:ACTION');
+
+  // Funkcija za prekid dumanja (Stop dugme u chatu)
+  const zaustaviDumanje = useCallback(() => {
+    if (abortControllerRef.current) {
+      loggerChat.info('Korisnik zatražio prekid dumanja (STOP)', {
+        aktivnaSesijaId,
+      });
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+    setIsThinking(false);
+  }, [aktivnaSesijaId, loggerChat]);
+
+  // Čišćenje aktivnog zahtjeva pri demontaži komponente
+  useEffect(() => {
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+        abortControllerRef.current = null;
+      }
+    };
+  }, []);
 
   // Učitavanje svih sesija iz baze
   const loadSesije = useCallback(async () => {
@@ -282,6 +308,14 @@ export function useZigoAgent(options: UseZigoAgentOptions = {}): UseZigoAgentRet
       }
 
       const t0 = performance.now();
+      // Prekini prethodno dumanje ako je još u tijeku
+      if (abortControllerRef.current) {
+        loggerChat.debug('Prekidam prethodni nerazriješeni zahtjev dumanja...');
+        abortControllerRef.current.abort();
+      }
+      const currentAbortController = new AbortController();
+      abortControllerRef.current = currentAbortController;
+
       try {
         // 2. Pozovi Gemini ili lokalni heuristički asistent
         loggerChat.debug('Pokretanje Gemini / heurističkog agenta', {
@@ -292,7 +326,8 @@ export function useZigoAgent(options: UseZigoAgentOptions = {}): UseZigoAgentRet
         const agentResponse = await geminiService.chatWithAgent(
           azuriranePoruke,
           options.apiKeyOverride,
-          liveContextRef.current
+          liveContextRef.current,
+          currentAbortController.signal
         );
         const trajanjeMs = Math.round(performance.now() - t0);
 
@@ -343,26 +378,49 @@ export function useZigoAgent(options: UseZigoAgentOptions = {}): UseZigoAgentRet
         setPoruke([...azuriranePoruke, assistantMsg]);
       } catch (err: any) {
         const trajanjeMs = Math.round(performance.now() - t0);
-        loggerChat.error('Greška pri obradi odgovora agenta:', {
-          error: err?.message,
-          stack: err?.stack,
-          trajanjeMs,
-        });
-        const errorMsg: ZigoChatPoruka = {
-          id: `msg-${Date.now()}-error`,
-          sesijaId: currentSesijaId,
-          uloga: 'assistant',
-          tekst: `Naletio san na birokratsku neveru: ${err?.message || 'Greška u obradi.'}. Popij čašu vode, ja držin stražu.`,
-          kreirano: new Date().toISOString(),
-        };
-        await dexieStorage.chat.savePoruka(errorMsg);
-        setPoruke([...azuriranePoruke, errorMsg]);
+        const wasAborted = err?.name === 'AbortError' || currentAbortController.signal.aborted;
+
+        if (wasAborted) {
+          loggerChat.info('Dumanje agenta zaustavljeno na zahtjev korisnika (STOP)', {
+            sesijaId: currentSesijaId,
+            trajanjeMs,
+          });
+          const stoppedMsg: ZigoChatPoruka = {
+            id: `msg-${Date.now()}-stopped`,
+            sesijaId: currentSesijaId,
+            uloga: 'assistant',
+            tekst: 'Dumanje je prekinuto na tvoj zahtjev, gosparu. Ođe san na trgu kad zatreba.',
+            kreirano: new Date().toISOString(),
+          };
+          await dexieStorage.chat.savePoruka(stoppedMsg);
+          setPoruke([...azuriranePoruke, stoppedMsg]);
+        } else {
+          loggerChat.error('Greška pri obradi odgovora agenta:', {
+            error: err?.message,
+            name: err?.name,
+            stack: err?.stack,
+            trajanjeMs,
+            sesijaId: currentSesijaId,
+          });
+          const errorMsg: ZigoChatPoruka = {
+            id: `msg-${Date.now()}-error`,
+            sesijaId: currentSesijaId,
+            uloga: 'assistant',
+            tekst: `Naletio san na birokratsku neveru: ${err?.message || 'Greška u obradi.'}. Popij čašu vode, ja držin stražu.`,
+            kreirano: new Date().toISOString(),
+          };
+          await dexieStorage.chat.savePoruka(errorMsg);
+          setPoruke([...azuriranePoruke, errorMsg]);
+        }
       } finally {
+        if (abortControllerRef.current === currentAbortController) {
+          abortControllerRef.current = null;
+        }
         setIsThinking(false);
         loggerChat.debug('Stanje razmišljanja agenta: ZAVRŠENO (isThinking = false)');
       }
     },
-    [aktivnaSesijaId, poruke, sesije, stvoriNovuSesiju, loadSesije, options.apiKeyOverride, loggerChat, loggerSession]
+    [aktivnaSesijaId, poruke, sesije, stvoriNovuSesiju, loadSesije, options.apiKeyOverride, loggerChat, loggerSession, loggerAction]
   );
 
   // Instant aktivacija Žiginog Reza
@@ -399,6 +457,7 @@ export function useZigoAgent(options: UseZigoAgentOptions = {}): UseZigoAgentRet
     odaberiSesiju,
     obrisiSesiju,
     posaljiPoruku,
+    zaustaviDumanje,
     aktivirajRez,
     izvrsiPripremljeniAlat,
     osvjezi: async () => {

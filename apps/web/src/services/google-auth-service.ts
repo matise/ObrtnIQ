@@ -76,6 +76,11 @@ const STORAGE_KEY_CLIENT_ID = 'obrtniq_google_client_id';
 // Zadani službeni Web Client ID projekta ObrtIQ (Robot Hand Made)
 export const DEFAULT_GOOGLE_CLIENT_ID = '46149025714-vkc36k4sh11d8sdimk13dsr135a9h0bo.apps.googleusercontent.com';
 
+/**
+ * Validnost tokena Google prijave za radnu sesiju: 6 sati (21,600 sekundi)
+ */
+export const GOOGLE_TOKEN_VALIDITY_SECONDS = 6 * 3600; // 6h = 21,600s
+
 declare global {
   interface Window {
     google?: {
@@ -630,14 +635,15 @@ class GoogleAuthService {
             scope: scopes,
             callback: (response) => {
               if (response.access_token) {
-                const expiresIn = response.expires_in || 3600;
+                const expiresIn = GOOGLE_TOKEN_VALIDITY_SECONDS;
                 const tokens: GoogleAuthTokens = {
                   accessToken: response.access_token,
                   expiresAt: Date.now() + expiresIn * 1000 - 60000,
                 };
                 this.saveSession(identity, tokens);
-                appLogger.scope('AUTH:GOOGLE:SILENT').info('Google token uspješno tiho obnovljen u pozadini.', {
+                appLogger.scope('AUTH:GOOGLE:SILENT').info('Google token uspješno tiho obnovljen u pozadini (vrijedi 6h).', {
                   expiresInSec: expiresIn,
+                  trajanjeSati: expiresIn / 3600,
                 });
                 resolve(response.access_token);
               } else {
@@ -757,10 +763,11 @@ class GoogleAuthService {
             }
 
             const accessToken = response.access_token;
-            const expiresIn = response.expires_in || 3600;
+            const expiresIn = GOOGLE_TOKEN_VALIDITY_SECONDS;
 
-            loggerLogin.info('Google OAuth access token uspješno zaprimljen u callbacku!', {
+            loggerLogin.info('Google OAuth access token uspješno zaprimljen u callbacku (sesija 6h)!', {
               expiresInSec: expiresIn,
+              trajanjeSati: expiresIn / 3600,
               tipTokena: (response as any).token_type || 'Bearer',
             });
 

@@ -370,8 +370,9 @@ class GeminiService {
   /**
    * Provjerava ispravnost korisnikovog Gemini API ključa jednostavnim pingom
    */
-  public async testApiKey(apiKey: string): Promise<boolean> {
+  public async testApiKey(apiKey: string, signal?: AbortSignal): Promise<boolean> {
     if (!apiKey || apiKey.trim().length < 10) {
+      logError.warn('Pokušaj testiranja nevažećeg API ključa (manje od 10 znakova)');
       throw new Error('API ključ mora sadržavati barem 10 znakova.');
     }
 
@@ -383,18 +384,56 @@ class GeminiService {
       generationConfig: { maxOutputTokens: 5 },
     };
 
-    const res = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    });
+    const t0 = performance.now();
+    logReq.info(`Testiram vezu s Gemini API (${model})...`);
 
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error(err.error?.message || `Greška povezivanja s Gemini API (${res.status})`);
+    try {
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+        signal,
+      });
+
+      const trajanjeMs = Math.round(performance.now() - t0);
+
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => ({}));
+        const serverMsg =
+          errJson?.error?.message ||
+          (res.status === 503
+            ? 'Gemini model je trenutačno preopterećen. Pokušajte ponovno za nekoliko trenutaka.'
+            : `Greška povezivanja s Gemini API (${res.status})`);
+        const serverStatus = errJson?.error?.status || (res.status === 503 ? 'UNAVAILABLE' : `HTTP_${res.status}`);
+        const apiError = new Error(`[${res.status} ${serverStatus}] ${serverMsg}`);
+        apiError.name = serverStatus;
+
+        logError.error(`Test Gemini API ključa nije uspio [${res.status}]`, apiError, {
+          status: res.status,
+          serverMessage: serverMsg,
+          serverStatus,
+          rawError: errJson,
+          trajanjeMs,
+        });
+        throw apiError;
+      }
+
+      logRes.info('Test Gemini API ključa uspješno položen', { trajanjeMs });
+      return true;
+    } catch (err: any) {
+      const trajanjeMs = Math.round(performance.now() - t0);
+      if (err?.name === 'AbortError' || signal?.aborted) {
+        logReq.warn('Test Gemini API ključa prekinut (AbortSignal)', { trajanjeMs });
+        throw err;
+      }
+      const actualError = err instanceof Error ? err : new Error(String(err?.message || err || 'Nepoznata greška'));
+      logError.error('Iznimka pri provjeri Gemini API ključa:', actualError, {
+        status: actualError.name,
+        poruka: actualError.message,
+        trajanjeMs,
+      });
+      throw actualError;
     }
-
-    return true;
   }
 
   /**
@@ -403,9 +442,15 @@ class GeminiService {
   public async chatWithAgent(
     messages: ZigoChatPoruka[],
     apiKeyOverride?: string,
-    liveContext?: LiveScreenContextSnapshot
+    liveContext?: LiveScreenContextSnapshot,
+    signal?: AbortSignal
   ): Promise<ZigoAgentResponse> {
     const key = apiKeyOverride || this.getStoredApiKey();
+
+    if (signal?.aborted) {
+      logReq.warn('Zahtjev za razgovor prekinut prije početka (AbortSignal)');
+      throw new DOMException('Dumanje zaustavljeno na zahtjev korisnika', 'AbortError');
+    }
 
     if (liveContext) {
       logContext.debug('Omni-Context snimak pripremljen za razgovor', {
@@ -425,6 +470,10 @@ class GeminiService {
 
     // Ako nema ključa, koristi stoički lokalni heuristički asistent
     if (!key) {
+      if (signal?.aborted) {
+        logReq.warn('Dumanje prekinuto prije lokalne heuristike (AbortSignal)');
+        throw new DOMException('Dumanje zaustavljeno na zahtjev korisnika', 'AbortError');
+      }
       logHeuristic.debug('Gemini API ključ nije definiran. Koristim lokalni deterministički heuristički asistent.');
       return this.chatWithAgentLocalHeuristic(messages, liveContext);
     }
@@ -535,17 +584,30 @@ class GeminiService {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
+        signal,
       });
 
       const trajanjeMs = Math.round(performance.now() - t0);
 
       if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        logError.error(`Gemini API vratio grešku [${res.status}]`, err, {
+        const errJson = await res.json().catch(() => ({}));
+        const serverMsg =
+          errJson?.error?.message ||
+          (res.status === 503
+            ? 'Gemini model je trenutačno preopterećen. Pokušajte ponovno za nekoliko trenutaka.'
+            : `Gemini API odgovor: ${res.status}`);
+        const serverStatus = errJson?.error?.status || (res.status === 503 ? 'UNAVAILABLE' : `HTTP_${res.status}`);
+        const apiError = new Error(`[${res.status} ${serverStatus}] ${serverMsg}`);
+        apiError.name = serverStatus;
+
+        logError.error(`Gemini API vratio grešku [${res.status}]`, apiError, {
           status: res.status,
+          serverMessage: serverMsg,
+          serverStatus,
+          rawError: errJson,
           trajanjeMs,
         });
-        throw new Error(err.error?.message || `Gemini API odgovor: ${res.status}`);
+        throw apiError;
       }
 
       const data = await res.json();
@@ -582,8 +644,19 @@ class GeminiService {
       };
     } catch (err: any) {
       const trajanjeMs = Math.round(performance.now() - t0);
-      logError.warn('Greška u pozivu Gemini modela, prebacujen na lokalni Orlandov fallback:', {
-        error: err?.message,
+
+      // Ako je korisnik zatražio prekid (STOP), re-throw bez aktiviranja fallbacka!
+      if (err?.name === 'AbortError' || signal?.aborted) {
+        logReq.warn('Dumanje / Zahtjev prema Gemini modelu prekinut na zahtjev korisnika (STOP)', {
+          trajanjeMs,
+        });
+        throw err;
+      }
+
+      const actualError = err instanceof Error ? err : new Error(String(err?.message || err || 'Nepoznata greška'));
+      logError.error('Greška u pozivu Gemini modela, prebacujen na lokalni Orlandov fallback:', actualError, {
+        status: actualError.name,
+        poruka: actualError.message,
         trajanjeMs,
       });
       return this.chatWithAgentLocalHeuristic(messages, liveContext);

@@ -27,6 +27,7 @@ import { useLiveScreenContext } from './hooks/useLiveScreenContext';
 import { FloatingZigoWidget } from './components/FloatingZigoWidget';
 import { ZigoChatDrawer } from './components/ZigoChatDrawer';
 import { ZigoCopilotPanel } from './components/ZigoCopilotPanel';
+import { getZigoThinkingPhrase } from './services/zigo-context-builder';
 import { onAutoOpenTriggered } from './services/global-error-trap';
 import { appLogger } from './services/logger';
 import { useDynamicFavicon } from './hooks/useDynamicFavicon';
@@ -339,6 +340,7 @@ export default function App() {
       {/* Plutajući amblem: Digitalni Orlando (Žigo) i ladica za razgovor */}
       <FloatingZigoWidget
         isThinking={zigoAgent.isThinking}
+        thinkingText={getZigoThinkingPhrase(liveScreenContext.snapshot)}
         isOpen={zigoAgent.isDrawerOpen}
         isDocked={zigoAgent.isDocked}
         onClick={zigoAgent.toggleDrawer}

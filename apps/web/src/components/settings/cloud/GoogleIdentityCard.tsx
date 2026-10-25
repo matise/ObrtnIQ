@@ -14,6 +14,13 @@ export interface GoogleIdentityCardProps {
   googleAuth: UseGoogleAuthReturn;
 }
 
+function formatTokenRemaining(minutes: number): string {
+  if (minutes < 60) return `${minutes} min`;
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  return m > 0 ? `${h}h ${m} min` : `${h}h`;
+}
+
 export const GoogleIdentityCard: React.FC<GoogleIdentityCardProps> = ({
   googleAuth,
 }) => {
@@ -206,7 +213,7 @@ export const GoogleIdentityCard: React.FC<GoogleIdentityCardProps> = ({
                 Aktivnost tokena:{' '}
                 {googleAuth.tokenRemainingMinutes > 0 ? (
                   <span className="text-[#10B981] font-bold">
-                    Vrijedi još {googleAuth.tokenRemainingMinutes} min (auto-refresh aktivan)
+                    Vrijedi još {formatTokenRemaining(googleAuth.tokenRemainingMinutes)} (auto-refresh aktivan)
                   </span>
                 ) : (
                   <span className="text-amber-400 font-bold">
