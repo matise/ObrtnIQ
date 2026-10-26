@@ -13,14 +13,16 @@
   <a href="#-žigo-inteligentni-copilot-orlandov-duh--ai-alati"><img src="https://img.shields.io/badge/AI-Žigo%20Copilot%20%2F%20Gemini%20BYOK-8B5CF6?style=for-the-badge" alt="Žigo Copilot" /></a>
   <a href="#-knjigovodstvo-doprinosi-troskovnik-i-analitika"><img src="https://img.shields.io/badge/Knjigovodstvo-KPR%20%2F%20PO--SD%20%2F%20Doprinosi%20%2F%20Troškovi-EC4899?style=for-the-badge" alt="Knjigovodstvo" /></a>
   <a href="#-verifikacija-i-testovi-404404-prolazi"><img src="https://img.shields.io/badge/Testovi-404%2F404%20Prolazi%20(100%25)-059669?style=for-the-badge" alt="Tests" /></a>
+  <a href="#-priča-o-nastanku-kognitivna-simbioza-i-planski-vibe-coding"><img src="https://img.shields.io/badge/Metodologija-Planski%20Vibe%20Coding%20(Antigravity%20%2B%20Gemini)-4285F4?style=for-the-badge" alt="Planski Vibe Coding" /></a>
 </p>
 
 ---
 
 ## 📖 Sadržaj
 1. [O Aplikaciji i Viziji](#-o-aplikaciji-i-viziji)
-2. [Žigo — Digitalni Orlando i Filozofija Sustava](#-žigo--digitalni-orlando-i-filozofija-sustava)
-3. [Ključne Značajke Sustava (Faza 1 do Faze 20)](#-ključne-značajke-sustava)
+2. [Priča o Nastanku: Kognitivna Simbioza i Planski Vibe Coding](#-priča-o-nastanku-kognitivna-simbioza-i-planski-vibe-coding)
+3. [Žigo — Digitalni Orlando i Filozofija Sustava](#-žigo--digitalni-orlando-i-filozofija-sustava)
+4. [Ključne Značajke Sustava (Faza 1 do Faze 20)](#-ključne-značajke-sustava)
    - [Ultra-Brza Radna Ploha i Tipkovnički Workflow (`Alt+N` / `F2`)](#1-ultra-brza-radna-ploha-i-tipkovnički-workflow-altn--f2)
    - [Modularna Workspace Arhitektura (In-Place Navigacija bez Zamagljenja)](#2-modularna-workspace-arhitektura-in-place-navigacija-bez-zamagljenja)
    - [KPR Knjigovodstvo, Porezni Razredi i PO-SD XML za ePoreznu](#3-kpr-knjigovodstvo-porezni-razredi-i-po-sd-xml-za-eporeznu)
@@ -40,12 +42,12 @@
    - [Glasovna Naracija i Govorno Upravljanje (Google Cloud TTS & STT V2)](#17-glasovna-naracija-i-govorno-upravljanje-google-cloud-tts--stt-v2)
    - [PWA Offline Instalabilnost i Service Worker](#18-pwa-offline-instalabilnost-i-service-worker)
    - [SystemLog & Slojeviti Arhitekturni Logger](#19-systemlog--slojeviti-arhitekturni-logger)
-4. [Arhitektura Sustava (Zero-Server Arhitektura)](#-arhitektura-sustava-zero-server)
-5. [O Autoru: Matija Miloslavić ("Mate Fox" / "m@tise")](#-o-autoru-matija-miloslavić)
-6. [Obrt Robot Hand Made](#-obrt-robot-hand-made)
-7. [Brzi Početak (Quickstart & Razvoj)](#-brzi-početak)
-8. [Verifikacija i Testovi (404/404 Prolazi)](#-verifikacija-i-testovi-404404-prolazi)
-9. [Atribucija i Licenca](#-atribucija-i-licenca)
+5. [Arhitektura Sustava (Zero-Server Arhitektura)](#-arhitektura-sustava-zero-server)
+6. [O Autoru: Matija Miloslavić ("Mate Fox" / "m@tise")](#-o-autoru-matija-miloslavić)
+7. [Obrt Robot Hand Made](#-obrt-robot-hand-made)
+8. [Brzi Početak (Quickstart & Razvoj)](#-brzi-početak)
+9. [Verifikacija i Testovi (404/404 Prolazi)](#-verifikacija-i-testovi-404404-prolazi)
+10. [Atribucija i Licenca](#-atribucija-i-licenca)
 
 ---
 
@@ -67,6 +69,35 @@ U modernom poslovanju većina računovodstvenog softvera nameće mjesečne pretp
    - **Porezni kalendar RH** s automatskim podsjetnicima i izračunom doprinosa.
 3. **Klijentska umjetna inteligencija koja služi obrtniku:** AI asistent Žigo koristi model *Bring-Your-Own-Key* (BYOK), što znači da korisnik ima punu privatnost, nulte posredničke marže i 100% lokalni deterministički fallback kada nema interneta.
 4. **Brzina i jednostavnost:** Izrada, fiskalizacija i slanje računa s HUB-3 barkodom traju manje od 15 sekundi.
+
+---
+
+## 🧪 Priča o Nastanku: Kognitivna Simbioza i "Planski Vibe Coding"
+
+> *"Kakvo je ovo vrijeme za biti živ! Revolucija u kognitivnoj moći stroja: ja zamislim, on manifestira. Dok god je moja misao bila kristalna, stroj je gradio strukturu savršeno."*  
+> **— Matija Miloslavić (Mate Fox)**
+
+ObrtnIQ nije nastao kroz višemjesečne korporativne cikluse niti u klasičnom softverskom timu. Nastao je u svega **nekoliko dana intenzivnog rada** kao osobna vježba, inženjerski eksperiment i test stabilnosti nove razvojne paradigme: **sinergije Google Antigravity razvojnog okruženja i Google Gemini modela**.
+
+### 1. Od bita do masivnog multi-threada — oslobađanje ljudskog mozga
+Desetljećima se za gradnju ovako kompleksnih sustava — s klijentskom kriptografijom, strogim poreznim algoritmima, fiskalizacijom i offline bazama — nemilosrdno trošio biološki kontekst programera. Godine i godine iskustva kodiranja na svim mogućim razinama, *od rada na razini bita do masivnih multi-thread sustava*, ovdje su poslužile kao kristalni kompas:
+* **Uklanjanje kognitivnog trenja:** Umjetna inteligencija ne zamjenjuje inženjersko znanje i viziju — ona uklanja iscrpljujuće kognitivno trenje realizacije. Do sada se za ovakve arhitekture trošio sav ljudski mentalni procesor; sada je stroj preuzeo teret izvedbe.
+* **Kristalna misao kao nacrt:** Kada je domenska misao precizna, pravila neumoljiva, a arhitektonski plan jasan, stroj manifestira strukturu savršeno i bez posustajanja.
+
+### 2. Biti na "ti" s limitacijama modela (Planski Vibe Coding)
+Danas se pojam *"vibe coding"* u javnosti često površno povezuje s kaotičnim i stihijskim generiranjem koda koje se uruši na prvom ozbiljnijem problemu. ObrtnIQ dokazuje suprotno — puni trijumf inženjerske discipline:
+* **Deep Research i Gemini Canvas:** Prije nego što je dotaknuta prva linija koda, u Gemini Canvasu je uz opsežne *deep research* analize dekonstruiran cjelokupni regulatorni i tehnički aparat Republike Hrvatske — od CIS fiskalizacije 1.0 (SOAP/ZKI), e-Računa (UBL 2.1 CIUS-HR) i KPD 2025 šifarnika, do službenih PO-SD XML XSD shema Porezne uprave i Web Crypto specifikacija.
+* **Svjesnost limita i arhitektura 20 faza:** Biti na *"ti"* s limitacijama AI modela — poznavati dužinu konteksta, točke zasićenja, prelijevanja i zamor pažnje — značilo je dizajnirati sustav s 20 mikro-arhitektonskih faza. Svaka je faza imala stroge *Gate-Check* verifikacije i automatizirane testove prije prelaska na sljedeći korak.
+
+### 3. Eksperiment koji je otkrio nešto veće
+Projekt je u početku bio zamišljen kao osobna vježba: provjera stabilnosti alata i test načina planske implementacije — *može li se isključivo uz Gemini i Antigravity, u par dana, izgraditi stabilan, 100% klijentski (Zero-Server) sustav za stvarne potrebe obrtnika?*
+
+Rezultat je premašio sva očekivanja i potvrdio da ovdje leži nešto puno veće i trajnije:
+* **404 / 404 prolazna automatizirana testa** (Vitest) i nula TypeScript grešaka.
+* **Potpuna klijentska privatnost i suverenost:** AES-256-GCM kripto-trezor, lokalna baza podataka (Dexie IndexedDB), PWA offline rad i munjeviti in-browser PDF generator.
+* **Žigo Copilot:** Autonomni asistent s autentičnim dubrovačkim govorom viteza Orlanda i 25 izvršnih alata.
+
+Ono što je počelo kao vježba i provjera nove metodologije, rezultiralo je **zrelim, moćnim i autentičnim ERP operativnim sustavom** — dokazom da se nalazimo u prijelomnom trenutku u povijesti tehnologije, gdje kristalna ljudska vizija i kognitivna moć stroja stvaraju softver nove generacije.
 
 ---
 
