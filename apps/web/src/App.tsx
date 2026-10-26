@@ -1,11 +1,9 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import type { Partner, Artikl } from '@obrtniq/core';
 import type { FormItem } from './engine/types';
 import { AppHeader } from './components/layout/AppHeader';
-import { HeroBanner } from './components/layout/HeroBanner';
-import { PhaseOverviewGrid } from './components/layout/PhaseOverviewGrid';
+import { StartHubModal } from './components/layout/StartHubModal';
 import { MobileTabSwitcher } from './components/layout/MobileTabSwitcher';
-import { ManifestReferenceCard } from './components/layout/ManifestReferenceCard';
 import { AppFooter } from './components/layout/AppFooter';
 import { InvoiceDesk } from './components/desk/InvoiceDesk';
 import { InvoiceLivePreview } from './components/InvoiceLivePreview';
@@ -17,6 +15,7 @@ import { FiscalWorkspaceView } from './components/desk/FiscalWorkspaceView';
 import { ArticleWorkspaceView } from './components/desk/ArticleWorkspaceView';
 import { PartnerWorkspaceView } from './components/desk/PartnerWorkspaceView';
 import { SystemLogWorkspaceView } from './components/desk/SystemLogWorkspaceView';
+import { DocumentationWorkspaceView } from './components/desk/DocumentationWorkspaceView';
 import { buildFiscalDrawerDocument, buildFiscalPartnerSnapshot } from './engine/invoice-mapper';
 import { useWorkspaceRouter } from './hooks/useWorkspaceRouter';
 import { useAppStats } from './hooks/useAppStats';
@@ -37,9 +36,12 @@ import { FloatingZigoWidget } from './components/FloatingZigoWidget';
 import { ZigoChatDrawer } from './components/ZigoChatDrawer';
 import { ZigoCopilotPanel } from './components/ZigoCopilotPanel';
 import { getZigoThinkingPhrase } from './services/zigo-context-builder';
-import { onAutoOpenTriggered } from './services/global-error-trap';
 import { appLogger } from './services/logger';
+import { onAutoOpenTriggered } from './services/global-error-trap';
 import { useDynamicFavicon } from './hooks/useDynamicFavicon';
+import { useTheme } from './hooks/useTheme';
+import { OnboardingWizardModal } from './components/onboarding/OnboardingWizardModal';
+import { useOnboardingWizard } from './hooks/useOnboardingWizard';
 import type { ActiveScreenView } from './types/zigo-context';
 
 export default function App() {
@@ -50,11 +52,16 @@ export default function App() {
   const router = useWorkspaceRouter();
 
   // 1. Aplikacijski engine, profili i hooks
+  const { selectPreset } = useTheme();
   const stats = useAppStats();
   const drawers = useAppDrawers();
   const form = useInvoiceForm();
   const items = useInvoiceItems();
   const obrtProfileHook = useObrtProfile();
+  const onboardingWizard = useOnboardingWizard(
+    obrtProfileHook.profil,
+    obrtProfileHook.saveProfil
+  );
   const partnersHook = usePartners();
   const articlesHook = useArticles();
   const googleAuthHook = useGoogleAuth();
@@ -81,6 +88,7 @@ export default function App() {
       case 'articles': return 'ArticleDrawer';
       case 'partners': return 'PartnerDrawer';
       case 'logs': return 'SystemLogDrawer';
+      case 'docs': return 'DocumentationDrawer';
       default: return 'InvoiceDesk';
     }
   }, [router.activeView]);
@@ -177,12 +185,6 @@ export default function App() {
     },
   });
 
-  // Automatsko otvaranje dnevnika grešaka na pojavu ERROR razine (Faza 10.5)
-  useEffect(() => {
-    return onAutoOpenTriggered(() => {
-      router.navigateTo('logs');
-    });
-  }, [router]);
 
   // Inicijalna telemetrija montiranja radne površine
   useEffect(() => {
@@ -192,9 +194,26 @@ export default function App() {
     });
   }, []);
 
-  const [mobileTab, setMobileTab] = useState<'desk' | 'preview'>('desk');
+  // Automatsko iskakanje donje konzole u slučaju neobrađene greške (kada je uključeno u postavkama dnevnika)
+  useEffect(() => {
+    return onAutoOpenTriggered(() => {
+      drawers.setIsLogDrawerOpen(true);
+    });
+  }, [drawers.setIsLogDrawerOpen]);
 
-  // 2. Tipkovnički prečaci (F2 = Izdaj, Alt+N = Nova stavka, Alt+H / Esc = Home)
+  const [mobileTab, setMobileTab] = useState<'desk' | 'preview'>('desk');
+  const [isStartHubOpen, setIsStartHubOpen] = useState(false);
+
+  // Preklapanje stanja dnevnika: ako je otvoren puni prikaz, vraća na radnu plohu, inače podiže donju konzolu
+  const handleToggleLogDrawer = useCallback(() => {
+    if (router.activeView === 'logs') {
+      router.navigateHome();
+    } else {
+      drawers.toggleLogDrawer();
+    }
+  }, [router, drawers]);
+
+  // 2. Tipkovnički prečaci (F2 = Izdaj, Alt+N = Nova stavka, Alt+1..8 = Otoci navigacije, Alt+9/L = Dnevnik, Alt+Z = Žigo, Alt+S / Ctrl+K = Start Hub)
   useKeyboardShortcuts({
     onIssue: workflow.handleIssueDocument,
     onAddItem: items.addItem,
@@ -202,6 +221,17 @@ export default function App() {
     isLocked: workflow.isLocked,
     onNavigateHome: router.navigateHome,
     isHome: router.isHome,
+    onOpenStartHub: () => setIsStartHubOpen(prev => !prev),
+    onOpenDocs: () => router.navigateTo('documents'),
+    onOpenKpr: () => router.navigateTo('bookkeeping'),
+    onOpenPartners: () => router.navigateTo('partners'),
+    onOpenArticles: () => router.navigateTo('articles'),
+    onOpenFiscal: () => router.navigateTo('fiscal'),
+    onOpenSettings: () => router.navigateTo('settings'),
+    onOpenDocumentation: () => router.navigateTo('docs'),
+    onOpenLogs: () => router.navigateTo('logs'),
+    onToggleLogDrawer: handleToggleLogDrawer,
+    onOpenZigo: zigoAgent.toggleDrawer,
   });
 
   // 3. Odabir partnera iz adresara
@@ -249,6 +279,7 @@ export default function App() {
       <AppHeader
         activeView={router.activeView}
         onNavigateHome={router.navigateHome}
+        onOpenStartHub={() => setIsStartHubOpen(true)}
         totalSavedDocs={stats.totalSavedDocs}
         totalKprNaplaceno={stats.totalKprNaplaceno}
         onOpenDocs={() => router.navigateTo('documents')}
@@ -257,6 +288,8 @@ export default function App() {
         onOpenSettings={() => router.navigateTo('settings')}
         onOpenPartners={() => router.navigateTo('partners')}
         onOpenArticles={() => router.navigateTo('articles')}
+        onOpenLogs={() => router.navigateTo('logs')}
+        onToggleLogDrawer={handleToggleLogDrawer}
         onOpenZigo={zigoAgent.toggleDrawer}
         googleIdentity={googleAuthHook.identity}
         cloudSyncStatus={driveSyncHook.syncStatus}
@@ -274,17 +307,6 @@ export default function App() {
       <main className="flex-1 w-full px-4 sm:px-6 lg:px-8 py-6 space-y-6">
         {router.activeView === 'home' && (
           <>
-            {/* Hero Alert Banner s immutability statusom */}
-            <HeroBanner
-              docType={workflow.docType}
-              brojDokumenta={workflow.brojDokumenta}
-              docStatus={workflow.docStatus}
-              isLocked={workflow.isLocked}
-            />
-
-            {/* Phase Grid Overview (Faza 0-2 do Faza 7) */}
-            <PhaseOverviewGrid />
-
             {/* Mobile View Tab Switcher (< xl screens) */}
             <MobileTabSwitcher
               activeTab={mobileTab}
@@ -356,9 +378,6 @@ export default function App() {
                 </div>
               )}
             </div>
-
-            {/* Documentation & Manifest Reference */}
-            <ManifestReferenceCard />
           </>
         )}
 
@@ -381,8 +400,8 @@ export default function App() {
             driveSyncHook={driveSyncHook}
             geminiHook={geminiHook}
             onNavigateHome={router.navigateHome}
-            onToggleLogDrawer={() => router.navigateTo('logs')}
-            isLogDrawerOpen={false}
+            onToggleLogDrawer={drawers.toggleLogDrawer}
+            isLogDrawerOpen={drawers.isLogDrawerOpen}
           />
         )}
 
@@ -444,10 +463,20 @@ export default function App() {
             onNavigateHome={router.navigateHome}
           />
         )}
+
+        {router.activeView === 'docs' && (
+          <DocumentationWorkspaceView
+            onNavigateHome={router.navigateHome}
+          />
+        )}
       </main>
 
-      {/* Precision Footer with Live System Log Trigger */}
-      <AppFooter onToggleLogDrawer={() => router.navigateTo(router.activeView === 'logs' ? 'home' : 'logs')} />
+      {/* Precision Footer with Live System Log Trigger & Docs Trigger */}
+      <AppFooter
+        onToggleLogDrawer={handleToggleLogDrawer}
+        isLogDrawerOpen={drawers.isLogDrawerOpen || router.activeView === 'logs'}
+        onOpenDocs={() => router.navigateTo('docs')}
+      />
 
       {/* All Drawers (Log, Documents, KPR & PO-SD, Fiscalization, Settings, Partners, Articles) */}
       <AppDrawers
@@ -464,6 +493,7 @@ export default function App() {
         geminiHook={geminiHook}
         onSelectPartner={handleSelectPartner}
         onSelectArticle={handleSelectArticle}
+        onOpenFullLogs={() => router.navigateTo('logs')}
       />
 
       {/* Plutajući amblem: Digitalni Orlando (Žigo) i ladica za razgovor */}
@@ -477,6 +507,33 @@ export default function App() {
       />
 
       <ZigoChatDrawer agent={zigoAgent} liveContext={liveScreenContext} />
+
+      {/* Središnji Start Hub Modal (Zapovjedno Središte ObrtnIQ) */}
+      <StartHubModal
+        isOpen={isStartHubOpen}
+        onClose={() => setIsStartHubOpen(false)}
+        onNavigate={router.navigateTo}
+        onNewInvoice={() => {
+          workflow.handleNewDocument('RACUN');
+          router.navigateHome();
+        }}
+        onOpenZigo={zigoAgent.toggleDrawer}
+        onOpenOnboarding={onboardingWizard.openWizard}
+        totalKprNaplaceno={stats.totalKprNaplaceno}
+        totalSavedDocs={stats.totalSavedDocs}
+        obrtNaziv={currentObrt.naziv}
+        obrtOib={currentObrt.oib}
+      />
+
+      {/* Onboarding Čarobnjak: Upoznaj Žiga Gospara (Od treme do prvog reza) */}
+      <OnboardingWizardModal
+        wizard={onboardingWizard}
+        onThemeSelect={(themeKey) => selectPreset(themeKey as any)}
+        onIssueFirstInvoice={() => {
+          workflow.handleNewDocument('RACUN');
+          router.navigateHome();
+        }}
+      />
     </div>
   );
 }

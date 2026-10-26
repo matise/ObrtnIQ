@@ -35,6 +35,7 @@ export interface AppDrawersProps {
   geminiHook?: UseGeminiAssistantReturn;
   onSelectPartner: (partner: Partner) => void;
   onSelectArticle?: (artikl: Artikl) => void;
+  onOpenFullLogs?: () => void;
 }
 
 export const AppDrawers: React.FC<AppDrawersProps> = ({
@@ -51,6 +52,7 @@ export const AppDrawers: React.FC<AppDrawersProps> = ({
   geminiHook,
   onSelectPartner,
   onSelectArticle,
+  onOpenFullLogs,
 }) => {
   const currentObrt = obrtProfileHook.profil;
 
@@ -82,6 +84,10 @@ export const AppDrawers: React.FC<AppDrawersProps> = ({
       <SystemLogDrawer
         isOpen={drawers.isLogDrawerOpen}
         onClose={() => drawers.setIsLogDrawerOpen(false)}
+        onExpandToWorkspace={onOpenFullLogs ? () => {
+          drawers.setIsLogDrawerOpen(false);
+          onOpenFullLogs();
+        } : undefined}
       />
 
       {/* 2. Preglednik Povijesti Dokumenata (Dexie.js IndexedDB) */}

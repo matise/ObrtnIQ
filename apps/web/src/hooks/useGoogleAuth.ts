@@ -61,18 +61,18 @@ export function useGoogleAuth(): UseGoogleAuthReturn {
       const remaining = googleAuthService.getTokenRemainingMinutes();
       setTokenRemainingMinutes(remaining);
 
-      // Ako je korisnik prijavljen i token istječe za manje od 5 minuta (ili je istekao),
+      // Ako je korisnik prijavljen i token istječe za manje od 5 minuta (ali je još aktivan > 0 min),
       // tiho obnovi token u pozadini bez ometanja korisnika
       const currentIdentity = googleAuthService.getStoredIdentity();
-      if (currentIdentity && remaining <= 5) {
-        logger.info('Token je pri kraju ili istekao (<=5 min), pokrećem pozadinsko tiho obnavljanje...');
+      if (currentIdentity && remaining <= 5 && remaining > 0) {
+        logger.info('Token je pri kraju (<=5 min), pokrećem pozadinsko tiho obnavljanje...');
         const refreshed = await googleAuthService.requestSilentToken();
         if (refreshed) {
           const newRemaining = googleAuthService.getTokenRemainingMinutes();
           setTokenRemainingMinutes(newRemaining);
           logger.info('Automatsko tiho obnavljanje uspješno', { novoTrajanjeMinuta: newRemaining });
         } else {
-          logger.warn('Automatsko tiho obnavljanje tokena nije uspjelo (korisnik će možda morati ponoviti prijavu).');
+          logger.warn('Automatsko tiho obnavljanje tokena nije uspjelo (korisnik će po potrebi kliknuti prijavu).');
         }
       }
     }, 60000);
@@ -182,34 +182,26 @@ export function useGoogleAuth(): UseGoogleAuthReturn {
         logger.info('useGoogleAuth.getAccessToken: Tiho obnavljanje uspješno osiguralo novi pristupni token!');
         return silentToken;
       }
-      // 2. Ako tiho obnavljanje ne uspije (npr. odjava iz Googlea), zatraži interaktivnu prijavu
-      try {
-        logger.warn('useGoogleAuth.getAccessToken: Tiho obnavljanje nije uspjelo, pokrećem interaktivnu prijavu...');
-        const res = await googleAuthService.requestLogin();
-        setTokenRemainingMinutes(googleAuthService.getTokenRemainingMinutes());
-        return res.accessToken;
-      } catch (err: any) {
-        logger.error('useGoogleAuth.getAccessToken: Interaktivna obnova tokena nije uspjela:', { error: err?.message });
-        return null;
-      }
+      // VAŽNO: Nikada ne pokrećemo interaktivni skočni prozor (requestLogin) automatski unutar getAccessToken!
+      // Interaktivni popup smije se otvoriti ISKLJUČIVO na izravan klik korisnika (npr. gumb "Prijavi se"),
+      // jer u suprotnom preglednik blokira pop-up ili neprestano prekida korisnika u radu.
+      logger.warn('useGoogleAuth.getAccessToken: Tiho obnavljanje nije uspjelo ili je token istekao. Potrebna je ručna prijava.');
+      return null;
     }
     logger.info('useGoogleAuth.getAccessToken: Nema prijavljenog korisnika, vraćam null.');
     return null;
   }, [identity]);
 
   const refreshAccessToken = useCallback(async (): Promise<string | null> => {
-    logger.info('Zatraženo ručno osvježavanje Google pristupnog tokena');
+    logger.info('Zatraženo tiho osvježavanje Google pristupnog tokena');
     const res = await googleAuthService.requestSilentToken();
     if (res) {
       setTokenRemainingMinutes(googleAuthService.getTokenRemainingMinutes());
       logger.info('Ručno tiho osvježavanje tokena uspješno');
       return res;
     }
-    logger.info('Tiho osvježavanje nije bilo moguće, pokrećem interaktivni dijalog...');
-    const loginRes = await googleAuthService.requestLogin();
-    setIdentity(loginRes.identity);
-    setTokenRemainingMinutes(googleAuthService.getTokenRemainingMinutes());
-    return loginRes.accessToken;
+    logger.warn('useGoogleAuth.refreshAccessToken: Tiho osvježavanje nije uspjelo. Korisnik mora ručno kliknuti prijavu.');
+    return null;
   }, []);
 
   const runFullHealthCheck = useCallback(async () => {

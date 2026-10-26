@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 
 export type ThemePresetKey = 'amethyst' | 'emerald' | 'cobalt' | 'bronze' | 'carbon';
 
@@ -13,38 +13,38 @@ export interface ThemePreset {
 export const THEME_PRESETS: ThemePreset[] = [
   {
     key: 'amethyst',
-    name: 'Midnight Amethyst',
+    name: 'Knežev Purpur',
     hue: 268,
     previewColor: '#A855F7',
-    description: 'Izvorna tamno-ljubičasta tema s neonskim akcentima.',
+    description: 'Svečani baršun Kneževa dvora i noć nad Stradunom.',
   },
   {
     key: 'emerald',
-    name: 'Obsidian Emerald',
+    name: 'Zelenci s Luže',
     hue: 155,
     previewColor: '#10B981',
-    description: 'Duboka smaragdno-zelena mat podloga visokog kontrasta.',
+    description: 'Patinirana bronca Mara i Bara te borovi Lokruma.',
   },
   {
     key: 'cobalt',
-    name: 'Cyber Cobalt',
+    name: 'Jadranska Bonaca',
     hue: 218,
     previewColor: '#38BDF8',
-    description: 'Financijska safirno-plava tema s tehnološkim ugođajem.',
+    description: 'Kristalno modro more podno Lovrjenca i vedro nebo.',
   },
   {
     key: 'bronze',
-    name: 'Titanium Bronze',
+    name: 'Dubrovački Dukat',
     hue: 34,
     previewColor: '#F59E0B',
-    description: 'Topla ugljen-jantarna tema industrijskog karaktera.',
+    description: 'Kovano zlato Riznice Republike, mjera poštenja.',
   },
   {
     key: 'carbon',
-    name: 'Carbon Monolith',
+    name: 'Klesani Kamen',
     hue: 0,
     previewColor: '#E4E4E7',
-    description: '100% neutralna siva monokromatska radna površina.',
+    description: 'Stoljećima glačani kamen pod Orlandovim mačem.',
   },
 ];
 
@@ -55,56 +55,70 @@ export interface ThemeSettings {
   customHue: number;
 }
 
+let globalThemeSettings: ThemeSettings = (() => {
+  try {
+    const saved = typeof window !== 'undefined' ? localStorage.getItem(STORAGE_KEY) : null;
+    if (saved) return JSON.parse(saved);
+  } catch {
+    // fallback
+  }
+  return { preset: 'amethyst', customHue: 268 };
+})();
+
+function applyThemeToDOM(currentSettings: ThemeSettings) {
+  if (typeof document === 'undefined') return;
+  const root = document.documentElement;
+
+  if (currentSettings.preset === 'carbon') {
+    root.setAttribute('data-theme', 'carbon');
+  } else {
+    root.removeAttribute('data-theme');
+    root.style.setProperty('--theme-hue', currentSettings.customHue.toString());
+    root.style.setProperty('--theme-sat-factor', '1');
+  }
+}
+
+const themeListeners = new Set<(s: ThemeSettings) => void>();
+
+function notifyThemeListeners(newSettings: ThemeSettings) {
+  globalThemeSettings = newSettings;
+  applyThemeToDOM(newSettings);
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(newSettings));
+  } catch {
+    // tihi fallback
+  }
+  themeListeners.forEach(listener => listener(newSettings));
+}
+
 export function useTheme() {
-  const [settings, setSettings] = useState<ThemeSettings>(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) {
-        return JSON.parse(saved);
-      }
-    } catch {
-      // fallback
-    }
-    return { preset: 'amethyst', customHue: 268 };
-  });
-
-  const applyThemeToDOM = useCallback((currentSettings: ThemeSettings) => {
-    const root = document.documentElement;
-
-    if (currentSettings.preset === 'carbon') {
-      root.setAttribute('data-theme', 'carbon');
-    } else {
-      root.removeAttribute('data-theme');
-      root.style.setProperty('--theme-hue', currentSettings.customHue.toString());
-      root.style.setProperty('--theme-sat-factor', '1');
-    }
-  }, []);
+  const [settings, setSettings] = useState<ThemeSettings>(globalThemeSettings);
 
   useEffect(() => {
-    applyThemeToDOM(settings);
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
-    } catch {
-      // localStorage may be disabled
-    }
-  }, [settings, applyThemeToDOM]);
+    themeListeners.add(setSettings);
+    applyThemeToDOM(globalThemeSettings);
+    return () => {
+      themeListeners.delete(setSettings);
+    };
+  }, []);
 
   const selectPreset = (presetKey: ThemePresetKey) => {
     const found = THEME_PRESETS.find(p => p.key === presetKey);
     const hue = found ? found.hue : 268;
-    setSettings({
+    const newSettings: ThemeSettings = {
       preset: presetKey,
       customHue: hue,
-    });
+    };
+    notifyThemeListeners(newSettings);
   };
 
   const updateHue = (hue: number) => {
     const clampedHue = Math.min(360, Math.max(0, Math.round(hue)));
-    setSettings(prev => ({
-      ...prev,
+    const newSettings: ThemeSettings = {
       preset: 'amethyst', // Custom hue falls under custom dynamic theme
       customHue: clampedHue,
-    }));
+    };
+    notifyThemeListeners(newSettings);
   };
 
   const activePreset = THEME_PRESETS.find(p => p.key === settings.preset) || THEME_PRESETS[0]!;

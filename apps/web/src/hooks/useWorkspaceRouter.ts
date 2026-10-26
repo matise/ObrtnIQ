@@ -8,7 +8,8 @@ export type WorkspaceView =
   | 'articles'
   | 'partners'
   | 'settings'
-  | 'logs';
+  | 'logs'
+  | 'docs';
 
 export interface WorkspaceViewParams {
   tab?: string;
@@ -30,13 +31,17 @@ const HASH_MAP: Record<string, WorkspaceView> = {
   '#bookkeeping': 'bookkeeping',
   '#kpr': 'bookkeeping',
   '#documents': 'documents',
-  '#docs': 'documents',
+  '#racuni': 'documents',
   '#fiscal': 'fiscal',
   '#articles': 'articles',
   '#cjenik': 'articles',
   '#partners': 'partners',
   '#settings': 'settings',
   '#logs': 'logs',
+  '#docs': 'docs',
+  '#dokumentacija': 'docs',
+  '#faze': 'docs',
+  '#manifest': 'docs',
 };
 
 const VIEW_TITLES: Record<WorkspaceView, string> = {
@@ -48,6 +53,7 @@ const VIEW_TITLES: Record<WorkspaceView, string> = {
   partners: 'ObrtnIQ — Adresar Poslovnih Partnera',
   settings: 'ObrtnIQ — Postavke Obrta & Trezor',
   logs: 'ObrtnIQ — Dnevnik Sustava',
+  docs: 'ObrtnIQ — Sustav Dokumentacije & Razvojni Dnevnik',
 };
 
 function getInitialViewFromHash(): WorkspaceView {

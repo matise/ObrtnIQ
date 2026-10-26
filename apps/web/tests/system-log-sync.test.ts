@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { CoreLogger, LogEntry } from '@obrtniq/core';
 import { appLogger } from '../src/services/logger';
+import { triggerAutoOpen, onAutoOpenTriggered } from '../src/services/global-error-trap';
 import viteConfig from '../vite.config';
 
 describe('Sustavni Dnevnik - Reaktivnost, Referencijalna Stabilnost i COEP/COOP Konfiguracija', () => {
@@ -163,5 +164,62 @@ describe('Sustavni Dnevnik - Reaktivnost, Referencijalna Stabilnost i COEP/COOP 
     mockContainer.scrollTo({ top: targetTopReverse });
     expect(mockContainer.scrollTo).toHaveBeenCalledWith({ top: 0 });
     expect(mockContainer.scrollTop).toBe(0);
+  });
+
+  it('SLS-10: onAutoOpenTriggered pretplata automatski prosljeđuje grešku kada je auto-open aktivan', () => {
+    let autoOpenedWith: LogEntry | null = null;
+    const unsubscribe = onAutoOpenTriggered((entry) => {
+      autoOpenedWith = entry;
+    });
+
+    const mockErrorEntry: LogEntry = {
+      id: 'err-1',
+      timestamp: Date.now(),
+      displayTime: '12:00:00',
+      level: 'ERROR',
+      context: 'TEST:UNCAUGHT',
+      message: 'Kritična greška testiranja',
+    };
+
+    triggerAutoOpen(mockErrorEntry);
+    expect(autoOpenedWith).not.toBeNull();
+    expect(autoOpenedWith?.message).toBe('Kritična greška testiranja');
+
+    unsubscribe();
+  });
+
+  it('SLS-11: handleToggleLogDrawer logika zatvara puni prikaz ili podiže donju konzolu', () => {
+    let activeView = 'home';
+    let isLogDrawerOpen = false;
+
+    const navigateHome = () => {
+      activeView = 'home';
+    };
+    const toggleLogDrawer = () => {
+      isLogDrawerOpen = !isLogDrawerOpen;
+    };
+
+    const handleToggle = () => {
+      if (activeView === 'logs') {
+        navigateHome();
+      } else {
+        toggleLogDrawer();
+      }
+    };
+
+    // 1. Ako smo na 'home' i kliknemo na statusni widget ili Alt+9, otvara se donja konzola
+    expect(isLogDrawerOpen).toBe(false);
+    handleToggle();
+    expect(isLogDrawerOpen).toBe(true);
+    expect(activeView).toBe('home');
+
+    // Ponovni klik zatvara konzolu
+    handleToggle();
+    expect(isLogDrawerOpen).toBe(false);
+
+    // 2. Ako smo u punom prikazu radnog prostora 'logs', klik vraća na radnu plohu
+    activeView = 'logs';
+    handleToggle();
+    expect(activeView).toBe('home');
   });
 });

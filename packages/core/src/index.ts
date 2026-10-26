@@ -31,4 +31,5 @@ export * from './utils/cashflow';
 export * from './domain/recurring';
 export * from './domain/tax-calendar';
 export * from './domain/premises';
+export * from './domain/documentation';
 export { default as FiscalProxyWorker } from './proxy/worker';

@@ -93,9 +93,11 @@ export function useGoogleDriveSync(
   }, [identity, executeWithTokenRetry]);
 
   useEffect(() => {
-    if (identity) {
+    // Automatski dohvat popisa backupa vrši se samo ako je korisnik prijavljen I token je još važeći
+    // Ako je token istekao, ne pokrećemo mrežne zahtjeve na mountu da ne prekidamo korisnika
+    if (identity && googleAuthService.getTokenRemainingMinutes() > 0) {
       refreshDriveBackups();
-    } else {
+    } else if (!identity) {
       setDriveBackups([]);
       setError(null);
     }

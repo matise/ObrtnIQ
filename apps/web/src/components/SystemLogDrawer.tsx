@@ -18,6 +18,7 @@ import {
   Focus,
   Home,
   ArrowLeft,
+  Maximize2,
 } from 'lucide-react';
 import { LogLevel, LogEntry } from '@obrtniq/core';
 import { appLogger } from '../services/logger';
@@ -32,6 +33,7 @@ export interface SystemLogDrawerProps {
   onClose: () => void;
   isEmbedded?: boolean;
   onNavigateHome?: () => void;
+  onExpandToWorkspace?: () => void;
 }
 
 export function SystemLogDrawer({
@@ -39,6 +41,7 @@ export function SystemLogDrawer({
   onClose,
   isEmbedded = false,
   onNavigateHome,
+  onExpandToWorkspace,
 }: SystemLogDrawerProps) {
   const { 
     logs, 
@@ -218,8 +221,8 @@ export function SystemLogDrawer({
   return (
     <div className={
       isEmbedded
-        ? "w-full bg-[var(--bg-canvas)] border border-[var(--border-strong)] rounded-2xl shadow-2xl flex flex-col min-h-[calc(100vh-160px)] transition-all font-mono text-xs overflow-hidden animate-in fade-in duration-200"
-        : "fixed inset-x-0 bottom-0 z-[60] bg-[var(--bg-canvas)] border-t border-[var(--border-strong)] shadow-2xl flex flex-col h-[420px] max-h-[85vh] transition-all no-print font-mono text-xs"
+        ? "w-full bg-[var(--bg-canvas)] border border-[var(--border-strong)] rounded-none shadow-2xl flex flex-col h-[calc(100vh-140px)] max-h-[calc(100vh-140px)] transition-all font-mono text-xs overflow-hidden animate-in fade-in duration-200"
+        : "fixed inset-x-0 bottom-0 z-[60] bg-[var(--bg-canvas)] border-t border-[var(--border-strong)] shadow-2xl flex flex-col h-[420px] max-h-[85vh] transition-all no-print font-mono text-xs rounded-none"
     }>
       {/* 1. Top Header Bar */}
       <div className="px-4 py-2.5 bg-[var(--bg-surface)] border-b border-[var(--border-subtle)] flex items-center justify-between gap-3 flex-wrap">
@@ -365,25 +368,38 @@ export function SystemLogDrawer({
             <Trash2 className="w-3.5 h-3.5" />
           </button>
 
-          {/* Close or Return Button */}
+          {/* Close, Expand or Return Button */}
           {isEmbedded ? (
             <button
               type="button"
               onClick={onNavigateHome || onClose}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-mono text-white bg-[var(--bg-elevated)] hover:bg-[var(--bg-subtle)] border border-[var(--border-strong)] transition-colors cursor-pointer"
-              title="Povratak na radnu plohu (Alt+H)"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-none text-xs font-mono text-white bg-[var(--bg-elevated)] hover:bg-[var(--bg-subtle)] border border-[var(--border-strong)] transition-colors cursor-pointer"
+              title="Povratak na radnu plohu (Alt+H ili Alt+1)"
             >
               <ArrowLeft className="w-3.5 h-3.5 text-[var(--accent-primary)]" />
               <span>Povratak na Radnu plohu</span>
             </button>
           ) : (
-            <button
-              type="button"
-              onClick={onClose}
-              className="p-1 text-[var(--text-muted)] hover:text-white border border-transparent hover:border-[var(--border-strong)] transition-colors cursor-pointer"
-            >
-              <X className="w-4 h-4" />
-            </button>
+            <div className="flex items-center space-x-1">
+              {onExpandToWorkspace && (
+                <button
+                  type="button"
+                  onClick={onExpandToWorkspace}
+                  className="p-1 text-[var(--text-muted)] hover:text-white border border-transparent hover:border-[var(--border-strong)] transition-colors cursor-pointer"
+                  title="Proširi u puni radni prostor (Alt+9)"
+                >
+                  <Maximize2 className="w-4 h-4 text-[var(--accent-primary)]" />
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={onClose}
+                className="p-1 text-[var(--text-muted)] hover:text-white border border-transparent hover:border-[var(--border-strong)] transition-colors cursor-pointer"
+                title="Zatvori konzolu dnevnika (Escape ili Alt+9)"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
           )}
         </div>
       </div>

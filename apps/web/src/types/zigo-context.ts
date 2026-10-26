@@ -8,7 +8,8 @@ export type ActiveScreenView =
   | 'FiscalDrawer'
   | 'PartnerDrawer'
   | 'ArticleDrawer'
-  | 'DocumentDrawer';
+  | 'DocumentDrawer'
+  | 'DocumentationDrawer';
 
 export interface ScreenInvoiceItemSnapshot {
   opis: string;

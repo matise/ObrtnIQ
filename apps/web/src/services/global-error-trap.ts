@@ -12,13 +12,13 @@ let isInitialized = false;
  * Dohvaća korisničku preferenciju za automatsko otvaranje dnevnika grešaka (zadano: true)
  */
 export function getAutoOpenOnError(): boolean {
-  if (typeof localStorage === 'undefined') return true;
+  if (typeof localStorage === 'undefined') return false;
   try {
     const val = localStorage.getItem(STORAGE_KEY_AUTO_OPEN);
-    if (val === null) return true; // zadano uključeno
+    if (val === null) return false; // zadano isključeno kako ne bi preuzimalo fokus
     return val === 'true';
   } catch {
-    return true;
+    return false;
   }
 }
 

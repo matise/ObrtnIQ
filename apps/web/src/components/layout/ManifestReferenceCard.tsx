@@ -1,7 +1,11 @@
 import React from 'react';
 import { FileText } from 'lucide-react';
 
-export const ManifestReferenceCard: React.FC = () => {
+export interface ManifestReferenceCardProps {
+  onOpenDocs?: () => void;
+}
+
+export const ManifestReferenceCard: React.FC<ManifestReferenceCardProps> = ({ onOpenDocs }) => {
   return (
     <div className="border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-6 space-y-4 transition-colors no-print">
       <div className="flex items-center justify-between border-b border-[var(--border-subtle)] pb-4">
@@ -12,9 +16,20 @@ export const ManifestReferenceCard: React.FC = () => {
             <p className="text-xs text-[var(--text-muted)]">Evidencija faza, odluka i Gate-Check kriterija</p>
           </div>
         </div>
-        <span className="font-mono text-xs text-[var(--text-secondary)] bg-[var(--bg-elevated)] px-3 py-1 border border-[var(--border-subtle)]">
-          docs/manifest_i_dnevnik_implementacije.md
-        </span>
+        {onOpenDocs ? (
+          <button
+            type="button"
+            onClick={onOpenDocs}
+            className="font-mono text-xs text-[var(--accent-primary)] hover:text-white bg-[var(--bg-elevated)] hover:bg-[var(--accent-primary)]/20 px-3 py-1.5 border border-[var(--border-subtle)] hover:border-[var(--accent-primary)] transition-all cursor-pointer flex items-center gap-1.5"
+            title="Otvori cjeloviti sustav dokumentacije i registar faza"
+          >
+            <span>Otvori Sustav Dokumentacije &rarr;</span>
+          </button>
+        ) : (
+          <span className="font-mono text-xs text-[var(--text-secondary)] bg-[var(--bg-elevated)] px-3 py-1 border border-[var(--border-subtle)]">
+            docs/manifest_i_dnevnik_implementacije.md
+          </span>
+        )}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs font-mono">

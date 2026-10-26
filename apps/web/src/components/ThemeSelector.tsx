@@ -19,12 +19,12 @@ export const ThemeSelector: React.FC = () => {
   }, []);
 
   return (
-    <div ref={dropdownRef} className="relative">
+    <div ref={dropdownRef} className="relative shrink-0">
       {/* Trigger Button */}
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="h-10 flex items-center space-x-2 bg-[#140F24] hover:bg-[#1E1635] border border-[#261B3D] hover:border-[#433068] px-3 transition-colors font-mono text-xs rounded-none cursor-pointer"
+        className="h-10 flex items-center space-x-2 bg-[#140F24] hover:bg-[#1E1635] border border-[#261B3D] hover:border-[#433068] px-2.5 sm:px-3 transition-colors font-mono text-xs rounded-none cursor-pointer shrink-0"
         title="Promijeni temu sučelja"
       >
         <span
@@ -32,17 +32,17 @@ export const ThemeSelector: React.FC = () => {
           style={{ backgroundColor: activePreset.previewColor }}
         />
         <span className="text-white hidden sm:inline font-semibold">{activePreset.name}</span>
-        <span className="text-[#7C6DA0] text-[10px]">({preset === 'carbon' ? 'Mono' : `${hue}°`})</span>
-        <ChevronDown className={`w-3.5 h-3.5 text-[#7C6DA0] transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+        <span className="text-[#7C6DA0] text-[10px] hidden 2xl:inline">({preset === 'carbon' ? 'Mono' : `${hue}°`})</span>
+        <ChevronDown className={`w-3.5 h-3.5 text-[#7C6DA0] shrink-0 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
       </button>
 
       {/* Popover Menu */}
       {isOpen && (
-        <div className="absolute right-0 mt-1 w-72 bg-[#140F24] border border-[#433068] shadow-2xl p-4 z-50 space-y-4 font-mono">
+        <div className="absolute right-0 mt-1 w-[350px] max-w-[95vw] bg-[#140F24] border border-[#433068] shadow-2xl p-4 z-50 space-y-4 font-mono animate-in fade-in zoom-in-95 duration-150">
           <div className="flex items-center justify-between border-b border-[#261B3D] pb-2">
             <span className="text-xs font-bold text-white flex items-center gap-1.5 uppercase tracking-wider">
               <Palette className="w-3.5 h-3.5 text-[#A855F7]" />
-              Sustav Teme &amp; Hue
+              Dubrovačke Teme &amp; Hue
             </span>
             <span className="text-[10px] text-[#A855F7] bg-[#261B3D] px-1.5 py-0.5 border border-[#433068]">
               {hue}° HSL
@@ -52,7 +52,7 @@ export const ThemeSelector: React.FC = () => {
           {/* Preset Buttons */}
           <div className="space-y-1.5">
             <span className="text-[10px] uppercase text-[#7C6DA0] font-semibold block">
-              Kurirani Preseti
+              Žigini Kurirani Preseti
             </span>
             <div className="grid grid-cols-1 gap-1">
               {presets.map((p) => {
@@ -77,11 +77,11 @@ export const ThemeSelector: React.FC = () => {
                       />
                       <div>
                         <div className="font-semibold">{p.name}</div>
-                        <div className="text-[10px] text-[#7C6DA0] truncate max-w-[170px]">{p.description}</div>
+                        <div className="text-[10px] text-[#7C6DA0] leading-tight max-w-[220px]">{p.description}</div>
                       </div>
                     </div>
                     {isSelected && (
-                      <span className="text-[10px] text-[#10B981] font-bold">AKTIVNO</span>
+                      <span className="text-[10px] text-[#10B981] font-bold shrink-0 ml-2">AKTIVNO</span>
                     )}
                   </button>
                 );

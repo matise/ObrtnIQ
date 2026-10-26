@@ -126,6 +126,15 @@
   background: var(--border-strong);
 }
 
+/* Sakrij traku za pomicanje (za mobilne / kompaktne navigacije) */
+.scrollbar-none {
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE/Edge */
+}
+.scrollbar-none::-webkit-scrollbar {
+  display: none; /* Chrome/Safari */
+}
+
 /* =========================================================================
    RESPONSIVE FLOW PRINT ENGINE (@media print)
    Omogućuje dinamičku prilagodbu ispisa širini papira uz očuvanje prirodnog
